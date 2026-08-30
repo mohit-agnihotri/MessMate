@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../models/app_models.dart';
 
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({super.key});
@@ -20,7 +23,7 @@ class StudentProfilePage extends ConsumerWidget {
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  sliver: SliverToBoxAdapter(child: _buildProfileCard(state)),
+                  sliver: SliverToBoxAdapter(child: _buildProfileCard(context, ref, state)),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -28,7 +31,7 @@ class StudentProfilePage extends ConsumerWidget {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                  sliver: SliverToBoxAdapter(child: _buildSettingsSection()),
+                  sliver: SliverToBoxAdapter(child: _buildSettingsSection(context)),
                 ),
               ],
             ),
@@ -36,7 +39,7 @@ class StudentProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileCard(StudentProfileState state) {
+  Widget _buildProfileCard(BuildContext context, WidgetRef ref, StudentProfileState state) {
     final student = state.student;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -46,10 +49,34 @@ class StudentProfilePage extends ConsumerWidget {
         boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 2))],
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const CircleAvatar(
-          radius: 36,
-          backgroundColor: Color(0xFFDCFCE7),
-          child: Icon(Icons.person, size: 40, color: Color(0xFF16A34A)),
+        GestureDetector(
+          onTap: () => _pickImage(ref),
+          child: Stack(
+            children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: const Color(0xFFDCFCE7),
+                backgroundImage: student?.photoUrl != null && student!.photoUrl!.isNotEmpty
+                    ? CachedNetworkImageProvider(student.photoUrl!)
+                    : null,
+                child: student?.photoUrl == null || student!.photoUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 40, color: Color(0xFF16A34A))
+                    : null,
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3B82F6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -58,14 +85,18 @@ class StudentProfilePage extends ConsumerWidget {
               student?.name ?? 'Student',
               style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
             )),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF3B82F6)),
-                borderRadius: BorderRadius.circular(8),
+            InkWell(
+              onTap: () => _showEditProfileDialog(context, ref, student),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFF3B82F6)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('Edit Profile',
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6))),
               ),
-              child: Text('Edit Profile',
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF3B82F6))),
             ),
           ]),
           const SizedBox(height: 4),
@@ -75,6 +106,74 @@ class StudentProfilePage extends ConsumerWidget {
             style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
         ])),
       ]),
+    );
+  }
+
+  Future<void> _pickImage(WidgetRef ref) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      final extension = pickedFile.name.split('.').last;
+      final path = 'students/${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await ref.read(studentProfileProvider.notifier).uploadProfilePicture(path, bytes, extension);
+    }
+  }
+
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, StudentModel? student) {
+    if (student == null) return;
+    
+    final nameCtrl = TextEditingController(text: student.name);
+    final phoneCtrl = TextEditingController(text: student.phone);
+    final roomCtrl = TextEditingController(text: student.roomNo);
+    final collegeCtrl = TextEditingController(text: student.college);
+    final courseCtrl = TextEditingController(text: student.course);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Edit Profile', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone')),
+              TextField(controller: roomCtrl, decoration: const InputDecoration(labelText: 'Room No')),
+              TextField(controller: collegeCtrl, decoration: const InputDecoration(labelText: 'College')),
+              TextField(controller: courseCtrl, decoration: const InputDecoration(labelText: 'Course')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
+            onPressed: () {
+              final updated = StudentModel(
+                studentId: student.studentId,
+                name: nameCtrl.text,
+                phone: phoneCtrl.text,
+                roomNo: roomCtrl.text,
+                college: collegeCtrl.text,
+                course: courseCtrl.text,
+                email: student.email,
+                photoUrl: student.photoUrl,
+                joinDate: student.joinDate,
+                messId: student.messId,
+                status: student.status,
+              );
+              ref.read(studentProfileProvider.notifier).updateProfile(updated);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Updated!'), backgroundColor: Color(0xFF22C55E)));
+            },
+            child: Text('Save', style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -116,7 +215,7 @@ class StudentProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildSettingsSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -134,8 +233,14 @@ class StudentProfilePage extends ConsumerWidget {
         _ToggleTile('Bill Updated'),
         _ToggleTile('Owner Announcements'),
         const Divider(height: 24, color: Color(0xFFF3F4F6)),
-        _buildArrowTile(Icons.language_outlined, 'Language', 'English'),
-        _buildArrowTile(Icons.help_outline_rounded, 'Help & Support', ''),
+        InkWell(
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language settings coming soon!'))),
+          child: _buildArrowTile(Icons.language_outlined, 'Language', 'English'),
+        ),
+        InkWell(
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Help center coming soon!'))),
+          child: _buildArrowTile(Icons.help_outline_rounded, 'Help & Support', ''),
+        ),
       ]),
     );
   }
@@ -204,4 +309,5 @@ class _ToggleTileState extends State<_ToggleTile> {
     );
   }
 }
+
 

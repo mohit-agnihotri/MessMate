@@ -727,7 +727,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     final student = await _service.getStudentById(studentId);
-    final mess = student != null ? await _service.getMessByOwnerId(student.messId) : null;
+    final mess = student != null ? await _service.getMessById(student.messId) : null;
     final leave = student != null ? await _service.getActiveLeave(studentId) : null;
     
     if (mess != null) {
@@ -1122,13 +1122,37 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     final student = await _service.getStudentById(studentId);
-    final mess = student != null ? await _service.getMessByOwnerId(student.messId) : null;
+    final mess = student != null ? await _service.getMessById(student.messId) : null;
     state = state.copyWith(student: student, mess: mess, isLoading: false);
   }
 
   Future<void> updateProfile(StudentModel updated) async {
     await _service.updateStudent(updated);
     state = state.copyWith(student: updated);
+  }
+  
+  Future<void> uploadProfilePicture(String path, Uint8List bytes, String extension) async {
+    try {
+      final url = await _service.uploadImage(path, bytes, extension);
+      if (state.student != null) {
+        final updatedStudent = StudentModel(
+          studentId: state.student!.studentId,
+          name: state.student!.name,
+          phone: state.student!.phone,
+          roomNo: state.student!.roomNo,
+          college: state.student!.college,
+          course: state.student!.course,
+          email: state.student!.email,
+          joinDate: state.student!.joinDate,
+          messId: state.student!.messId,
+          status: state.student!.status,
+          photoUrl: url,
+        );
+        await updateProfile(updatedStudent);
+      }
+    } catch (e) {
+      print("Error uploading profile picture: $e");
+    }
   }
 
   Future<void> leaveMess() async {
