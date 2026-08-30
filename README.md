@@ -54,7 +54,19 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
    ```
 
 ## 🔒 Security
-Sensitive files such as Firebase configuration, Google API keys, and Service Accounts are intentionally excluded from this repository to protect private infrastructure.
+
+MessMate is built with security as a core principle at every layer:
+
+- **📱 Phone OTP Authentication:** Users can only sign in via their verified phone number using Firebase Authentication. No passwords, no email guessing — only a real OTP sent to your phone.
+- **🎟️ Mess Code System:** Students can only join a mess by entering a private 6-digit Mess Code shared by the owner. No one can enter a mess without the owner's permission.
+- **🛡️ Role-Based Data Access (Firestore Rules):** Every collection in the database is protected by strict Firestore Security Rules:
+  - A **student** can only read/write their own data (meal records, leaves, bill).
+  - An **owner** can only manage data belonging to their own mess.
+  - **No cross-mess data access** is possible — an owner of Mess A cannot see data of Mess B.
+  - The `global_dishes` collection is **read-only** for all users; only backend scripts can write to it.
+  - Bills can **never be deleted** via the app — this prevents billing fraud.
+- **🔐 No Secrets in Code:** Firebase configuration, Google API Keys, and Service Account credentials are never hardcoded in the app or uploaded to this repository.
+
 
 ---
 *Built with ❤️ for a better hostel life.*
