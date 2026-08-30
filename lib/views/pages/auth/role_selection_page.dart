@@ -6,6 +6,7 @@ import '../owner/owner_main_page.dart';
 import 'student_setup_page.dart';
 import 'owner_setup_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../student/student_main_page.dart';
 
 class RoleSelectionPage extends ConsumerWidget {
   const RoleSelectionPage({super.key});
@@ -65,9 +66,31 @@ class RoleSelectionPage extends ConsumerWidget {
                 subtitle: 'Track meals, view menu, manage your bill',
                 color: const Color(0xFF6366F1),
                 bgColor: const Color(0xFFEEF2FF),
-                onTap: () {
+                onTap: () async {
                   ref.read(authProvider.notifier).setRole(AuthRole.student);
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentSetupPage()));
+                  
+                  showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+                  
+                  try {
+                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                    if (uid == null) throw Exception('Not logged in');
+                    final student = await ref.read(appServiceProvider).getStudentById(uid);
+                    
+                    if (context.mounted) {
+                      Navigator.pop(context); // hide loading
+                      if (student == null) {
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentSetupPage()));
+                      } else {
+                        // Import student_main_page.dart at top of file
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentMainPage()));
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  }
                 },
               ),
             ],

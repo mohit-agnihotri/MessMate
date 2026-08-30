@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../viewmodels/all_viewmodels.dart';
 import 'auth/phone_login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
-class SplashPage extends StatefulWidget {
+import 'student/student_main_page.dart';
+
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends ConsumerState<SplashPage> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fade;
 
@@ -21,17 +25,48 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          // If logged in, send to Role Selection to decide where to go
+    _checkAuthAndRoute();
+  }
+
+  Future<void> _checkAuthAndRoute() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final service = ref.read(appServiceProvider);
+        
+        // Check if user is an owner
+        final mess = await service.getMessByOwnerId(user.uid);
+        if (mess != null && mounted) {
+          ref.read(authProvider.notifier).setRole(AuthRole.owner);
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerMainPage()));
+          return;
+        }
+
+        // Check if user is a student
+        final student = await service.getStudentById(user.uid);
+        if (student != null && mounted) {
+          ref.read(authProvider.notifier).setRole(AuthRole.student);
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentMainPage()));
+          return;
+        }
+
+        // If neither, go to Role Selection
+        if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoleSelectionPage()));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PhoneLoginPage()));
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoleSelectionPage()));
         }
       }
-    });
+    } else {
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PhoneLoginPage()));
+      }
+    }
   }
 
   @override
