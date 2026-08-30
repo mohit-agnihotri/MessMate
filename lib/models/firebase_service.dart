@@ -281,11 +281,16 @@ class FirebaseService implements AppService {
   Future<LeaveModel?> getActiveLeave(String studentId) async {
     final snap = await _db.collection('leaves')
         .where('studentId', isEqualTo: studentId)
-        .where('status', isEqualTo: 'active')
-        .limit(1)
         .get();
+    
     if (snap.docs.isEmpty) return null;
-    return LeaveModel.fromMap(snap.docs.first.data());
+    
+    final activeLeaves = snap.docs
+        .map((d) => LeaveModel.fromMap(d.data()))
+        .where((l) => l.status == 'active')
+        .toList();
+        
+    return activeLeaves.isNotEmpty ? activeLeaves.first : null;
   }
 
   // BILLING
