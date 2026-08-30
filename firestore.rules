@@ -63,7 +63,7 @@ service cloud.firestore {
 
     // Meal Records
     match /meal_records/{recordId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
       allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
       allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
@@ -71,7 +71,7 @@ service cloud.firestore {
 
     // Leaves
     match /leaves/{leaveId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
       allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
       allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
@@ -79,9 +79,15 @@ service cloud.firestore {
 
     // Bills
     match /bills/{billId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
-      allow create: if false; // Normally handled by a cloud function or owner, but allowing owner logic here
-      allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (
+        request.auth.uid == request.resource.data.studentId ||
+        get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid
+      );
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.studentId ||
+        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
+      );
       allow delete: if false;
     }
   }
