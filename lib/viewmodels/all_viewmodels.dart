@@ -538,8 +538,20 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
         return;
       }
       final templates = await _service.getWeeklyTemplate(mess.messId);
+      
+      String activeSlot = state.selectedSlot;
+      if (mess.mealTimings[activeSlot]?['enabled'] != 'true') {
+        final slots = ['morning', 'noon', 'evening', 'night'];
+        for (final s in slots) {
+          if (mess.mealTimings[s]?['enabled'] == 'true') {
+            activeSlot = s;
+            break;
+          }
+        }
+      }
+
       state = state.copyWith(messId: mess.messId, mess: mess, isLoading: false, weeklyTemplates: templates);
-      _updateSelectedFor(state.selectedDay, state.selectedSlot, templates);
+      _updateSelectedFor(state.selectedDay, activeSlot, templates);
     } catch (e) {
       state = state.copyWith(isLoading: false);
       print('Error loading menu templates: $e');
@@ -727,26 +739,32 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
-    final student = await _service.getStudentById(studentId);
-    final mess = student != null ? await _service.getMessById(student.messId) : null;
-    final leave = student != null ? await _service.getActiveLeave(studentId) : null;
-    
-    if (mess != null) {
-      FirebaseMessaging.instance.subscribeToTopic('mess_${mess.messId}');
+    try {
+      final student = await _service.getStudentById(studentId);
+      final mess = student != null ? await _service.getMessById(student.messId) : null;
+      final leave = student != null ? await _service.getActiveLeave(studentId) : null;
       
-      _announcementSub = _service.streamAnnouncements(mess.messId).listen((announcements) {
-        state = state.copyWith(announcement: announcements.firstOrNull);
-      });
+      if (mess != null) {
+        FirebaseMessaging.instance.subscribeToTopic('mess_${mess.messId}');
+        
+        _announcementSub = _service.streamAnnouncements(mess.messId).listen((announcements) {
+          state = state.copyWith(announcement: announcements.firstOrNull);
+        });
+      }
+
+      state = state.copyWith(student: student, activeLeave: leave, mess: mess);
+      
+      _subscribeToDateDependentStreams();
+      _recalculateTimeState();
+      
+      _clockTimer?.cancel();
+      _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkMidnightRollover());
+    } catch (e, st) {
+      print('Error loading student dashboard: $e');
+      print(st);
+    } finally {
+      state = state.copyWith(isLoading: false);
     }
-
-    state = state.copyWith(student: student, activeLeave: leave, mess: mess);
-    
-    _subscribeToDateDependentStreams();
-    _recalculateTimeState();
-    
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkMidnightRollover());
-
-    state = state.copyWith(isLoading: false);
   }
 
   void _subscribeToDateDependentStreams() {
