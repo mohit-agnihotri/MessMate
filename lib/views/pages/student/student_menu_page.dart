@@ -5,6 +5,10 @@ import '../../../models/app_models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 
+final weeklyMenuProvider = FutureProvider.family<List<MenuModel>, String>((ref, messId) {
+  return ref.watch(appServiceProvider).getWeeklyTemplate(messId);
+});
+
 class StudentMenuPage extends ConsumerStatefulWidget {
   const StudentMenuPage({super.key});
   @override
@@ -15,51 +19,57 @@ class _StudentMenuPageState extends ConsumerState<StudentMenuPage> {
   int _selectedDay = DateTime.now().weekday - 1;
   final List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  late Future<List<MenuModel>> _weeklyMenuFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchMenu();
-  }
-
-  void _fetchMenu() {
-    final state = ref.read(studentHomeProvider);
-    if (state.mess != null) {
-      _weeklyMenuFuture = ref.read(appServiceProvider).getWeeklyTemplate(state.mess!.messId);
-    } else {
-      _weeklyMenuFuture = Future.value([]);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Re-fetch if mess becomes available
-    final state = ref.watch(studentHomeProvider);
-    if (state.mess != null) {
-       _weeklyMenuFuture = ref.read(appServiceProvider).getWeeklyTemplate(state.mess!.messId);
-    }
-  }
-
   @override 
   Widget build(BuildContext context) {
     final state = ref.watch(studentHomeProvider);
     final mess = state.mess;
     
-    // Fallback if no mess loaded yet
-    final isMorningEnabled = mess?.mealTimings['morning']?['enabled'] == 'true';
-    final isNoonEnabled = mess?.mealTimings['noon']?['enabled'] == 'true';
-    final isEveningEnabled = mess?.mealTimings['evening']?['enabled'] == 'true';
-    final isNightEnabled = mess?.mealTimings['night']?['enabled'] == 'true';
+    if (state.isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF4F5F7),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF22C55E))),
+      );
+    }
+    
+    if (mess == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF4F5F7),
+        body: Center(child: Text('You are not part of any mess.')),
+      );
+    }
+
+    if (!mess.showMenuToStudents) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF4F5F7),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              const Expanded(
+                child: Center(
+                  child: Text('Menu Hidden by Owner 🔒', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final isMorningEnabled = mess.mealTimings['morning']?['enabled'] == 'true';
+    final isNoonEnabled = mess.mealTimings['noon']?['enabled'] == 'true';
+    final isEveningEnabled = mess.mealTimings['evening']?['enabled'] == 'true';
+    final isNightEnabled = mess.mealTimings['night']?['enabled'] == 'true';
+
+    final menuAsync = ref.watch(weeklyMenuProvider(mess.messId));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F5F7),
       body: SafeArea(
-        child: FutureBuilder<List<MenuModel>>(
-          future: _weeklyMenuFuture,
-          builder: (context, snapshot) {
-            final templates = snapshot.data ?? [];
+        child: menuAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF22C55E))),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+          data: (templates) {
             final dayStr = _days[_selectedDay];
             
             MenuModel? getMenuFor(String slot) {
@@ -79,12 +89,12 @@ class _StudentMenuPageState extends ConsumerState<StudentMenuPage> {
                     if (isNoonEnabled) const SizedBox(height: 24),
                     if (isEveningEnabled) _buildMealSection(context, 'Evening', 'evening', getMenuFor('evening'), null),
                     if (isEveningEnabled) const SizedBox(height: 24),
-                    if (isNightEnabled) _buildMealSection(context, 'Night', 'night', getMenuFor('night'), '⚠️ Skipping counts as a full day deduction'),
+                    if (isNightEnabled) _buildMealSection(context, 'Night', 'night', getMenuFor('night'), '⚠️ Skipping this counts as a full day deduction'),
                   ])),
                 ),
               ],
             );
-          }
+          },
         ),
       ),
     );
@@ -170,7 +180,7 @@ class _StudentMenuPageState extends ConsumerState<StudentMenuPage> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-              child: const Center(child: Text('No menu items for this meal')),
+              child: const Center(child: Text('Menu not decided yet. Check back later.')),
             );
           }
           final dishes = menu.dishes;
