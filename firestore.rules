@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Dishes: Read-only for authenticated users. Backend handles writes.
+    match /global_dishes/{dishId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Messes: Anyone can read (to join via code), only the owner can write.
+    match /messes/{messId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.ownerId || !("ownerId" in resource.data));
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      
+      // Subcollections under messes
+      match /dishes/{dishId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+      }
+      
+      match /weekly_templates/{templateId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+      }
+      
+      match /closed_slots/{slotId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+      }
+      
+      match /feedbacks/{feedbackId} {
+        allow read: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+        allow create: if request.auth != null; // Students can leave feedback
+      }
+    }
+
+    // Students
+    match /students/{studentId} {
+      allow get, list: if request.auth != null && (request.auth.uid == studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow create: if request.auth != null && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid;
+      allow update: if request.auth != null && (request.auth.uid == studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow delete: if request.auth != null && request.auth.uid == studentId;
+    }
+
+    // Menus
+    match /menus/{menuId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid && request.resource.data.messId == resource.data.messId;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid;
+    }
+
+    // Announcements
+    match /announcements/{docId} {
+      allow read: if request.auth != null && (get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == resource.data.messId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow create: if request.auth != null && get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid && request.resource.data.messId == resource.data.messId;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid;
+    }
+
+    // Meal Records
+    match /meal_records/{recordId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
+    }
+
+    // Leaves
+    match /leaves/{leaveId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
+    }
+
+    // Bills
+    match /bills/{billId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow create: if false; // Normally handled by a cloud function or owner, but allowing owner logic here
+      allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow delete: if false;
+    }
+  }
+}

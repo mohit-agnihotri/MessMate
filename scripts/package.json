@@ -1,0 +1,14 @@
+﻿{
+  "name": "mess-app-seeder",
+  "version": "1.0.0",
+  "description": "One-time Firebase seeder for global_dishes collection",
+  "main": "seed_firebase_dishes.js",
+  "scripts": {
+    "seed": "node seed_firebase_dishes.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.3.0",
+    "node-fetch": "^2.7.0"
+  }
+}
