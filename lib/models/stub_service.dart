@@ -84,6 +84,7 @@ class StubService implements AppService {
   @override Future<void> updateStudent(StudentModel student) async {}
   @override Future<List<MenuModel>> getWeeklyMenu(String messId, DateTime weekStart) async => [];
   @override Stream<List<MenuModel>> streamDailyMenus(String messId, DateTime date) => Stream.value([]);
+  @override Future<List<MenuModel>> getDailyMenus(String messId, DateTime date) async => [];
   @override Future<void> saveMenu(MenuModel menu) async {}
   @override Future<void> publishMenu(String menuId) async {}
   @override Future<List<MenuModel>> getWeeklyTemplate(String messId) async => [];
@@ -112,6 +113,11 @@ class StubService implements AppService {
   @override Future<String> regenerateMessCode(String messId) async => '123456';
   @override Future<MessModel?> getMessByCode(String code) async => _mess;
   @override Future<void> joinMess(String studentId, String messCode) async {}
-  @override Future<void> submitFeedback(FeedbackModel feedback) async {}
-  @override Stream<List<FeedbackModel>> streamFeedbacks(String messId) => Stream.value([]);
+  @override  Future<void> submitFeedback(FeedbackModel feedback) async {}
+  @override
+  Stream<List<FeedbackModel>> streamFeedbacks(String messId) => Stream.value([]);
+  @override
+  Future<double> getPreviousUnpaidDues(String studentId, int month, int year) async {
+    return 0.0;
+  }
 }

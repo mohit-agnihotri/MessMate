@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import '../../../models/app_models.dart';
+
+String _hMonthName(int m) {
+  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[m];
+}
 
 class StudentHistoryPage extends ConsumerWidget {
   const StudentHistoryPage({super.key});
@@ -9,254 +15,501 @@ class StudentHistoryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(studentHistoryProvider);
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
         child: state.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF22C55E)))
-          : CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildHeader(ref, state, months)),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverToBoxAdapter(child: _buildStatsRow(state)),
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF22C55E)))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Text(
+                      'My Attendance',
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── 3 Stat Cards ────────────────────────────────────
+                    _buildAttendanceSection(context, ref, state),
+
+                    const SizedBox(height: 32),
+
+                    // ── Apply for Leave Button ───────────────────────────
+                    Text(
+                      'Vacation Leave',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildLeaveSection(context, ref),
+                    const SizedBox(height: 32),
+                  ],
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  sliver: SliverToBoxAdapter(child: _buildCalendar(state)),
+              ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Attendance Section  (mirrors owner's _buildAttendanceSummary exactly)
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildAttendanceSection(BuildContext context, WidgetRef ref, StudentHistoryState outerState) {
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        DateTime selectedMonth = outerState.selectedMonth;
+
+        return FutureBuilder<List<MealRecordModel>>(
+          future: ref.read(appServiceProvider).getMealRecords(
+                ref.read(studentHistoryProvider).records.isNotEmpty
+                    ? ref.read(studentHistoryProvider).records.first.studentId
+                    : '',
+                selectedMonth.month,
+                selectedMonth.year,
+              ),
+          builder: (context, snapshot) {
+            final records = snapshot.data ?? outerState.records;
+
+            final selfOff   = records.where((r) => r.status == 'absent_self').length;
+            final ownerOff  = records.where((r) => r.status == 'absent_owner').length;
+            final totalOff  = selfOff + ownerOff;
+
+            return Column(
+              children: [
+                // 3 stat cards
+                Row(
+                  children: [
+                    _buildSummaryCard(
+                      context, 'Total Meals Off', '$totalOff', const Color(0xFFEF4444),
+                      records.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').toList(),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryCard(
+                      context, 'Off by Student', '$selfOff', const Color(0xFFF59E0B),
+                      records.where((r) => r.status == 'absent_self').toList(),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryCard(
+                      context, 'Off by Mess', '$ownerOff', const Color(0xFF6B7280),
+                      records.where((r) => r.status == 'absent_owner').toList(),
+                    ),
+                  ],
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                  sliver: SliverToBoxAdapter(child: _buildLegend()),
+                const SizedBox(height: 16),
+                // Calendar
+                _buildInteractiveCalendar(
+                  context,
+                  records,
+                  selectedMonth,
+                  () => setLocalState(() {
+                    selectedMonth = DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
+                  }),
+                  () => setLocalState(() {
+                    selectedMonth = DateTime(selectedMonth.year, selectedMonth.month + 1, 1);
+                  }),
                 ),
               ],
-            ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'student_leave_fab',
-        onPressed: () => _showApplyLeaveBottomSheet(context, ref),
-        backgroundColor: const Color(0xFF22C55E),
-        icon: const Icon(Icons.event_busy_rounded, color: Colors.white),
-        label: Text('Apply Leave', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Stat Card (same look as owner side) ─────────────────────────────────
+  Widget _buildSummaryCard(
+    BuildContext context,
+    String label,
+    String value,
+    Color accentColor,
+    List<MealRecordModel> records,
+  ) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _showOffDetailsDialog(context, label, records),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border(left: BorderSide(color: accentColor, width: 4)),
+            boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 4, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: GoogleFonts.inter(
+                      fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF4B5563))),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Text('View Details',
+                    style: GoogleFonts.inter(
+                        fontSize: 10, color: const Color(0xFF3B82F6), fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  void _showApplyLeaveBottomSheet(BuildContext context, WidgetRef ref) {
-    DateTime? start;
-    DateTime? end;
-    
-    showModalBottomSheet(
+  // ── Off-details dialog (same as owner side) ──────────────────────────────
+  void _showOffDetailsDialog(BuildContext context, String title, List<MealRecordModel> offRecords) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Apply for Leave', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
-              const SizedBox(height: 8),
-              Text('Select the date range you will be away. Auto-cancellation will apply to meals in this period if before cutoff.', style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 13)),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(child: _buildDateSelector(context, 'Start Date', start, (d) => setModalState(() => start = d))),
-                const SizedBox(width: 16),
-                Expanded(child: _buildDateSelector(context, 'End Date', end, (d) => setModalState(() => end = d))),
-              ]),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity, height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  onPressed: (start != null && end != null) ? () {
-                    ref.read(studentHistoryProvider.notifier).applyLeave(start!, end!);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave applied successfully!'), backgroundColor: Color(0xFF22C55E)));
-                  } : null,
-                  child: Text('Submit Leave Request', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: offRecords.isEmpty
+              ? Text('No records found.', style: GoogleFonts.inter(color: Colors.grey))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: offRecords.length,
+                  itemBuilder: (ctx, i) {
+                    final r = offRecords[i];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event_busy, color: Colors.red),
+                      title: Text(
+                        '${r.date.day} ${_hMonthName(r.date.month)} ${r.date.year}',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)}'
+                        ' (${r.status == 'absent_self' ? 'You Cancelled' : 'Mess Closed'})',
+                        style: GoogleFonts.inter(fontSize: 12),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  // ── Interactive Calendar (same as owner side) ────────────────────────────
+  Widget _buildInteractiveCalendar(
+    BuildContext context,
+    List<MealRecordModel> records,
+    DateTime selectedMonthDate,
+    VoidCallback onPrev,
+    VoidCallback onNext,
+  ) {
+    final now = selectedMonthDate;
+    final firstDayOfMonth = DateTime(now.year, now.month, 1);
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final firstWeekday = firstDayOfMonth.weekday % 7; // 0 = Sunday
+
+    final days = <Widget>[];
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (var w in weekDays) {
+      days.add(
+        Center(
+          child: Text(w,
+              style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600, fontSize: 13, color: const Color(0xFF111827))),
+        ),
+      );
+    }
+
+    for (int i = 0; i < firstWeekday; i++) {
+      days.add(const SizedBox());
+    }
+
+    for (int i = 1; i <= daysInMonth; i++) {
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${i.toString().padLeft(2, '0')}';
+      final dayRecords = records
+          .where((r) =>
+              '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}' ==
+              dateStr)
+          .toList();
+      final offRecords =
+          dayRecords.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').toList();
+      final isOff = offRecords.isNotEmpty;
+
+      days.add(
+        GestureDetector(
+          onTap: isOff
+              ? () => _showOffDetailsDialog(
+                    context,
+                    'Absents on $i ${_hMonthName(now.month)}',
+                    offRecords,
+                  )
+              : null,
+          child: Center(
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: isOff
+                  ? const BoxDecoration(color: Color(0xFFFECDD3), shape: BoxShape.circle)
+                  : null,
+              alignment: Alignment.center,
+              child: Text(
+                '$i',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: isOff ? const Color(0xFF9F1239) : const Color(0xFF111827),
                 ),
               ),
-            ]),
-          );
-        }
-      )
-    );
-  }
-
-  Widget _buildDateSelector(BuildContext context, String label, DateTime? selected, ValueChanged<DateTime> onSelect) {
-    return GestureDetector(
-      onTap: () async {
-        final d = await showDatePicker(context: context, initialDate: selected ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-        if (d != null) onSelect(d);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(10), color: const Color(0xFFF9FAFB)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
-          const SizedBox(height: 4),
-          Text(selected != null ? '${selected.day}/${selected.month}/${selected.year}' : 'Select', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildHeader(WidgetRef ref, StudentHistoryState state, List<String> months) {
-    final vm = ref.read(studentHistoryProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('My History',
-          style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
-        const SizedBox(height: 16),
-        Row(children: [
-          GestureDetector(
-            onTap: () => vm.changeMonth(
-              DateTime(state.selectedMonth.year, state.selectedMonth.month - 1)),
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
-              ),
-              child: const Icon(Icons.chevron_left, color: Color(0xFF374151)),
             ),
           ),
-          Expanded(child: Text(
-            '${months[state.selectedMonth.month - 1]} ${state.selectedMonth.year}',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
-          )),
-          GestureDetector(
-            onTap: () => vm.changeMonth(
-              DateTime(state.selectedMonth.year, state.selectedMonth.month + 1)),
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
-              ),
-              child: const Icon(Icons.chevron_right, color: Color(0xFF374151)),
-            ),
-          ),
-        ]),
-      ]),
-    );
-  }
-
-  Widget _buildStatsRow(StudentHistoryState state) {
-    final totalOff = state.selfAbsent + state.ownerOff;
-    return Row(children: [
-      _buildStatCard('$totalOff', 'Total Off', const Color(0xFFEF4444)),
-      const SizedBox(width: 10),
-      _buildStatCard('${state.selfAbsent}', 'Off by Me', const Color(0xFFF59E0B)),
-      const SizedBox(width: 10),
-      _buildStatCard('${state.ownerOff}', 'Off by Mess', const Color(0xFF9CA3AF)),
-    ]);
-  }
-
-  Widget _buildStatCard(String value, String label, Color accentColor) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border(left: BorderSide(color: accentColor, width: 3)),
-          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2))],
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
-          Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
-          const SizedBox(height: 8),
-          Text('View Details', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF3B82F6), fontWeight: FontWeight.w500)),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildCalendar(StudentHistoryState state) {
-    final year = state.selectedMonth.year;
-    final month = state.selectedMonth.month;
-    final firstDay = DateTime(year, month, 1);
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    final selfAbsentDays = state.records.where((r) => r.status == 'absent_self').map((r) => r.date.day).toSet();
-    final ownerOffDays = state.records.where((r) => r.status == 'absent_owner').map((r) => r.date.day).toSet();
-    final startWeekday = firstDay.weekday;
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 2))],
       ),
-      child: Column(children: [
-        Row(children: ['M','T','W','T','F','S','S'].map((d) => Expanded(
-          child: Center(child: Text(d, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: const Color(0xFF6B7280)))),
-        )).toList()),
-        const SizedBox(height: 8),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7, childAspectRatio: 1.1, crossAxisSpacing: 4, mainAxisSpacing: 4,
-          ),
-          itemCount: (startWeekday - 1) + daysInMonth,
-          itemBuilder: (_, i) {
-            if (i < startWeekday - 1) return const SizedBox();
-            final day = i - (startWeekday - 1) + 1;
-            Color? bgColor;
-            Color textColor = const Color(0xFF374151);
-            if (selfAbsentDays.contains(day)) {
-              bgColor = const Color(0xFFEF4444);
-              textColor = Colors.white;
-            } else if (ownerOffDays.contains(day)) {
-              bgColor = const Color(0xFFFBBF24);
-              textColor = Colors.white;
-            }
-            String tooltipText = 'Present / Normal';
-            if (selfAbsentDays.contains(day)) tooltipText = 'You were absent';
-            else if (ownerOffDays.contains(day)) tooltipText = 'Mess was closed';
-            
-            return Tooltip(
-              message: tooltipText,
-              preferBelow: false,
-              textStyle: GoogleFonts.inter(color: Colors.white, fontSize: 12),
-              decoration: BoxDecoration(color: const Color(0xFF111827), borderRadius: BorderRadius.circular(8)),
-              child: Container(
-                decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-                child: Center(child: Text('$day',
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: textColor))),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: onPrev,
+                icon: const Icon(Icons.chevron_left, color: Colors.grey),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            );
-          },
+              Text(
+                '${_hMonthName(now.month)} ${now.year}',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right, color: Colors.grey),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 7,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: days,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vacation Leave Section  (replaces Billing Summary)
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildLeaveSection(BuildContext context, WidgetRef ref) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.beach_access_rounded, color: Color(0xFF16A34A), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Going away?',
+                        style: GoogleFonts.inter(
+                            fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+                    Text('Apply for vacation and auto-cancel meals',
+                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF22C55E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.event_available_rounded, color: Colors.white, size: 20),
+              label: Text(
+                'Apply for Vacation Leave',
+                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              onPressed: () => _showApplyLeaveSheet(context, ref),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Apply Leave Bottom Sheet ─────────────────────────────────────────────
+  void _showApplyLeaveSheet(BuildContext context, WidgetRef ref) {
+    DateTime? start;
+    DateTime? end;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFD1D5DB), borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Apply for Vacation Leave',
+                  style: GoogleFonts.inter(
+                      fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              const SizedBox(height: 8),
+              Text(
+                'Meals within this date range will be automatically cancelled before cutoff.',
+                style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                      child: _buildDatePicker(context, 'Start Date', start,
+                          (d) => setModalState(() => start = d))),
+                  const SizedBox(width: 16),
+                  Expanded(
+                      child: _buildDatePicker(context, 'End Date', end,
+                          (d) => setModalState(() => end = d))),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  onPressed: (start != null && end != null)
+                      ? () async {
+                          await ref
+                              .read(studentHistoryProvider.notifier)
+                              .applyLeave(start!, end!);
+                          if (context.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Vacation leave applied!'),
+                                backgroundColor: Color(0xFF22C55E),
+                              ),
+                            );
+                          }
+                        }
+                      : null,
+                  child: Text('Submit Request',
+                      style: GoogleFonts.inter(
+                          fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         ),
-      ]),
+      ),
     );
   }
 
-  Widget _buildLegend() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        _buildLegendItem(const Color(0xFFEF4444), 'You were\nabsent'),
-        _buildLegendItem(const Color(0xFFFBBF24), 'Mess was\nclosed'),
-        _buildLegendItem(const Color(0xFFE5E7EB), 'Present /\nNormal'),
-      ]),
+  Widget _buildDatePicker(
+      BuildContext context, String label, DateTime? selected, ValueChanged<DateTime> onSelect) {
+    return GestureDetector(
+      onTap: () async {
+        final d = await showDatePicker(
+          context: context,
+          initialDate: selected ?? DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+          builder: (context, child) => Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF22C55E), onPrimary: Colors.white, onSurface: Colors.black),
+            ),
+            child: child!,
+          ),
+        );
+        if (d != null) onSelect(d);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(14),
+          color: const Color(0xFFF9FAFB),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
+            const SizedBox(height: 6),
+            Text(
+              selected != null
+                  ? '${selected.day} ${_hMonthName(selected.month)} ${selected.year}'
+                  : 'Select Date',
+              style: GoogleFonts.inter(
+                  fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+            ),
+          ],
+        ),
+      ),
     );
-  }
-
-  Widget _buildLegendItem(Color color, String text) {
-    return Row(children: [
-      Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text(text, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280))),
-    ]);
   }
 }

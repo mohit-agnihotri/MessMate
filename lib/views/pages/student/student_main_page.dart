@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'student_home_page.dart';
-import 'student_menu_page.dart';
 import 'student_history_page.dart';
 import 'student_bill_page.dart';
 import 'student_profile_page.dart';
+import 'student_discovery_page.dart';
 
 class StudentMainPage extends StatefulWidget {
   const StudentMainPage({super.key});
@@ -18,7 +18,7 @@ class _StudentMainPageState extends State<StudentMainPage> {
 
   final List<Widget> _pages = [
     const StudentHomePage(),
-    const StudentMenuPage(),
+    const StudentDiscoveryPage(),
     const StudentHistoryPage(),
     const StudentBillPage(),
     const StudentProfilePage(),
@@ -43,7 +43,7 @@ class _StudentMainPageState extends State<StudentMainPage> {
               child: Row(
                 children: [
                   _buildTab(0, Icons.home_rounded, 'Home'),
-                  _buildTab(1, Icons.restaurant_menu_rounded, 'Menu'),
+                  _buildTab(1, Icons.explore_rounded, 'Discover'),
                   _buildTab(2, Icons.history_rounded, 'History'),
                   _buildTab(3, Icons.currency_rupee_rounded, 'Bill'),
                   _buildTab(4, Icons.person_rounded, 'Profile'),

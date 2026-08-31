@@ -655,6 +655,8 @@ class StudentHomeState {
   final AnnouncementModel? announcement;
   final String currentSlot;
   final String nextSlot;
+  final List<String> upcomingSlots;
+  final Map<String, MenuModel> todayMenus;
 
   const StudentHomeState({
     this.mess, 
@@ -668,6 +670,8 @@ class StudentHomeState {
     this.announcement,
     this.currentSlot = 'morning',
     this.nextSlot = 'noon',
+    this.upcomingSlots = const [],
+    this.todayMenus = const {},
   });
   
   bool get isNextMealTomorrow {
@@ -679,6 +683,7 @@ class StudentHomeState {
     MessModel? mess, StudentModel? student, MenuModel? currentMeal, MenuModel? nextMeal, 
     LeaveModel? activeLeave, Duration? timeLeftToCutoff, bool? hasSelfSkipped, 
     bool? isLoading, AnnouncementModel? announcement, String? currentSlot, String? nextSlot,
+    List<String>? upcomingSlots, Map<String, MenuModel>? todayMenus,
   }) => StudentHomeState(
     mess: mess ?? this.mess, 
     student: student ?? this.student, 
@@ -691,6 +696,8 @@ class StudentHomeState {
     announcement: announcement ?? this.announcement,
     currentSlot: currentSlot ?? this.currentSlot,
     nextSlot: nextSlot ?? this.nextSlot,
+    upcomingSlots: upcomingSlots ?? this.upcomingSlots,
+    todayMenus: todayMenus ?? this.todayMenus,
   );
 }
 
@@ -779,22 +786,30 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     });
 
     _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((menus) {
+      final Map<String, MenuModel> todayMenusMap = {
+        for (var m in menus) m.mealSlot: m
+      };
+      
       if (state.currentSlot != 'closed') {
-        final currentMenu = menus.where((m) => m.mealSlot == state.currentSlot).firstOrNull;
+        final currentMenu = todayMenusMap[state.currentSlot];
         
         // Only use today's menu for next meal if next meal is also today
         MenuModel? nextMenu;
         final slots = ['morning', 'noon', 'evening', 'night'];
         if (slots.indexOf(state.nextSlot) > slots.indexOf(state.currentSlot)) {
-          nextMenu = menus.where((m) => m.mealSlot == state.nextSlot).firstOrNull;
+          nextMenu = todayMenusMap[state.nextSlot];
         }
         
         state = state.copyWith(
           currentMeal: currentMenu, 
-          nextMeal: nextMenu ?? state.nextMeal
+          nextMeal: nextMenu ?? state.nextMeal,
+          todayMenus: todayMenusMap,
         );
       } else {
-        state = state.copyWith(currentMeal: null);
+        state = state.copyWith(
+          currentMeal: null,
+          todayMenus: todayMenusMap,
+        );
       }
     });
     
@@ -822,6 +837,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     
     String currentSlot = '';
     String nextSlot = '';
+    List<String> upcomingSlots = [];
     
     for (int i = 0; i < enabledSlots.length; i++) {
       String slot = enabledSlots[i];
@@ -836,6 +852,9 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
           if (now.hour < endHour || (now.hour == endHour && now.minute < endMin)) {
             currentSlot = slot;
             nextSlot = enabledSlots[(i + 1) % enabledSlots.length];
+            if (i + 1 < enabledSlots.length) {
+              upcomingSlots = enabledSlots.sublist(i + 1);
+            }
             break;
           }
         }
@@ -858,6 +877,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     state = state.copyWith(
       currentSlot: currentSlot,
       nextSlot: nextSlot,
+      upcomingSlots: upcomingSlots,
       timeLeftToCutoff: timeLeft,
     );
 
@@ -998,6 +1018,8 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
 
         final records = await _service.getMealRecords(studentId, state.selectedMonth.month, state.selectedMonth.year);
         
+        final previousDues = await _service.getPreviousUnpaidDues(studentId, state.selectedMonth.month, state.selectedMonth.year);
+        
         double skipsDeduction = 0;
         double guestsAddon = 0;
         List<DeductionItem> items = [];
@@ -1012,7 +1034,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           }
         }
 
-        double finalPayable = mess.monthlyFee - skipsDeduction + guestsAddon;
+        double finalPayable = mess.monthlyFee - skipsDeduction + guestsAddon + previousDues;
         
         final previewBill = BillModel(
           billId: 'preview',
@@ -1024,6 +1046,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           totalDeductions: skipsDeduction,
           guestAddons: guestsAddon,
           finalPayable: finalPayable,
+          previousDues: previousDues,
           isPaid: false,
           deductions: items,
         );
@@ -1072,6 +1095,34 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
     Future.delayed(const Duration(seconds: 2), () { if (mounted) state = state.copyWith(isSaved: false); });
   }
 
+  /// Toggles an owner-side FCM notification preference.
+  /// Subscribes/unsubscribes from the corresponding owner FCM topic
+  /// and persists the updated pref to the mess document.
+  Future<void> toggleOwnerNotification(String key, bool value) async {
+    final mess = state.mess;
+    if (mess == null) return;
+
+    final topicMap = {
+      'skipAlert': 'owner_${mess.ownerId}_skip',
+      'joinRequest': 'owner_${mess.ownerId}_join',
+    };
+    final topic = topicMap[key];
+    if (topic != null) {
+      try {
+        if (value) {
+          await FirebaseMessaging.instance.subscribeToTopic(topic);
+        } else {
+          await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+        }
+      } catch (_) {
+        // FCM may fail on web; still save the pref
+      }
+    }
+
+    final updatedPrefs = Map<String, bool>.from(mess.ownerNotificationPrefs)..[key] = value;
+    await save(mess.copyWith(ownerNotificationPrefs: updatedPrefs));
+  }
+
   Future<bool> updateGpsLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -1087,23 +1138,9 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
 
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       if (state.mess != null) {
-        final updated = MessModel(
-          messId: state.mess!.messId,
-          name: state.mess!.name,
-          ownerId: state.mess!.ownerId,
-          ownerName: state.mess!.ownerName,
-          ownerPhone: state.mess!.ownerPhone,
+        final updated = state.mess!.copyWith(
           gpsLat: position.latitude,
           gpsLng: position.longitude,
-          capacity: state.mess!.capacity,
-          monthlyFee: state.mess!.monthlyFee,
-          perMealRate: state.mess!.perMealRate,
-          cutoffHours: state.mess!.cutoffHours,
-          messCode: state.mess!.messCode,
-          isListedOnMap: state.mess!.isListedOnMap,
-          showMenuToOutsiders: state.mess!.showMenuToOutsiders,
-          showMenuToStudents: state.mess!.showMenuToStudents,
-          language: state.mess!.language,
         );
         await save(updated);
         return true;
@@ -1143,6 +1180,28 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     final student = await _service.getStudentById(studentId);
     final mess = student != null ? await _service.getMessById(student.messId) : null;
     state = state.copyWith(student: student, mess: mess, isLoading: false);
+
+    // Sync FCM topic subscriptions to match persisted prefs
+    if (student != null && student.messId.isNotEmpty) {
+      final prefs = student.notificationPrefs;
+      final messId = student.messId;
+      final sid = student.studentId;
+      final topicMap = {
+        'menuPublished': 'mess_${messId}_menu',
+        'cutoffReminder': 'mess_${messId}_cutoff',
+        'billUpdated': 'student_${sid}_bill',
+        'announcements': 'mess_${messId}_announcements',
+      };
+      for (final entry in topicMap.entries) {
+        try {
+          if (prefs[entry.key] ?? true) {
+            await FirebaseMessaging.instance.subscribeToTopic(entry.value);
+          } else {
+            await FirebaseMessaging.instance.unsubscribeFromTopic(entry.value);
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> updateProfile(StudentModel updated) async {
@@ -1154,19 +1213,7 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     try {
       final url = await _service.uploadImage(path, bytes, extension);
       if (state.student != null) {
-        final updatedStudent = StudentModel(
-          studentId: state.student!.studentId,
-          name: state.student!.name,
-          phone: state.student!.phone,
-          roomNo: state.student!.roomNo,
-          college: state.student!.college,
-          course: state.student!.course,
-          email: state.student!.email,
-          joinDate: state.student!.joinDate,
-          messId: state.student!.messId,
-          status: state.student!.status,
-          photoUrl: url,
-        );
+        final updatedStudent = state.student!.copyWith(photoUrl: url);
         await updateProfile(updatedStudent);
       }
     } catch (e) {
@@ -1174,13 +1221,55 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     }
   }
 
+  /// Toggles a specific FCM notification preference for the student.
+  /// Subscribes or unsubscribes from the corresponding FCM topic
+  /// and persists the choice to Firestore.
+  Future<void> toggleNotification(String key, bool value) async {
+    final student = state.student;
+    if (student == null) return;
+    final messId = student.messId;
+
+    // Map key -> FCM topic name
+    final topicMap = {
+      'menuPublished': 'mess_${messId}_menu',
+      'cutoffReminder': 'mess_${messId}_cutoff',
+      'billUpdated': 'student_${student.studentId}_bill',
+      'announcements': 'mess_${messId}_announcements',
+    };
+
+    final topic = topicMap[key];
+    if (topic != null) {
+      try {
+        if (value) {
+          await FirebaseMessaging.instance.subscribeToTopic(topic);
+        } else {
+          await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+        }
+      } catch (_) {
+        // FCM topic ops may fail on web; we still save the pref
+      }
+    }
+
+    final updatedPrefs = Map<String, bool>.from(student.notificationPrefs)..[key] = value;
+    final updated = student.copyWith(notificationPrefs: updatedPrefs);
+    await _service.updateStudent(updated);
+    state = state.copyWith(student: updated);
+  }
+
   Future<void> leaveMess() async {
     if (state.student != null) {
-      final updated = state.student!.toMap();
-      updated['status'] = 'left';
-      updated['messId'] = '';
-      await _service.updateStudent(StudentModel.fromMap(updated));
-      state = state.copyWith(student: StudentModel.fromMap(updated), mess: null);
+      // Unsubscribe from all mess topics before leaving
+      final messId = state.student!.messId;
+      final sid = state.student!.studentId;
+      for (final topic in [
+        'mess_${messId}_menu', 'mess_${messId}_cutoff',
+        'student_${sid}_bill', 'mess_${messId}_announcements',
+      ]) {
+        try { await FirebaseMessaging.instance.unsubscribeFromTopic(topic); } catch (_) {}
+      }
+      final updated = state.student!.copyWith(status: 'left', messId: '');
+      await _service.updateStudent(updated);
+      state = state.copyWith(student: updated, mess: null);
     }
   }
 }

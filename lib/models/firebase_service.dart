@@ -145,6 +145,22 @@ class FirebaseService implements AppService {
   }
 
   @override
+  Future<List<MenuModel>> getDailyMenus(String messId, DateTime date) async {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final dayStr = days[date.weekday - 1];
+    
+    final snap = await _db.collection('messes')
+        .doc(messId)
+        .collection('weekly_templates')
+        .get();
+        
+    return snap.docs
+        .map((d) => MenuModel.fromMap(d.data()))
+        .where((m) => m.menuId.startsWith(dayStr + '_'))
+        .toList();
+  }
+
+  @override
   Future<void> saveMenu(MenuModel menu) async {
     await _db.collection('menus').doc(menu.menuId).set(menu.toMap());
   }
@@ -300,6 +316,27 @@ class FirebaseService implements AppService {
     final doc = await _db.collection('bills').doc(billId).get();
     if (!doc.exists || doc.data() == null) return null;
     return BillModel.fromMap(doc.data()!);
+  }
+
+  @override
+  Future<double> getPreviousUnpaidDues(String studentId, int month, int year) async {
+    final querySnapshot = await _db.collection('bills')
+        .where('studentId', isEqualTo: studentId)
+        .where('isPaid', isEqualTo: false)
+        .get();
+        
+    double totalDues = 0;
+    final currentVal = year * 12 + month;
+    
+    for (var doc in querySnapshot.docs) {
+      final bill = BillModel.fromMap(doc.data());
+      final billVal = bill.year * 12 + bill.month;
+      // Only include bills from strict previous months
+      if (billVal < currentVal) {
+        totalDues += bill.finalPayable;
+      }
+    }
+    return totalDues;
   }
 
   @override

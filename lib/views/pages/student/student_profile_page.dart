@@ -31,7 +31,7 @@ class StudentProfilePage extends ConsumerWidget {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                  sliver: SliverToBoxAdapter(child: _buildSettingsSection(context)),
+                  sliver: SliverToBoxAdapter(child: _buildSettingsSection(context, ref, state)),
                 ),
               ],
             ),
@@ -215,7 +215,8 @@ class StudentProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context) {
+  Widget _buildSettingsSection(BuildContext context, WidgetRef ref, StudentProfileState state) {
+    final prefs = state.student?.notificationPrefs ?? {};
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -228,10 +229,30 @@ class StudentProfilePage extends ConsumerWidget {
         const SizedBox(height: 12),
         Text('Notifications', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
         const SizedBox(height: 8),
-        _ToggleTile('Menu Published'),
-        _ToggleTile('30 min Cut-off Reminder'),
-        _ToggleTile('Bill Updated'),
-        _ToggleTile('Owner Announcements'),
+        _RealToggleTile(
+          title: 'Menu Published',
+          subtitle: 'Notified when daily menu is posted',
+          value: prefs['menuPublished'] ?? true,
+          onChanged: (v) => ref.read(studentProfileProvider.notifier).toggleNotification('menuPublished', v),
+        ),
+        _RealToggleTile(
+          title: '30 min Cut-off Reminder',
+          subtitle: 'Reminder before meal cut-off time',
+          value: prefs['cutoffReminder'] ?? true,
+          onChanged: (v) => ref.read(studentProfileProvider.notifier).toggleNotification('cutoffReminder', v),
+        ),
+        _RealToggleTile(
+          title: 'Bill Updated',
+          subtitle: 'Alert when your monthly bill is ready',
+          value: prefs['billUpdated'] ?? true,
+          onChanged: (v) => ref.read(studentProfileProvider.notifier).toggleNotification('billUpdated', v),
+        ),
+        _RealToggleTile(
+          title: 'Owner Announcements',
+          subtitle: 'Important messages from mess owner',
+          value: prefs['announcements'] ?? true,
+          onChanged: (v) => ref.read(studentProfileProvider.notifier).toggleNotification('announcements', v),
+        ),
         const Divider(height: 24, color: Color(0xFFF3F4F6)),
         InkWell(
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language settings coming soon!'))),
@@ -283,31 +304,36 @@ class StudentProfilePage extends ConsumerWidget {
   }
 }
 
-class _ToggleTile extends StatefulWidget {
+class _RealToggleTile extends StatelessWidget {
   final String title;
-  const _ToggleTile(this.title);
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
-  @override
-  State<_ToggleTile> createState() => _ToggleTileState();
-}
-
-class _ToggleTileState extends State<_ToggleTile> {
-  bool _value = true;
+  const _RealToggleTile({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(children: [
-        Expanded(child: Text(widget.title, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF374151)))),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF374151))),
+            Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF9CA3AF))),
+          ]),
+        ),
         CupertinoSwitch(
-          value: _value,
-          onChanged: (v) => setState(() => _value = v),
+          value: value,
+          onChanged: onChanged,
           activeTrackColor: const Color(0xFF22C55E),
         ),
       ]),
     );
   }
 }
-
-

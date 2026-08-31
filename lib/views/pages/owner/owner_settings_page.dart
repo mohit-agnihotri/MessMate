@@ -278,12 +278,16 @@ class OwnerSettingsPage extends ConsumerWidget {
         Text('Notifications',
           style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF111827))),
         const SizedBox(height: 12),
-        _buildToggle('Skip Alert (near cutoff)', true, (val) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preferences updated!')));
-        }),
-        _buildToggle('New Join Request Alert', true, (val) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preferences updated!')));
-        }),
+        _buildToggle(
+          'Skip Alert (near cutoff)',
+          mess?.ownerNotificationPrefs['skipAlert'] ?? true,
+          (val) => ref.read(ownerSettingsProvider.notifier).toggleOwnerNotification('skipAlert', val),
+        ),
+        _buildToggle(
+          'New Join Request Alert',
+          mess?.ownerNotificationPrefs['joinRequest'] ?? true,
+          (val) => ref.read(ownerSettingsProvider.notifier).toggleOwnerNotification('joinRequest', val),
+        ),
       ]),
     );
   }

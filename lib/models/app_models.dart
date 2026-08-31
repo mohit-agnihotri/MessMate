@@ -15,6 +15,15 @@ class StudentModel {
   final DateTime joinDate;
   final String messId;
   final String status; // 'active', 'pending', 'left'
+  // Notification preferences - controls FCM topic subscriptions
+  final Map<String, bool> notificationPrefs;
+
+  static const Map<String, bool> _defaultNotifPrefs = {
+    'menuPublished': true,
+    'cutoffReminder': true,
+    'billUpdated': true,
+    'announcements': true,
+  };
 
   StudentModel({
     required this.studentId,
@@ -28,9 +37,48 @@ class StudentModel {
     required this.joinDate,
     required this.messId,
     required this.status,
+    this.notificationPrefs = _defaultNotifPrefs,
   });
 
+  StudentModel copyWith({
+    String? studentId,
+    String? name,
+    String? phone,
+    String? roomNo,
+    String? college,
+    String? course,
+    String? email,
+    String? photoUrl,
+    DateTime? joinDate,
+    String? messId,
+    String? status,
+    Map<String, bool>? notificationPrefs,
+  }) {
+    return StudentModel(
+      studentId: studentId ?? this.studentId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      roomNo: roomNo ?? this.roomNo,
+      college: college ?? this.college,
+      course: course ?? this.course,
+      email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
+      joinDate: joinDate ?? this.joinDate,
+      messId: messId ?? this.messId,
+      status: status ?? this.status,
+      notificationPrefs: notificationPrefs ?? this.notificationPrefs,
+    );
+  }
+
   factory StudentModel.fromMap(Map<String, dynamic> map) {
+    // Parse notification prefs with defaults for older records
+    final rawPrefs = map['notificationPrefs'] as Map<String, dynamic>?;
+    final prefs = <String, bool>{
+      'menuPublished': rawPrefs?['menuPublished'] as bool? ?? true,
+      'cutoffReminder': rawPrefs?['cutoffReminder'] as bool? ?? true,
+      'billUpdated': rawPrefs?['billUpdated'] as bool? ?? true,
+      'announcements': rawPrefs?['announcements'] as bool? ?? true,
+    };
     return StudentModel(
       studentId: map['studentId'] ?? '',
       name: map['name'] ?? '',
@@ -43,6 +91,7 @@ class StudentModel {
       joinDate: DateTime.tryParse(map['joinDate'] ?? '') ?? DateTime.now(),
       messId: map['messId'] ?? '',
       status: map['status'] ?? 'pending',
+      notificationPrefs: prefs,
     );
   }
 
@@ -59,6 +108,7 @@ class StudentModel {
       'joinDate': joinDate.toIso8601String(),
       'messId': messId,
       'status': status,
+      'notificationPrefs': notificationPrefs,
     };
   }
 }
@@ -82,6 +132,13 @@ class MessModel {
   final String language; // 'en' or 'hi'
   final String? ownerPhotoUrl;
   final Map<String, Map<String, String>> mealTimings;
+  // Owner notification preferences - controls FCM topic subscriptions
+  final Map<String, bool> ownerNotificationPrefs;
+
+  static const Map<String, bool> _defaultOwnerNotifPrefs = {
+    'skipAlert': true,
+    'joinRequest': true,
+  };
 
   MessModel({
     required this.messId,
@@ -107,6 +164,7 @@ class MessModel {
       'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
       'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
     },
+    this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
   });
 
   MessModel copyWith({
@@ -128,6 +186,7 @@ class MessModel {
     String? language,
     String? ownerPhotoUrl,
     Map<String, Map<String, String>>? mealTimings,
+    Map<String, bool>? ownerNotificationPrefs,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -148,6 +207,7 @@ class MessModel {
       language: language ?? this.language,
       ownerPhotoUrl: ownerPhotoUrl ?? this.ownerPhotoUrl,
       mealTimings: mealTimings ?? this.mealTimings,
+      ownerNotificationPrefs: ownerNotificationPrefs ?? this.ownerNotificationPrefs,
     );
   }
 
@@ -183,6 +243,13 @@ class MessModel {
               'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
               'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
             },
+      ownerNotificationPrefs: (() {
+        final raw = map['ownerNotificationPrefs'] as Map<String, dynamic>?;
+        return <String, bool>{
+          'skipAlert': raw?['skipAlert'] as bool? ?? true,
+          'joinRequest': raw?['joinRequest'] as bool? ?? true,
+        };
+      })(),
     );
   }
 
@@ -205,6 +272,7 @@ class MessModel {
     'language': language,
     'ownerPhotoUrl': ownerPhotoUrl,
     'mealTimings': mealTimings,
+    'ownerNotificationPrefs': ownerNotificationPrefs,
   };
 }
 
@@ -389,6 +457,7 @@ class BillModel {
   final double totalDeductions;
   final double guestAddons;
   final double finalPayable;
+  final double previousDues;
   final bool isPaid;
   final List<DeductionItem> deductions;
 
@@ -402,6 +471,7 @@ class BillModel {
     required this.totalDeductions,
     required this.guestAddons,
     required this.finalPayable,
+    this.previousDues = 0,
     required this.isPaid,
     required this.deductions,
   });
@@ -417,6 +487,7 @@ class BillModel {
       totalDeductions: (map['totalDeductions'] ?? 0.0).toDouble(),
       guestAddons: (map['guestAddons'] ?? 0.0).toDouble(),
       finalPayable: (map['finalPayable'] ?? 0.0).toDouble(),
+      previousDues: (map['previousDues'] ?? 0.0).toDouble(),
       isPaid: map['isPaid'] ?? false,
       deductions: (map['deductions'] as List<dynamic>? ?? [])
           .map((d) => DeductionItem.fromMap(d as Map<String, dynamic>))
@@ -434,6 +505,7 @@ class BillModel {
     'totalDeductions': totalDeductions,
     'guestAddons': guestAddons,
     'finalPayable': finalPayable,
+    'previousDues': previousDues,
     'isPaid': isPaid,
     'deductions': deductions.map((d) => d.toMap()).toList(),
   };

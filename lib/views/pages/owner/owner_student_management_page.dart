@@ -921,6 +921,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       else if (r.status == 'guest')
         guestsAddon += (mess?.perMealRate ?? 0);
     }
+    
+    final previousDues = await service.getPreviousUnpaidDues(student.studentId, now.month, now.year);
+    
     return BillModel(
       billId: 'preview',
       studentId: student.studentId,
@@ -930,7 +933,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       baseFee: mess?.monthlyFee ?? 0,
       totalDeductions: skipsDeduction,
       guestAddons: guestsAddon,
-      finalPayable: (mess?.monthlyFee ?? 0) - skipsDeduction + guestsAddon,
+      finalPayable: (mess?.monthlyFee ?? 0) - skipsDeduction + guestsAddon + previousDues,
+      previousDues: previousDues,
       isPaid: false,
       deductions: [],
     );
@@ -944,6 +948,10 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     return FutureBuilder<BillModel>(
       future: _calculateBillPreview(ref, student),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          print('Billing Summary Error: ${snapshot.error}\n${snapshot.stackTrace}');
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         var bill = snapshot.data!;
         bool localIsPaid = bill.isPaid;

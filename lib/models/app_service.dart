@@ -31,6 +31,7 @@ abstract class AppService {
   // LEGACY MENU (Keep for now to not break students immediately)
   Future<List<MenuModel>> getWeeklyMenu(String messId, DateTime weekStart);
   Stream<List<MenuModel>> streamDailyMenus(String messId, DateTime date);
+  Future<List<MenuModel>> getDailyMenus(String messId, DateTime date);
   Future<void> saveMenu(MenuModel menu);
   Future<void> publishMenu(String menuId);
 
@@ -54,6 +55,7 @@ abstract class AppService {
 
   // BILLING
   Future<BillModel?> getBill(String studentId, int month, int year);
+  Future<double> getPreviousUnpaidDues(String studentId, int month, int year);
   Future<void> saveBill(BillModel bill);
   Future<void> markAsPaid(String billId);
   Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost);
