@@ -91,6 +91,7 @@ class OwnerSettingsPage extends ConsumerWidget {
         ]),
         const Divider(height: 24, color: Color(0xFFF3F4F6)),
         _buildInfoRow('Monthly Fee', 'Rs ${mess?.monthlyFee.toInt() ?? 0}'),
+        _buildInfoRow('Plan Includes', '${mess?.mealsIncludedPerDay ?? 3} meals daily'),
         _buildInfoRow('Per Meal Rate', 'Rs ${mess?.perMealRate.toInt() ?? 0}'),
         _buildInfoRow('Capacity', '${mess?.capacity ?? 0} students'),
         _buildInfoRow('Mess Code', mess?.messCode ?? 'N/A'),
@@ -533,6 +534,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     final rateCtrl = TextEditingController(text: mess.perMealRate.toStringAsFixed(0));
     final cutoffCtrl = TextEditingController(text: mess.cutoffHours.toString());
     
+    int selectedMealsIncluded = mess.mealsIncludedPerDay;
     Uint8List? selectedImageBytes;
     String? imageExtension;
     bool isUploading = false;
@@ -581,6 +583,26 @@ class OwnerSettingsPage extends ConsumerWidget {
               const SizedBox(height: 12),
               TextField(controller: feeCtrl, decoration: const InputDecoration(labelText: 'Monthly Base Fee (Rs)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
+              InputDecorator(
+                decoration: const InputDecoration(labelText: 'Meals Included in Fee', border: OutlineInputBorder()),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: selectedMealsIncluded,
+                    isDense: true,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: 4, child: Text('4')),
+                      DropdownMenuItem(value: 3, child: Text('3')),
+                      DropdownMenuItem(value: 2, child: Text('2')),
+                      DropdownMenuItem(value: 1, child: Text('1')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => selectedMealsIncluded = val);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Per Meal Deduction Rate (Rs)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
               TextField(controller: cutoffCtrl, decoration: const InputDecoration(labelText: 'Cut-off Time (hours before meal)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
@@ -610,6 +632,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                     gpsLng: mess.gpsLng,
                     capacity: mess.capacity, messCode: mess.messCode, isListedOnMap: mess.isListedOnMap, showMenuToOutsiders: mess.showMenuToOutsiders, showMenuToStudents: mess.showMenuToStudents, language: mess.language,
                     monthlyFee: double.tryParse(feeCtrl.text) ?? mess.monthlyFee,
+                    mealsIncludedPerDay: selectedMealsIncluded,
                     perMealRate: double.tryParse(rateCtrl.text) ?? mess.perMealRate,
                     cutoffHours: int.tryParse(cutoffCtrl.text) ?? mess.cutoffHours,
                     mealTimings: mess.mealTimings,

@@ -245,7 +245,8 @@ class FirebaseService implements AppService {
   @override
   Stream<List<MealRecordModel>> streamStudentDailyMealRecords(String studentId, String messId, DateTime date) {
     final startIso = date.toIso8601String().substring(0, 10);
-    final endIso = date.add(const Duration(days: 1)).toIso8601String().substring(0, 10);
+    // Fetch today and tomorrow
+    final endIso = date.add(const Duration(days: 2)).toIso8601String().substring(0, 10);
     return _db.collection('meal_records')
         .where('studentId', isEqualTo: studentId)
         .where('messId', isEqualTo: messId)
@@ -350,17 +351,22 @@ class FirebaseService implements AppService {
   }
 
   @override
-  Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost) async {
-    final recordId = '${studentId}_guest_${DateTime.now().millisecondsSinceEpoch}';
-    await _db.collection('meal_records').doc(recordId).set({
-      'recordId': recordId,
-      'studentId': studentId,
-      'date': date.toIso8601String().substring(0, 10),
-      'mealSlot': mealSlot,
-      'status': 'guest',
-      'cost': cost,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost, {int count = 1}) async {
+    final batch = _db.batch();
+    for (int i = 0; i < count; i++) {
+      final recordId = '${studentId}_guest_${DateTime.now().millisecondsSinceEpoch}_$i';
+      final docRef = _db.collection('meal_records').doc(recordId);
+      batch.set(docRef, {
+        'recordId': recordId,
+        'studentId': studentId,
+        'date': date.toIso8601String().substring(0, 10),
+        'mealSlot': mealSlot,
+        'status': 'guest',
+        'cost': cost,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   // ANNOUNCEMENTS
@@ -396,6 +402,60 @@ class FirebaseService implements AppService {
       final doc = _db.collection('messes').doc(messId).collection('closed_slots').doc('${messId}_${dateStr}_$slot');
       batch.set(doc, {'date': dateStr, 'mealSlot': slot, 'closedAt': FieldValue.serverTimestamp()});
     }
+    await batch.commit();
+  }
+
+  @override
+  Future<void> scheduleClosure(MessModel mess, DateTime startDate, String startSlot, DateTime endDate, String endSlot) async {
+    final batch = _db.batch();
+    
+    // 1. Update MessModel
+    final messRef = _db.collection('messes').doc(mess.messId);
+    batch.update(messRef, {'temporarilyClosedUntil': endDate.toIso8601String()});
+    
+    // 2. Iterate dates
+    DateTime currentDate = DateTime(startDate.year, startDate.month, startDate.day);
+    final endBound = DateTime(endDate.year, endDate.month, endDate.day);
+    
+    final allSlots = ['morning', 'noon', 'evening', 'night'];
+    
+    while (!currentDate.isAfter(endBound)) {
+      List<String> activeSlots = allSlots.where((s) => mess.mealTimings[s]?['enabled'] == 'true').toList();
+      
+      bool isStartDay = currentDate.isAtSameMomentAs(DateTime(startDate.year, startDate.month, startDate.day));
+      bool isEndDay = currentDate.isAtSameMomentAs(endBound);
+      
+      if (isStartDay && activeSlots.contains(startSlot)) {
+        int startIndex = activeSlots.indexOf(startSlot);
+        if (startIndex != -1) activeSlots = activeSlots.sublist(startIndex);
+      }
+      
+      if (isEndDay && activeSlots.contains(endSlot)) {
+        int endIndex = activeSlots.indexOf(endSlot);
+        if (endIndex != -1) activeSlots = activeSlots.sublist(0, endIndex + 1);
+      }
+      
+      final dateStr = currentDate.toIso8601String().substring(0, 10);
+      for (var slot in activeSlots) {
+        final docRef = _db.collection('messes').doc(mess.messId).collection('closed_slots').doc('${mess.messId}_${dateStr}_$slot');
+        batch.set(docRef, {
+          'date': dateStr,
+          'mealSlot': slot,
+          'closedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+    
+    // Add announcement
+    final annRef = _db.collection('announcements').doc();
+    batch.set(annRef, {
+      'messId': mess.messId,
+      'message': '🚨 UPDATE: Mess is closed from ${startDate.toIso8601String().substring(0, 10)} ($startSlot) to ${endDate.toIso8601String().substring(0, 10)} ($endSlot).',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    
     await batch.commit();
   }
 
@@ -455,4 +515,6 @@ class FirebaseService implements AppService {
         .snapshots()
         .map((snap) => snap.docs.map((d) => FeedbackModel.fromMap(d.data())).toList());
   }
+
+
 }

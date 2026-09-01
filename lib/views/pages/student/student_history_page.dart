@@ -183,16 +183,33 @@ class StudentHistoryPage extends ConsumerWidget {
                   itemCount: offRecords.length,
                   itemBuilder: (ctx, i) {
                     final r = offRecords[i];
+                    String typeStr = 'Unknown';
+                    IconData icon = Icons.info;
+                    Color iconColor = Colors.grey;
+                    
+                    if (r.status == 'absent_self') {
+                      typeStr = 'You Cancelled';
+                      icon = Icons.event_busy;
+                      iconColor = Colors.red;
+                    } else if (r.status == 'absent_owner') {
+                      typeStr = 'Mess Closed';
+                      icon = Icons.event_busy;
+                      iconColor = Colors.red;
+                    } else if (r.status == 'guest') {
+                      typeStr = 'Guest Meal';
+                      icon = Icons.person_add;
+                      iconColor = Colors.orange;
+                    }
+
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event_busy, color: Colors.red),
+                      leading: Icon(icon, color: iconColor),
                       title: Text(
                         '${r.date.day} ${_hMonthName(r.date.month)} ${r.date.year}',
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)}'
-                        ' (${r.status == 'absent_self' ? 'You Cancelled' : 'Mess Closed'})',
+                        '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)} ($typeStr)',
                         style: GoogleFonts.inter(fontSize: 12),
                       ),
                     );
@@ -246,33 +263,55 @@ class StudentHistoryPage extends ConsumerWidget {
           .toList();
       final offRecords =
           dayRecords.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').toList();
+      final guestRecords = dayRecords.where((r) => r.status == 'guest').toList();
+      
       final isOff = offRecords.isNotEmpty;
+      final hasGuest = guestRecords.isNotEmpty;
 
       days.add(
         GestureDetector(
-          onTap: isOff
-              ? () => _showOffDetailsDialog(
-                    context,
-                    'Absents on $i ${_hMonthName(now.month)}',
-                    offRecords,
-                  )
-              : null,
-          child: Center(
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: isOff
-                  ? const BoxDecoration(color: Color(0xFFFECDD3), shape: BoxShape.circle)
-                  : null,
-              alignment: Alignment.center,
-              child: Text(
-                '$i',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: isOff ? const Color(0xFF9F1239) : const Color(0xFF111827),
+          onTap: () {
+            if (isOff || hasGuest) {
+              _showOffDetailsDialog(
+                context,
+                'Details on $i ${_hMonthName(now.month)}',
+                dayRecords.where((r) => r.status != 'present').toList(),
+              );
+            }
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: isOff
+                      ? const BoxDecoration(color: Color(0xFFFECDD3), shape: BoxShape.circle)
+                      : hasGuest
+                          ? const BoxDecoration(color: Color(0xFFFEF3C7), shape: BoxShape.circle)
+                          : null,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$i',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: isOff ? const Color(0xFF9F1239) : (hasGuest ? const Color(0xFFD97706) : const Color(0xFF111827)),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              if (hasGuest)
+                Positioned(
+                  bottom: -2,
+                  right: 4,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(color: Color(0xFFF59E0B), shape: BoxShape.circle),
+                  ),
+                ),
+            ],
           ),
         ),
       );

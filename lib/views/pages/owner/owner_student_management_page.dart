@@ -908,35 +908,23 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     if (bill != null) return bill;
 
     final mess = await service.getMessById(student.messId);
+    if (mess == null) throw Exception("Mess not found");
+    
     final records = await service.getMealRecords(
       student.studentId,
       now.month,
       now.year,
     );
-    double skipsDeduction = 0;
-    double guestsAddon = 0;
-    for (var r in records) {
-      if (r.status == 'absent_self' || r.status == 'absent_owner')
-        skipsDeduction += (mess?.perMealRate ?? 0);
-      else if (r.status == 'guest')
-        guestsAddon += (mess?.perMealRate ?? 0);
-    }
     
     final previousDues = await service.getPreviousUnpaidDues(student.studentId, now.month, now.year);
     
-    return BillModel(
-      billId: 'preview',
-      studentId: student.studentId,
-      messId: student.messId,
+    return generateAdvancedBill(
+      student: student,
+      mess: mess,
       month: now.month,
       year: now.year,
-      baseFee: mess?.monthlyFee ?? 0,
-      totalDeductions: skipsDeduction,
-      guestAddons: guestsAddon,
-      finalPayable: (mess?.monthlyFee ?? 0) - skipsDeduction + guestsAddon + previousDues,
+      records: records,
       previousDues: previousDues,
-      isPaid: false,
-      deductions: [],
     );
   }
 
@@ -1063,7 +1051,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                 month: bill.month,
                                 year: bill.year,
                                 baseFee: bill.baseFee,
+                                proratedDiscount: bill.proratedDiscount,
                                 totalDeductions: bill.totalDeductions,
+                                extraMealsAddon: bill.extraMealsAddon,
                                 guestAddons: bill.guestAddons,
                                 finalPayable: bill.finalPayable,
                                 isPaid: value,
@@ -1093,7 +1083,21 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () => _showDetailedBreakdown(context, bill),
+                  icon: const Icon(Icons.receipt_long, size: 18),
+                  label: Text('View Detailed Breakdown', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF3B82F6),
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -1259,6 +1263,107 @@ class OwnerStudentManagementPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showDetailedBreakdown(BuildContext context, BillModel bill) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bill Breakdown',
+                    style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildBillRow('Basic Fee', '₹${bill.baseFee.toStringAsFixed(0)}'),
+              if (bill.proratedDiscount > 0)
+                _buildBillRow('Mid-Month Joining Discount', '-₹${bill.proratedDiscount.toStringAsFixed(0)}', color: Colors.green),
+              if (bill.totalDeductions > 0)
+                _buildBillRow('Valid Skipped Meals Refunds', '-₹${bill.totalDeductions.toStringAsFixed(0)}', color: Colors.green),
+              if (bill.extraMealsAddon > 0)
+                _buildBillRow('Extra Meals Consumed', '+₹${bill.extraMealsAddon.toStringAsFixed(0)}', color: Colors.red),
+              if (bill.guestAddons > 0)
+                _buildBillRow('Guest Meals', '+₹${bill.guestAddons.toStringAsFixed(0)}', color: Colors.red),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(),
+              ),
+              _buildBillRow('Final Payable', '₹${bill.finalPayable.toStringAsFixed(0)}', isBold: true, size: 18),
+              
+              const SizedBox(height: 24),
+              Text(
+                'Itemized Details',
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: bill.deductions.isEmpty
+                    ? Center(child: Text("No itemized details this month.", style: GoogleFonts.inter(color: Colors.grey)))
+                    : ListView.separated(
+                        itemCount: bill.deductions.length,
+                        separatorBuilder: (context, index) => const Divider(height: 16),
+                        itemBuilder: (context, index) {
+                          final item = bill.deductions[index];
+                          final isDeduction = item.amount < 0;
+                          final typeStr = item.type.replaceAll('_', ' ').toUpperCase();
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${item.date.day}/${item.date.month} - ${item.mealSlot}',
+                                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      typeStr,
+                                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${isDeduction ? '' : '+'}₹${item.amount.abs().toStringAsFixed(0)}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDeduction ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

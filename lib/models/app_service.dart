@@ -45,6 +45,7 @@ abstract class AppService {
   Stream<List<MealRecordModel>> streamDailyMealRecords(String messId, DateTime date);
   Stream<List<MealRecordModel>> streamStudentDailyMealRecords(String studentId, String messId, DateTime date);
   Future<void> ownerCloseDay(String messId, DateTime date, String mealSlot);
+  Future<void> scheduleClosure(MessModel mess, DateTime startDate, String startSlot, DateTime endDate, String endSlot);
 
   // LEAVES
   Future<void> applyLeave(LeaveModel leave);
@@ -58,7 +59,7 @@ abstract class AppService {
   Future<double> getPreviousUnpaidDues(String studentId, int month, int year);
   Future<void> saveBill(BillModel bill);
   Future<void> markAsPaid(String billId);
-  Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost);
+  Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost, {int count = 1});
 
   // ANNOUNCEMENTS
   Future<void> sendAnnouncement(String messId, String message);

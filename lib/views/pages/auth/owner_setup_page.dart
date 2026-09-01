@@ -25,6 +25,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   final _monthlyFeeCtrl = TextEditingController(text: '3000');
   final _perMealRateCtrl = TextEditingController(text: '50');
   final _cutoffCtrl = TextEditingController(text: '2');
+  int _mealsIncludedPerDay = 3;
   bool _isLoading = false;
   Uint8List? _selectedImageBytes;
   String? _imageExtension;
@@ -96,6 +97,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         perMealRate: double.tryParse(_perMealRateCtrl.text) ?? 50.0,
         cutoffHours: int.tryParse(_cutoffCtrl.text) ?? 2,
         messCode: messCode,
+        mealsIncludedPerDay: _mealsIncludedPerDay,
         isListedOnMap: true,
         showMenuToOutsiders: true,
         showMenuToStudents: true,
@@ -151,6 +153,18 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 ],
               ),
               
+              _buildDropdownField(
+                'Meals Included in Monthly Fee',
+                _mealsIncludedPerDay,
+                [
+                  const DropdownMenuItem(value: 4, child: Text('4')),
+                  const DropdownMenuItem(value: 3, child: Text('3')),
+                  const DropdownMenuItem(value: 2, child: Text('2')),
+                  const DropdownMenuItem(value: 1, child: Text('1')),
+                ],
+                (val) => setState(() => _mealsIncludedPerDay = val as int),
+              ),
+              
               Row(
                 children: [
                   Expanded(child: _buildTextField('Per Meal Rate (Rs)', _perMealRateCtrl, 'e.g. 50', isNumber: true)),
@@ -200,6 +214,37 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF22C55E))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, dynamic value, List<DropdownMenuItem<dynamic>> items, void Function(dynamic)? onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<dynamic>(
+                value: value,
+                isExpanded: true,
+                items: items,
+                onChanged: onChanged,
+                style: GoogleFonts.inter(color: const Color(0xFF111827), fontSize: 14),
+                dropdownColor: Colors.white,
+              ),
             ),
           ),
         ],

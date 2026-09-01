@@ -13,6 +13,120 @@ import '../models/app_models.dart';
 import '../services/dish_catalog_service.dart';
 import 'package:geolocator/geolocator.dart';
 
+// ─── Global Billing Logic Helper ─────────────────────────────────────────────
+BillModel generateAdvancedBill({
+  required StudentModel student,
+  required MessModel mess,
+  required int month,
+  required int year,
+  required List<MealRecordModel> records,
+  required double previousDues,
+}) {
+  double skipsDeduction = 0.0;
+  double extraMealsAddon = 0.0;
+  double guestAddons = 0.0;
+  double proratedDiscount = 0.0;
+  List<DeductionItem> items = [];
+
+  // Calculate total days in the specified month
+  final totalDays = DateTime(year, month + 1, 0).day;
+  
+  // 1. Calculate prorated discount if joined this month
+  if (student.joinDate.year == year && student.joinDate.month == month && student.joinDate.day > 1) {
+    int missingDays = student.joinDate.day - 1;
+    double dailyRate = mess.monthlyFee / totalDays;
+    proratedDiscount = missingDays * dailyRate;
+    items.add(DeductionItem(
+      date: DateTime(year, month, student.joinDate.day),
+      mealSlot: 'Joined Late',
+      type: 'prorated_discount',
+      amount: -proratedDiscount,
+    ));
+  }
+
+  // 2. Group records by day
+  Map<int, List<MealRecordModel>> dailyRecords = {};
+  for (var r in records) {
+    dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
+  }
+
+  // Calculate offered meals count per day from settings
+  int dailyOfferedMeals = mess.mealTimings.values.where((m) => m['enabled'] == 'true').length;
+  if (dailyOfferedMeals == 0) dailyOfferedMeals = 3; // Fallback
+  
+  int allowedMeals = mess.mealsIncludedPerDay;
+
+  // 3. Evaluate each day in the month up to today (or end of month)
+  int todayDay = (DateTime.now().year == year && DateTime.now().month == month) ? DateTime.now().day : totalDays;
+  
+  for (int day = 1; day <= todayDay; day++) {
+    // If before join date, skip
+    if (student.joinDate.year == year && student.joinDate.month == month && day < student.joinDate.day) {
+      continue;
+    }
+
+    var dayRecs = dailyRecords[day] ?? [];
+    
+    // Count skipped meals
+    int skippedCount = 0;
+    for (var r in dayRecs) {
+      if (r.status == 'absent_self' || r.status == 'absent_owner') {
+        skippedCount++;
+      } else if (r.status == 'guest') {
+        guestAddons += mess.perMealRate;
+        items.add(DeductionItem(date: r.date, mealSlot: r.mealSlot, type: 'guest', amount: mess.perMealRate));
+      }
+    }
+
+    int consumedMeals = dailyOfferedMeals - skippedCount;
+    if (consumedMeals < 0) consumedMeals = 0;
+
+    if (consumedMeals < allowedMeals) {
+      // Refund for (allowed - consumed)
+      int refundMeals = allowedMeals - consumedMeals;
+      double refundAmt = refundMeals * mess.perMealRate;
+      skipsDeduction += refundAmt;
+      
+      items.add(DeductionItem(
+        date: DateTime(year, month, day),
+        mealSlot: 'Valid Skips ($refundMeals)',
+        type: 'self_cancelled',
+        amount: -refundAmt,
+      ));
+    } else if (consumedMeals > allowedMeals) {
+      // Extra charge for (consumed - allowed)
+      int extraCount = consumedMeals - allowedMeals;
+      double extraAmt = extraCount * mess.perMealRate;
+      extraMealsAddon += extraAmt;
+      items.add(DeductionItem(
+        date: DateTime(year, month, day),
+        mealSlot: 'Extra Meals ($extraCount)',
+        type: 'extra_meal',
+        amount: extraAmt,
+      ));
+    }
+  }
+
+  double finalPayable = mess.monthlyFee - proratedDiscount - skipsDeduction + extraMealsAddon + guestAddons + previousDues;
+
+  return BillModel(
+    billId: 'preview',
+    studentId: student.studentId,
+    messId: mess.messId,
+    month: month,
+    year: year,
+    baseFee: mess.monthlyFee,
+    proratedDiscount: proratedDiscount,
+    totalDeductions: skipsDeduction,
+    extraMealsAddon: extraMealsAddon,
+    guestAddons: guestAddons,
+    finalPayable: finalPayable,
+    previousDues: previousDues,
+    isPaid: false,
+    deductions: items,
+  );
+}
+
 // ─── Global Service Provider ─────────────────────────────────────────────────
 final appServiceProvider = Provider<AppService>((ref) => FirebaseService());
 
@@ -162,13 +276,14 @@ class OwnerDashboardState {
     bool? isLoading, String? error, String? currentSlot,
     int? morningAbsents, int? noonAbsents, int? eveningAbsents, int? nightAbsents,
     List<MealRecordModel>? todayRecords, List<StudentModel>? activeStudentsList,
+    bool clearCurrentMeal = false,
   }) => OwnerDashboardState(
     mess: mess ?? this.mess,
     activeStudents: activeStudents ?? this.activeStudents,
     expectedHeadcount: expectedHeadcount ?? this.expectedHeadcount,
     skippingCurrentMeal: skippingCurrentMeal ?? this.skippingCurrentMeal,
     pendingRequests: pendingRequests ?? this.pendingRequests,
-    currentMeal: currentMeal ?? this.currentMeal,
+    currentMeal: clearCurrentMeal ? null : (currentMeal ?? this.currentMeal),
     announcement: announcement ?? this.announcement,
     isLoading: isLoading ?? this.isLoading,
     error: error,
@@ -324,7 +439,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
 
     _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((menus) {
       final currentMenu = menus.where((m) => m.mealSlot == _currentSlot).firstOrNull;
-      state = state.copyWith(currentMeal: currentMenu);
+      state = state.copyWith(currentMeal: currentMenu, clearCurrentMeal: currentMenu == null);
     });
   }
 
@@ -388,9 +503,9 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
     await _service.sendAnnouncement(state.mess!.messId, message);
   }
 
-  Future<void> emergencyClose() async {
+  Future<void> emergencyClose(DateTime startDate, String startSlot, DateTime endDate, String endSlot) async {
     if (state.mess == null) return;
-    await _service.ownerCloseDay(state.mess!.messId, DateTime.now(), _currentSlot);
+    await _service.scheduleClosure(state.mess!, startDate, startSlot, endDate, endSlot);
   }
 
   Future<void> reload() async {
@@ -463,7 +578,9 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       month: previewBill.month,
       year: previewBill.year,
       baseFee: previewBill.baseFee,
+      proratedDiscount: previewBill.proratedDiscount,
       totalDeductions: previewBill.totalDeductions,
+      extraMealsAddon: previewBill.extraMealsAddon,
       guestAddons: previewBill.guestAddons,
       finalPayable: previewBill.finalPayable,
       isPaid: isPaid,
@@ -671,6 +788,9 @@ class StudentHomeState {
   final String nextSlot;
   final List<String> upcomingSlots;
   final Map<String, MenuModel> todayMenus;
+  final Map<String, MenuModel> tomorrowMenus;
+  final Map<String, String> skippedUpcomingMeals;
+  final String? error;
 
   const StudentHomeState({
     this.mess, 
@@ -686,6 +806,9 @@ class StudentHomeState {
     this.nextSlot = 'noon',
     this.upcomingSlots = const [],
     this.todayMenus = const {},
+    this.tomorrowMenus = const {},
+    this.skippedUpcomingMeals = const {},
+    this.error,
   });
   
   bool get isNextMealTomorrow {
@@ -697,13 +820,16 @@ class StudentHomeState {
     MessModel? mess, StudentModel? student, MenuModel? currentMeal, MenuModel? nextMeal, 
     LeaveModel? activeLeave, Duration? timeLeftToCutoff, bool? hasSelfSkipped, 
     bool? isLoading, AnnouncementModel? announcement, String? currentSlot, String? nextSlot,
-    List<String>? upcomingSlots, Map<String, MenuModel>? todayMenus,
+    List<String>? upcomingSlots, Map<String, MenuModel>? todayMenus, Map<String, MenuModel>? tomorrowMenus,
+    Map<String, String>? skippedUpcomingMeals,
+    String? error,
+    bool clearCurrentMeal = false, bool clearNextMeal = false, bool clearActiveLeave = false,
   }) => StudentHomeState(
     mess: mess ?? this.mess, 
     student: student ?? this.student, 
-    currentMeal: currentMeal ?? this.currentMeal, 
-    nextMeal: nextMeal ?? this.nextMeal, 
-    activeLeave: activeLeave ?? this.activeLeave, 
+    currentMeal: clearCurrentMeal ? null : (currentMeal ?? this.currentMeal), 
+    nextMeal: clearNextMeal ? null : (nextMeal ?? this.nextMeal), 
+    activeLeave: clearActiveLeave ? null : (activeLeave ?? this.activeLeave), 
     timeLeftToCutoff: timeLeftToCutoff ?? this.timeLeftToCutoff, 
     hasSelfSkipped: hasSelfSkipped ?? this.hasSelfSkipped, 
     isLoading: isLoading ?? this.isLoading, 
@@ -712,13 +838,15 @@ class StudentHomeState {
     nextSlot: nextSlot ?? this.nextSlot,
     upcomingSlots: upcomingSlots ?? this.upcomingSlots,
     todayMenus: todayMenus ?? this.todayMenus,
+    tomorrowMenus: tomorrowMenus ?? this.tomorrowMenus,
+    skippedUpcomingMeals: skippedUpcomingMeals ?? this.skippedUpcomingMeals,
+    error: error ?? this.error,
   );
 }
 
 class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsBindingObserver {
   final AppService _service;
-  final String studentId;
-
+  
   StreamSubscription? _mealRecordSub;
   StreamSubscription? _menuSub;
   StreamSubscription? _tomorrowMenuSub;
@@ -726,7 +854,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   Timer? _clockTimer;
   DateTime _today = DateTime.now();
 
-  StudentHomeViewModel(this._service, this.studentId) : super(const StudentHomeState()) { 
+  StudentHomeViewModel(this._service) : super(const StudentHomeState()) { 
     WidgetsBinding.instance.addObserver(this);
     load(); 
   }
@@ -761,12 +889,20 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
-      final student = await _service.getStudentById(studentId);
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || uid.isEmpty) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      
+      final student = await _service.getStudentById(uid);
       final mess = student != null ? await _service.getMessById(student.messId) : null;
-      final leave = student != null ? await _service.getActiveLeave(studentId) : null;
+      final leave = student != null ? await _service.getActiveLeave(uid) : null;
       
       if (mess != null) {
-        FirebaseMessaging.instance.subscribeToTopic('mess_${mess.messId}');
+        try {
+          FirebaseMessaging.instance.subscribeToTopic('mess_${mess.messId}');
+        } catch (_) {}
         
         _announcementSub = _service.streamAnnouncements(mess.messId).listen((announcements) {
           state = state.copyWith(announcement: announcements.firstOrNull);
@@ -783,6 +919,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     } catch (e, st) {
       print('Error loading student dashboard: $e');
       print(st);
+      state = state.copyWith(error: e.toString());
     } finally {
       state = state.copyWith(isLoading: false);
     }
@@ -795,8 +932,23 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     _tomorrowMenuSub?.cancel();
 
     _mealRecordSub = _service.streamStudentDailyMealRecords(state.student!.studentId, state.mess!.messId, _today).listen((records) {
-      bool hasSelfSkipped = records.any((r) => r.mealSlot == state.currentSlot && r.status == 'absent_self');
-      state = state.copyWith(hasSelfSkipped: hasSelfSkipped);
+      bool hasSelfSkipped = false;
+      final Map<String, String> skippedMeals = {};
+      final todayIso = _today.toIso8601String().substring(0, 10);
+      
+      for (final r in records) {
+        if (r.status == 'absent_self') {
+          final rDate = r.date.toIso8601String().substring(0, 10);
+          if (rDate == todayIso && r.mealSlot == state.currentSlot) {
+            hasSelfSkipped = true;
+          }
+          skippedMeals['${rDate}_${r.mealSlot}'] = r.recordId;
+        }
+      }
+      state = state.copyWith(
+        hasSelfSkipped: hasSelfSkipped,
+        skippedUpcomingMeals: skippedMeals,
+      );
     });
 
     _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((menus) {
@@ -816,12 +968,14 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
         
         state = state.copyWith(
           currentMeal: currentMenu, 
+          clearCurrentMeal: currentMenu == null,
           nextMeal: nextMenu ?? state.nextMeal,
+          clearNextMeal: nextMenu == null && state.isNextMealTomorrow == false,
           todayMenus: todayMenusMap,
         );
       } else {
         state = state.copyWith(
-          currentMeal: null,
+          clearCurrentMeal: true,
           todayMenus: todayMenusMap,
         );
       }
@@ -829,10 +983,14 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     
     final tomorrow = _today.add(const Duration(days: 1));
     _tomorrowMenuSub = _service.streamDailyMenus(state.mess!.messId, tomorrow).listen((menus) {
+      final Map<String, MenuModel> tomorrowMap = { for (var m in menus) m.mealSlot: m };
       final slots = ['morning', 'noon', 'evening', 'night'];
+      // Update nextMeal if the next meal is tomorrow
       if (state.currentSlot == 'closed' || slots.indexOf(state.nextSlot) <= slots.indexOf(state.currentSlot)) {
-        final nextMenu = menus.where((m) => m.mealSlot == state.nextSlot).firstOrNull;
-        state = state.copyWith(nextMeal: nextMenu);
+        final nextMenu = tomorrowMap[state.nextSlot];
+        state = state.copyWith(nextMeal: nextMenu, tomorrowMenus: tomorrowMap);
+      } else {
+        state = state.copyWith(tomorrowMenus: tomorrowMap);
       }
     });
   }
@@ -908,8 +1066,19 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     return DateTime(now.year, now.month, now.day, h, m);
   }
 
-  Future<void> skipMeal(String mealSlot) async {
-    final record = MealRecordModel(recordId: DateTime.now().millisecondsSinceEpoch.toString(), studentId: studentId, messId: state.mess?.messId ?? '', date: _today, mealSlot: mealSlot, status: 'absent_self', cancelledAt: DateTime.now());
+  Future<void> skipMeal(String mealSlot, {DateTime? date}) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final mealDate = date ?? _today;
+    final record = MealRecordModel(
+      recordId: '${uid}_${mealSlot}_${mealDate.toIso8601String().substring(0,10)}',
+      studentId: uid,
+      messId: state.mess?.messId ?? '',
+      date: mealDate,
+      mealSlot: mealSlot,
+      status: 'absent_self',
+      cancelledAt: DateTime.now(),
+    );
     await _service.skipMeal(record);
   }
 
@@ -920,8 +1089,10 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     await _service.undoSkipMeal(recordId);
   }
 
-  Future<void> addGuest(String mealSlot, double cost) async {
-    await _service.addGuestMeal(studentId, mealSlot, DateTime.now(), cost);
+  Future<void> addGuest(String mealSlot, double cost, {DateTime? date, int count = 1}) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await _service.addGuestMeal(uid, mealSlot, date ?? DateTime.now(), cost, count: count);
   }
 
   Future<void> cancelLeave() async {
@@ -937,8 +1108,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
 }
 
 final studentHomeProvider = StateNotifierProvider<StudentHomeViewModel, StudentHomeState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return StudentHomeViewModel(ref.read(appServiceProvider), uid);
+  return StudentHomeViewModel(ref.read(appServiceProvider));
 });
 
 // ─── Student History ──────────────────────────────────────────────────────────
@@ -1034,35 +1204,13 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
         
         final previousDues = await _service.getPreviousUnpaidDues(studentId, state.selectedMonth.month, state.selectedMonth.year);
         
-        double skipsDeduction = 0;
-        double guestsAddon = 0;
-        List<DeductionItem> items = [];
-
-        for (var r in records) {
-          if (r.status == 'absent_self' || r.status == 'absent_owner') {
-            skipsDeduction += mess.perMealRate;
-            items.add(DeductionItem(date: r.date, mealSlot: r.mealSlot, type: r.status == 'absent_self' ? 'self_cancelled' : 'owner_off', amount: mess.perMealRate));
-          } else if (r.status == 'guest') {
-            guestsAddon += mess.perMealRate;
-            items.add(DeductionItem(date: r.date, mealSlot: r.mealSlot, type: 'guest', amount: mess.perMealRate));
-          }
-        }
-
-        double finalPayable = mess.monthlyFee - skipsDeduction + guestsAddon + previousDues;
-        
-        final previewBill = BillModel(
-          billId: 'preview',
-          studentId: studentId,
-          messId: mess.messId,
+        final previewBill = generateAdvancedBill(
+          student: student,
+          mess: mess,
           month: state.selectedMonth.month,
           year: state.selectedMonth.year,
-          baseFee: mess.monthlyFee,
-          totalDeductions: skipsDeduction,
-          guestAddons: guestsAddon,
-          finalPayable: finalPayable,
+          records: records,
           previousDues: previousDues,
-          isPaid: false,
-          deductions: items,
         );
 
         state = state.copyWith(bill: previewBill, isPreview: true, isLoading: false);

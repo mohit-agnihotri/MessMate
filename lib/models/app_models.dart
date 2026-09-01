@@ -132,7 +132,9 @@ class MessModel {
   final String language; // 'en' or 'hi'
   final String? ownerPhotoUrl;
   final List<String> messPhotos; // Up to 4 Supabase photo URLs for the mess gallery
+  final int mealsIncludedPerDay; // e.g., 1, 2, or 3 meals included in the monthly plan
   final Map<String, Map<String, String>> mealTimings;
+  final DateTime? temporarilyClosedUntil;
   // Owner notification preferences - controls FCM topic subscriptions
   final Map<String, bool> ownerNotificationPrefs;
 
@@ -160,12 +162,14 @@ class MessModel {
     this.language = 'en',
     this.ownerPhotoUrl,
     this.messPhotos = const [],
+    this.mealsIncludedPerDay = 3,
     this.mealTimings = const {
       'morning': {'start': '08:00', 'end': '10:00', 'enabled': 'true'},
       'noon': {'start': '12:30', 'end': '14:30', 'enabled': 'true'},
       'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
       'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
     },
+    this.temporarilyClosedUntil,
     this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
   });
 
@@ -188,7 +192,9 @@ class MessModel {
     String? language,
     String? ownerPhotoUrl,
     List<String>? messPhotos,
+    int? mealsIncludedPerDay,
     Map<String, Map<String, String>>? mealTimings,
+    DateTime? temporarilyClosedUntil,
     Map<String, bool>? ownerNotificationPrefs,
   }) {
     return MessModel(
@@ -210,7 +216,9 @@ class MessModel {
       language: language ?? this.language,
       ownerPhotoUrl: ownerPhotoUrl ?? this.ownerPhotoUrl,
       messPhotos: messPhotos ?? this.messPhotos,
+      mealsIncludedPerDay: mealsIncludedPerDay ?? this.mealsIncludedPerDay,
       mealTimings: mealTimings ?? this.mealTimings,
+      temporarilyClosedUntil: temporarilyClosedUntil ?? this.temporarilyClosedUntil,
       ownerNotificationPrefs: ownerNotificationPrefs ?? this.ownerNotificationPrefs,
     );
   }
@@ -235,6 +243,7 @@ class MessModel {
       showMenuToOutsiders: map['showMenuToOutsiders'] ?? true,
       showMenuToStudents: map['showMenuToStudents'] ?? true,
       language: map['language'] ?? 'en',
+      mealsIncludedPerDay: map['mealsIncludedPerDay'] ?? 3,
       mealTimings: map['mealTimings'] != null 
           ? (map['mealTimings'] as Map).map((k, v) {
               final val = Map<String, String>.from(v as Map);
@@ -248,6 +257,7 @@ class MessModel {
               'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
               'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
             },
+      temporarilyClosedUntil: map['temporarilyClosedUntil'] != null ? DateTime.tryParse(map['temporarilyClosedUntil']) : null,
       ownerNotificationPrefs: (() {
         final raw = map['ownerNotificationPrefs'] as Map<String, dynamic>?;
         return <String, bool>{
@@ -277,7 +287,9 @@ class MessModel {
     'language': language,
     'ownerPhotoUrl': ownerPhotoUrl,
     'messPhotos': messPhotos,
+    'mealsIncludedPerDay': mealsIncludedPerDay,
     'mealTimings': mealTimings,
+    'temporarilyClosedUntil': temporarilyClosedUntil?.toIso8601String(),
     'ownerNotificationPrefs': ownerNotificationPrefs,
   };
 }
@@ -460,7 +472,9 @@ class BillModel {
   final int month;
   final int year;
   final double baseFee;
+  final double proratedDiscount;
   final double totalDeductions;
+  final double extraMealsAddon;
   final double guestAddons;
   final double finalPayable;
   final double previousDues;
@@ -474,7 +488,9 @@ class BillModel {
     required this.month,
     required this.year,
     required this.baseFee,
+    this.proratedDiscount = 0.0,
     required this.totalDeductions,
+    this.extraMealsAddon = 0.0,
     required this.guestAddons,
     required this.finalPayable,
     this.previousDues = 0,
@@ -490,7 +506,9 @@ class BillModel {
       month: map['month'] ?? DateTime.now().month,
       year: map['year'] ?? DateTime.now().year,
       baseFee: (map['baseFee'] ?? 0.0).toDouble(),
+      proratedDiscount: (map['proratedDiscount'] ?? 0.0).toDouble(),
       totalDeductions: (map['totalDeductions'] ?? 0.0).toDouble(),
+      extraMealsAddon: (map['extraMealsAddon'] ?? 0.0).toDouble(),
       guestAddons: (map['guestAddons'] ?? 0.0).toDouble(),
       finalPayable: (map['finalPayable'] ?? 0.0).toDouble(),
       previousDues: (map['previousDues'] ?? 0.0).toDouble(),
@@ -508,7 +526,9 @@ class BillModel {
     'month': month,
     'year': year,
     'baseFee': baseFee,
+    'proratedDiscount': proratedDiscount,
     'totalDeductions': totalDeductions,
+    'extraMealsAddon': extraMealsAddon,
     'guestAddons': guestAddons,
     'finalPayable': finalPayable,
     'previousDues': previousDues,

@@ -397,19 +397,7 @@ class OwnerDashboardPage extends ConsumerWidget {
   }
 
   void _showEmergencyCloseDialog(BuildContext context, WidgetRef ref) {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Emergency Close?', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-      content: Text('This will notify all students that the mess is closed today.', style: GoogleFonts.inter()),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.inter())),
-        ElevatedButton(
-          onPressed: () { ref.read(ownerDashboardProvider.notifier).emergencyClose(); Navigator.pop(context); },
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-          child: Text('Close Mess', style: GoogleFonts.inter(color: Colors.white)),
-        ),
-      ],
-    ));
+    showDialog(context: context, builder: (_) => _ScheduleClosureDialog(ref: ref));
   }
 
   void _showAnnouncementDialog(BuildContext context, WidgetRef ref) {
@@ -625,5 +613,161 @@ class _StatCard extends StatelessWidget {
         ],
       ),
     ));
+  }
+}
+
+class _ScheduleClosureDialog extends StatefulWidget {
+  final WidgetRef ref;
+  const _ScheduleClosureDialog({required this.ref});
+  @override
+  State<_ScheduleClosureDialog> createState() => _ScheduleClosureDialogState();
+}
+
+class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
+  DateTime _startDate = DateTime.now();
+  String _startSlot = 'night';
+  DateTime _endDate = DateTime.now().add(const Duration(days: 1));
+  String _endSlot = 'morning';
+  bool _isLoading = false;
+
+  final List<String> _slots = ['morning', 'noon', 'evening', 'night'];
+
+  Future<void> _pickDate(bool isStart) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: isStart ? _startDate : _endDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(primary: Color(0xFFEF4444)),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (date != null) {
+      setState(() {
+        if (isStart) {
+          _startDate = date;
+          if (_endDate.isBefore(_startDate)) _endDate = _startDate;
+        } else {
+          _endDate = date;
+          if (_endDate.isBefore(_startDate)) _startDate = _endDate;
+        }
+      });
+    }
+  }
+
+  Widget _buildDropdown(String value, bool isStart) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF6B7280)),
+          items: _slots.map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase(), style: GoogleFonts.inter(fontSize: 14)))).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                if (isStart) _startSlot = val;
+                else _endSlot = val;
+              });
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDatePickerBtn(DateTime date, bool isStart) {
+    return GestureDetector(
+      onTap: () => _pickDate(isStart),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('${date.day}/${date.month}/${date.year}', style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF111827))),
+            const Icon(Icons.calendar_month, color: Color(0xFF6B7280), size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('Schedule Closure', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 20)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('From:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF4B5563))),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _buildDatePickerBtn(_startDate, true)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildDropdown(_startSlot, true)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text('To:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF4B5563))),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _buildDatePickerBtn(_endDate, false)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildDropdown(_endSlot, false)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'This will close all meals between these two dates/slots and send an announcement to your students.',
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF9CA3AF)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context), 
+          child: Text('Cancel', style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontWeight: FontWeight.w600))
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : () async {
+            setState(() => _isLoading = true);
+            await widget.ref.read(ownerDashboardProvider.notifier).emergencyClose(_startDate, _startSlot, _endDate, _endSlot);
+            if (mounted) Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)
+          ),
+          child: _isLoading 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : Text('Confirm Closure', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
   }
 }

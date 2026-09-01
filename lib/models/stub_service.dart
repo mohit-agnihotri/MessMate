@@ -96,6 +96,7 @@ class StubService implements AppService {
   @override Stream<List<MealRecordModel>> streamDailyMealRecords(String messId, DateTime date) => Stream.value(_records);
   @override Stream<List<MealRecordModel>> streamStudentDailyMealRecords(String studentId, String messId, DateTime date) => Stream.value(_records);
   @override Future<void> ownerCloseDay(String messId, DateTime date, String mealSlot) async {}
+  @override Future<void> scheduleClosure(MessModel mess, DateTime startDate, String startSlot, DateTime endDate, String endSlot) async {}
   @override Future<void> applyLeave(LeaveModel leave) async {}
   @override Future<void> cancelLeave(String leaveId, DateTime cancelledAt) async {}
   @override Future<List<LeaveModel>> getUpcomingLeaves(String messId) async => [];
@@ -106,7 +107,7 @@ class StubService implements AppService {
     _bill = bill;
   }
   @override Future<void> markAsPaid(String billId) async {}
-  @override Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost) async {}
+  @override Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost, {int count = 1}) async {}
   @override Future<void> sendAnnouncement(String messId, String message) async {}
   @override Stream<List<AnnouncementModel>> streamAnnouncements(String messId) => Stream.value([]);
   @override Future<String> generateUniqueMessCode() async => '123456';

@@ -29,12 +29,12 @@ class _StudentMainPageState extends State<StudentMainPage> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F5F7),
+        backgroundColor: const Color(0xFFF5F6FA),
         body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
-            boxShadow: [BoxShadow(color: Color(0x15000000), blurRadius: 20, offset: Offset(0, -4))],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))],
           ),
           child: SafeArea(
             top: false,
@@ -56,23 +56,35 @@ class _StudentMainPageState extends State<StudentMainPage> {
     );
   }
 
+
+
   Widget _buildTab(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _currentIndex = index),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 22, color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF)),
-            const SizedBox(height: 3),
-            Text(label, style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF),
-            )),
-          ],
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isActive ? const Color(0xFF22C55E) : Colors.transparent,
+                width: 2.5,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF)),
+              const SizedBox(height: 3),
+              Text(label, style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF),
+              )),
+            ],
+          ),
         ),
       ),
     );

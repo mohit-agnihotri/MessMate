@@ -209,10 +209,22 @@ class StudentBillPage extends ConsumerWidget {
             child: Column(
               children: [
                 _buildCleanRow('Basic Monthly Fee', 'Base active cycle', '₹${bill.baseFee.toInt()}'),
-                const SizedBox(height: 16),
-                _buildCleanRow('Meals Cancelled ($cancelledCount)', 'Deductions for opted-out meals', '-₹${bill.totalDeductions.toInt()}', isDeduction: true),
-                const SizedBox(height: 16),
-                _buildCleanRow('Guest Meals', '$guestCount extra meals', '₹${bill.guestAddons.toInt()}'),
+                if (bill.proratedDiscount > 0) ...[
+                  const SizedBox(height: 16),
+                  _buildCleanRow('Mid-Month Join Discount', 'Pro-rated deduction', '-₹${bill.proratedDiscount.toInt()}', isDeduction: true),
+                ],
+                if (bill.totalDeductions > 0) ...[
+                  const SizedBox(height: 16),
+                  _buildCleanRow('Meals Cancelled', 'Valid skip refunds', '-₹${bill.totalDeductions.toInt()}', isDeduction: true),
+                ],
+                if (bill.extraMealsAddon > 0) ...[
+                  const SizedBox(height: 16),
+                  _buildCleanRow('Extra Meals', 'Consumed beyond plan', '₹${bill.extraMealsAddon.toInt()}'),
+                ],
+                if (bill.guestAddons > 0) ...[
+                  const SizedBox(height: 16),
+                  _buildCleanRow('Guest Meals', 'Meals for guests', '₹${bill.guestAddons.toInt()}'),
+                ],
                 if (bill.previousDues > 0) ...[
                   const SizedBox(height: 16),
                   _buildCleanRow('Previous Unpaid Dues', 'Arrears from past months', '₹${bill.previousDues.toInt()}'),
@@ -231,6 +243,23 @@ class StudentBillPage extends ConsumerWidget {
                         style: GoogleFonts.inter(
                             fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
                   ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: Builder(
+                    builder: (btnContext) => TextButton.icon(
+                      onPressed: () => _showDetailedBreakdown(btnContext, bill),
+                      icon: const Icon(Icons.receipt_long, size: 18),
+                      label: Text('View Detailed Breakdown', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF3B82F6),
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -343,6 +372,140 @@ class StudentBillPage extends ConsumerWidget {
                     fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDetailedBreakdown(BuildContext context, BillModel bill) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bill Breakdown',
+                    style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildBillRow('Basic Fee', '₹${bill.baseFee.toStringAsFixed(0)}'),
+              if (bill.proratedDiscount > 0)
+                _buildBillRow('Mid-Month Joining Discount', '-₹${bill.proratedDiscount.toStringAsFixed(0)}', color: Colors.green),
+              if (bill.totalDeductions > 0)
+                _buildBillRow('Valid Skipped Meals Refunds', '-₹${bill.totalDeductions.toStringAsFixed(0)}', color: Colors.green),
+              if (bill.extraMealsAddon > 0)
+                _buildBillRow('Extra Meals Consumed', '+₹${bill.extraMealsAddon.toStringAsFixed(0)}', color: Colors.red),
+              if (bill.guestAddons > 0)
+                _buildBillRow('Guest Meals', '+₹${bill.guestAddons.toStringAsFixed(0)}', color: Colors.red),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(),
+              ),
+              _buildBillRow('Final Payable', '₹${bill.finalPayable.toStringAsFixed(0)}', isBold: true, size: 18),
+              
+              const SizedBox(height: 24),
+              Text(
+                'Itemized Details',
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: bill.deductions.isEmpty
+                    ? Center(child: Text("No itemized details this month.", style: GoogleFonts.inter(color: Colors.grey)))
+                    : ListView.separated(
+                        itemCount: bill.deductions.length,
+                        separatorBuilder: (context, index) => const Divider(height: 16),
+                        itemBuilder: (context, index) {
+                          final item = bill.deductions[index];
+                          final isDeduction = item.amount < 0;
+                          final typeStr = item.type.replaceAll('_', ' ').toUpperCase();
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${item.date.day}/${item.date.month} - ${item.mealSlot}',
+                                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      typeStr,
+                                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${isDeduction ? '' : '+'}₹${item.amount.abs().toStringAsFixed(0)}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDeduction ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBillRow(
+    String label,
+    String amount, {
+    bool isBold = false,
+    Color color = const Color(0xFF111827),
+    double size = 14,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: size,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: isBold ? const Color(0xFF111827) : const Color(0xFF6B7280),
+            ),
+          ),
+          Text(
+            amount,
+            style: GoogleFonts.inter(
+              fontSize: size,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
