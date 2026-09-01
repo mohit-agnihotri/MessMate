@@ -1270,6 +1270,7 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
                         _startSlot,
                         _endDate,
                         _endSlot,
+                        "Emergency Closure",
                       );
                   if (mounted) Navigator.pop(context);
                 },
