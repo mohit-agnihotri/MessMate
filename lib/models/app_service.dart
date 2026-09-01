@@ -65,7 +65,7 @@ abstract class AppService {
     String endSlot,
     String reason,
   );
-  Future<void> emergencyCloseMess(String messId, String reason);
+  Future<void> emergencyCloseMess(String messId, DateTime date);
   
   // FEEDBACK
   Future<void> submitFeedback(FeedbackModel feedback);
@@ -101,7 +101,6 @@ abstract class AppService {
   Future<MessModel?> getMessByCode(String code);
   Future<void> joinMess(String studentId, String messCode);
 
-  // FEEDBACK
-  Future<void> submitFeedback(FeedbackModel feedback);
+
   Stream<List<FeedbackModel>> streamFeedbacks(String messId);
 }

@@ -565,6 +565,7 @@ class FirebaseService implements AppService {
     String startSlot,
     DateTime endDate,
     String endSlot,
+    String reason,
   ) async {
     final batch = _db.batch();
 

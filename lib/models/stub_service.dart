@@ -310,7 +310,10 @@ class StubService implements AppService {
     String startSlot,
     DateTime endDate,
     String endSlot,
+    String reason,
   ) async {}
+  @override
+  Future<void> emergencyCloseMess(String messId, DateTime date) async {}
   @override
   Future<void> applyLeave(LeaveModel leave) async {}
   @override

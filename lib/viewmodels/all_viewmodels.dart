@@ -17,6 +17,7 @@ import '../services/dish_catalog_service.dart';
 import 'package:geolocator/geolocator.dart';
 
 // ─── Global Billing Logic Helper ─────────────────────────────────────────────
+import 'billing_helper.dart';
 export 'billing_helper.dart';
 
 // ─── Global Service Provider ─────────────────────────────────────────────────
@@ -476,6 +477,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
     String startSlot,
     DateTime endDate,
     String endSlot,
+    String reason,
   ) async {
     if (state.mess == null) return;
     await _service.scheduleClosure(
@@ -484,6 +486,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
       startSlot,
       endDate,
       endSlot,
+      reason,
     );
   }
 
@@ -984,7 +987,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
       );
     } catch (e, st) {
       debugPrint('Error loading student dashboard: $e');
-      debugPrint(st);
+      debugPrint(st.toString());
       state = state.copyWith(error: e.toString());
     } finally {
       state = state.copyWith(isLoading: false);
