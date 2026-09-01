@@ -1,6 +1,6 @@
 {
-    "name": "mess_app",
-    "short_name": "mess_app",
+    "name": "Mess",
+    "short_name": "Mess",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
