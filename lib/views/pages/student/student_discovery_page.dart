@@ -1,10 +1,12 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
 
@@ -32,7 +34,8 @@ class StudentDiscoveryPage extends ConsumerStatefulWidget {
   const StudentDiscoveryPage({super.key});
 
   @override
-  ConsumerState<StudentDiscoveryPage> createState() => _StudentDiscoveryPageState();
+  ConsumerState<StudentDiscoveryPage> createState() =>
+      _StudentDiscoveryPageState();
 }
 
 class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
@@ -60,7 +63,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       }
       if (permission == LocationPermission.deniedForever) return null;
 
-      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
     } catch (_) {
       return null;
     }
@@ -71,97 +76,132 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
     try {
       final pos = await _getUserLocation();
       final allMesses = await ref.read(appServiceProvider).getAllListedMesses();
-      
-      final items = await Future.wait(allMesses.map((m) async {
-        double? dist;
-        if (pos != null) {
-          dist = Geolocator.distanceBetween(pos.latitude, pos.longitude, m.gpsLat, m.gpsLng) / 1000.0;
-        }
-        
-        final menus = await ref.read(appServiceProvider).getDailyMenus(m.messId, DateTime.now());
-        
-        bool isServingNow = false;
-        String mealName = 'No meal set';
-        String dishes = 'Menu not updated';
-        String? timeUntilNext;
-        String slotType = 'Noon';
-        
-        final now = DateTime.now();
-        final currentMinutes = now.hour * 60 + now.minute;
-        
-        if (menus.isNotEmpty) {
-           // Basic logic to determine current or next meal
-           bool found = false;
-           
-           // We map slots to a standardized order: morning, noon, evening, night
-           final slotOrder = ['morning', 'noon', 'evening', 'night'];
-           
-           for (var slot in slotOrder) {
-             final timing = m.mealTimings[slot];
-             if (timing != null && timing['enabled'] == 'true') {
-               final startStr = timing['start'] ?? '00:00';
-               final endStr = timing['end'] ?? '00:00';
-               final startMin = _parseTime(startStr);
-               final endMin = _parseTime(endStr);
-               
-               if (currentMinutes <= endMin) {
-                 final matchingMenu = menus.where((menu) => menu.mealSlot.toLowerCase() == slot).firstOrNull;
-                 
-                 slotType = slot == 'morning' ? 'Morning' : slot == 'noon' ? 'Noon' : slot == 'evening' ? 'Evening' : 'Night';
-                 mealName = slot == 'morning' ? 'Breakfast' : slot == 'noon' ? 'Lunch' : slot == 'evening' ? 'Snacks' : 'Dinner';
-                 
-                 if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
-                   dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                 } else {
-                   dishes = 'Menu not updated';
-                 }
-                 
-                 if (currentMinutes >= startMin && currentMinutes <= endMin) {
-                   isServingNow = true;
-                 } else {
-                   isServingNow = false;
-                 }
-                 
-                 found = true;
-                 break; // Found the current or next meal
-               }
-             }
-           }
-           
-           if (!found) {
-             // All meals for today are over, show tomorrow's first meal if available
-             // For simplicity, just show the first active slot as 'Tomorrow'
-             for (var slot in slotOrder) {
-               final timing = m.mealTimings[slot];
-               if (timing != null && timing['enabled'] == 'true') {
-                 slotType = slot == 'morning' ? 'Morning' : slot == 'noon' ? 'Noon' : slot == 'evening' ? 'Evening' : 'Night';
-                 mealName = 'Tomorrow ${slotType}';
-                 final matchingMenu = menus.where((menu) => menu.mealSlot.toLowerCase() == slot).firstOrNull;
-                 if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
-                   dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                 } else {
-                   dishes = 'Menu not updated';
-                 }
-                 isServingNow = false;
-                 break;
-               }
-             }
-           }
-        }
 
-        return _MessItem(
-          mess: m,
-          distanceKm: dist,
-          currentOrNextMealName: mealName,
-          currentOrNextMealDishes: dishes,
-          isServingNow: isServingNow,
-          timeUntilNext: timeUntilNext,
-          slotType: slotType,
-        );
-      }));
+      final items = await Future.wait(
+        allMesses.map((m) async {
+          double? dist;
+          if (pos != null) {
+            dist =
+                Geolocator.distanceBetween(
+                  pos.latitude,
+                  pos.longitude,
+                  m.gpsLat,
+                  m.gpsLng,
+                ) /
+                1000.0;
+          }
 
-      items.sort((a, b) => (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999));
-      
+          final menus = await ref
+              .read(appServiceProvider)
+              .getDailyMenus(m.messId, DateTime.now());
+
+          bool isServingNow = false;
+          String mealName = 'No meal set';
+          String dishes = 'Menu not updated';
+          String? timeUntilNext;
+          String slotType = 'Noon';
+
+          final now = DateTime.now();
+          final currentMinutes = now.hour * 60 + now.minute;
+
+          if (menus.isNotEmpty) {
+            // Basic logic to determine current or next meal
+            bool found = false;
+
+            // We map slots to a standardized order: morning, noon, evening, night
+            final slotOrder = ['morning', 'noon', 'evening', 'night'];
+
+            for (var slot in slotOrder) {
+              final timing = m.mealTimings[slot];
+              if (timing != null && timing['enabled'] == 'true') {
+                final startStr = timing['start'] ?? '00:00';
+                final endStr = timing['end'] ?? '00:00';
+                final startMin = _parseTime(startStr);
+                final endMin = _parseTime(endStr);
+
+                if (currentMinutes <= endMin) {
+                  final matchingMenu = menus
+                      .where((menu) => menu.mealSlot.toLowerCase() == slot)
+                      .firstOrNull;
+
+                  slotType = slot == 'morning'
+                      ? 'Morning'
+                      : slot == 'noon'
+                      ? 'Noon'
+                      : slot == 'evening'
+                      ? 'Evening'
+                      : 'Night';
+                  mealName = slot == 'morning'
+                      ? 'Breakfast'
+                      : slot == 'noon'
+                      ? 'Lunch'
+                      : slot == 'evening'
+                      ? 'Snacks'
+                      : 'Dinner';
+
+                  if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
+                    dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                  } else {
+                    dishes = 'Menu not updated';
+                  }
+
+                  if (currentMinutes >= startMin && currentMinutes <= endMin) {
+                    isServingNow = true;
+                  } else {
+                    isServingNow = false;
+                  }
+
+                  found = true;
+                  break; // Found the current or next meal
+                }
+              }
+            }
+
+            if (!found) {
+              // All meals for today are over, show tomorrow's first meal if available
+              // For simplicity, just show the first active slot as 'Tomorrow'
+              for (var slot in slotOrder) {
+                final timing = m.mealTimings[slot];
+                if (timing != null && timing['enabled'] == 'true') {
+                  slotType = slot == 'morning'
+                      ? 'Morning'
+                      : slot == 'noon'
+                      ? 'Noon'
+                      : slot == 'evening'
+                      ? 'Evening'
+                      : 'Night';
+                  mealName = 'Tomorrow ${slotType}';
+                  final matchingMenu = menus
+                      .where((menu) => menu.mealSlot.toLowerCase() == slot)
+                      .firstOrNull;
+                  if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
+                    dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                  } else {
+                    dishes = 'Menu not updated';
+                  }
+                  isServingNow = false;
+                  break;
+                }
+              }
+            }
+          }
+
+          return _MessItem(
+            mess: m,
+            distanceKm: dist,
+            currentOrNextMealName: mealName,
+            currentOrNextMealDishes: dishes,
+            isServingNow: isServingNow,
+            timeUntilNext: timeUntilNext,
+            slotType: slotType,
+          );
+        }),
+      );
+
+      items.sort(
+        (a, b) => (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999),
+      );
+
       if (mounted) {
         setState(() {
           _allItems = items;
@@ -184,7 +224,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
 
   void _filterItems() {
     List<_MessItem> filtered = _allItems.where((item) {
-      final matchesSearch = item.mess.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesSearch = item.mess.name.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
       if (!matchesSearch) return false;
 
       if (_selectedFilter == 'Open Now') {
@@ -195,7 +237,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
 
     // If 'Best Rated' is selected, you'd sort by rating here if it exists.
     // For now, distance is default sort.
-    filtered.sort((a, b) => (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999));
+    filtered.sort(
+      (a, b) => (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999),
+    );
 
     setState(() {
       _messes = filtered;
@@ -203,7 +247,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   }
 
   void _openNativeDirections(double lat, double lng) async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -214,7 +260,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       }
     }
   }
-  
+
   void _callOwner(String phone) async {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -233,8 +279,10 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
 
   Widget _buildBottomSheet(BuildContext context, _MessItem item) {
     final mess = item.mess;
-    bool isClosed = mess.temporarilyClosedUntil != null && mess.temporarilyClosedUntil!.isAfter(DateTime.now());
-    
+    bool isClosed =
+        mess.temporarilyClosedUntil != null &&
+        mess.temporarilyClosedUntil!.isAfter(DateTime.now());
+
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFFCFCFC), // Warm white
@@ -270,7 +318,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     image: const DecorationImage(
-                      image: NetworkImage('https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=1000&auto=format&fit=crop'),
+                      image: NetworkImage(
+                        'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=1000&auto=format&fit=crop',
+                      ),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -280,21 +330,26 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                         top: 12,
                         left: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xCC000000),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             isClosed
-                              ? 'CLOSED TILL ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}'
-                              : (item.currentOrNextMealName == 'No meal set'
-                                  ? 'MENU NOT UPDATED'
-                                  : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}'),
+                                ? 'CLOSED TILL ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}'
+                                : (item.currentOrNextMealName == 'No meal set'
+                                      ? 'MENU NOT UPDATED'
+                                      : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}'),
                             style: GoogleFonts.inter(
-                              color: isClosed ? const Color(0xFFFCA5A5) : Colors.white, 
-                              fontSize: 10, 
-                              fontWeight: FontWeight.bold
+                              color: isClosed
+                                  ? const Color(0xFFFCA5A5)
+                                  : Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
@@ -303,13 +358,29 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   ),
                 ),
               const SizedBox(height: 24),
-              Text(mess.name, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              Text(
+                mess.name,
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('Mess Code: ${mess.messCode}', style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6B7280))),
+              Text(
+                'Mess Code: ${mess.messCode}',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF6B7280),
+                ),
+              ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  _buildInfoChip(Icons.location_on, '${item.distanceKm?.toStringAsFixed(1) ?? '--'} km'),
+                  _buildInfoChip(
+                    Icons.location_on,
+                    '${item.distanceKm?.toStringAsFixed(1) ?? '--'} km',
+                  ),
                   const SizedBox(width: 8),
                   _buildInfoChip(Icons.people, '${mess.capacity} seats'),
                   const SizedBox(width: 8),
@@ -330,9 +401,21 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Mess is Temporarily Closed', style: GoogleFonts.inter(color: const Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+                      Text(
+                        'Mess is Temporarily Closed',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFEF4444),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('Closed until ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}/${mess.temporarilyClosedUntil!.year}. You can still contact the owner.', style: GoogleFonts.inter(color: const Color(0xFFB91C1C), fontSize: 13)),
+                      Text(
+                        'Closed until ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}/${mess.temporarilyClosedUntil!.year}. You can still contact the owner.',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFB91C1C),
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -345,27 +428,37 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.currentOrNextMealName == 'No meal set'
-                          ? 'No Upcoming Meal Scheduled'
-                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.isServingNow ? "Today's" : "Upcoming"} ${item.currentOrNextMealName}',
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFFC2410C)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.currentOrNextMealDishes,
-                      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF111827)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Check mess for timings', 
-                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9A3412)),
-                    ),
-                  ],
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.currentOrNextMealName == 'No meal set'
+                            ? 'No Upcoming Meal Scheduled'
+                            : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.isServingNow ? "Today's" : "Upcoming"} ${item.currentOrNextMealName}',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFC2410C),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.currentOrNextMealDishes,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Check mess for timings',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF9A3412),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 24),
               // Pricing
               Row(
@@ -373,12 +466,28 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Column(
                         children: [
-                          Text('Monthly Plan', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF166534))),
+                          Text(
+                            'Monthly Plan',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF166534),
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text('₹${mess.monthlyFee.toStringAsFixed(0)}/mo', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF16A34A))),
+                          Text(
+                            '₹${mess.monthlyFee.toStringAsFixed(0)}/mo',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF16A34A),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -387,12 +496,28 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Column(
                         children: [
-                          Text('Per Meal', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF1E40AF))),
+                          Text(
+                            'Per Meal',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF1E40AF),
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text('₹${mess.perMealRate.toStringAsFixed(0)}/meal', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF2563EB))),
+                          Text(
+                            '₹${mess.perMealRate.toStringAsFixed(0)}/meal',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF2563EB),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -400,18 +525,39 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 ],
               ),
               const SizedBox(height: 8),
-              Center(child: Text('Includes ${mess.mealsIncludedPerDay} meals daily', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)))),
+              Center(
+                child: Text(
+                  'Includes ${mess.mealsIncludedPerDay} meals daily',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               // Contact info
               Row(
                 children: [
                   const Icon(Icons.person, color: Color(0xFF6B7280), size: 20),
                   const SizedBox(width: 8),
-                  Text(mess.ownerName, style: GoogleFonts.inter(fontSize: 16, color: const Color(0xFF111827))),
+                  Text(
+                    mess.ownerName,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => _callOwner(mess.ownerPhone),
-                    child: Text(mess.ownerPhone, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF22C55E))),
+                    child: Text(
+                      mess.ownerPhone,
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF22C55E),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -425,15 +571,28 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)]),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                          ),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.call, color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.call,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
-                            Text('Call Now', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            Text(
+                              'Call Now',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -442,19 +601,33 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
-                      onTap: () => _openNativeDirections(mess.gpsLat, mess.gpsLng),
+                      onTap: () =>
+                          _openNativeDirections(mess.gpsLat, mess.gpsLng),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                          ),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.map, color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.map,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
-                            Text('Open in Maps', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            Text(
+                              'Open in Maps',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -495,43 +668,63 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                           photos[i],
                           fit: BoxFit.contain,
                           width: double.infinity,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFFF3F4F6),
-                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF9CA3AF), size: 48),
-                        ),
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFFF3F4F6),
+                            child: const Icon(
+                              Icons.broken_image_rounded,
+                              color: Color(0xFF9CA3AF),
+                              size: 48,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                   // Meal status badge
                   Positioned(
-                    top: 12, left: 12,
+                    top: 12,
+                    left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xCC000000),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         item.currentOrNextMealName == 'No meal set'
-                          ? 'MENU NOT UPDATED'
-                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
-                        style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            ? 'MENU NOT UPDATED'
+                            : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                   // Photo count badge
                   Positioned(
-                    top: 12, right: 12,
+                    top: 12,
+                    right: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xCC000000),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '${_currentPage + 1}/${photos.length}',
-                        style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -543,16 +736,21 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(photos.length, (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _currentPage == i ? 18 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _currentPage == i ? const Color(0xFF22C55E) : const Color(0xFFD1D5DB),
-                    borderRadius: BorderRadius.circular(4),
+                children: List.generate(
+                  photos.length,
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: _currentPage == i ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: _currentPage == i
+                          ? const Color(0xFF22C55E)
+                          : const Color(0xFFD1D5DB),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
-                )),
+                ),
               ),
             ],
           ],
@@ -573,7 +771,13 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
         children: [
           Icon(icon, size: 14, color: const Color(0xFF4B5563)),
           const SizedBox(width: 4),
-          Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF4B5563))),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: const Color(0xFF4B5563),
+            ),
+          ),
         ],
       ),
     );
@@ -600,21 +804,41 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                  child: Text('Mess Near Me 📍', style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: Text(
+                    'Mess Near Me 📍',
+                    style: GoogleFonts.inter(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF22C55E)))
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF22C55E),
+                          ),
+                        )
                       : _messes.isEmpty
-                          ? Center(child: Text("No messes found nearby.", style: GoogleFonts.inter(color: Colors.white70)))
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              itemCount: _messes.length,
-                              separatorBuilder: (context, index) => const SizedBox(height: 16),
-                              itemBuilder: (context, index) {
-                                return _buildGlassCard(_messes[index], index == 0);
-                              },
-                            ),
+                      ? Center(
+                          child: Text(
+                            "No messes found nearby.",
+                            style: GoogleFonts.inter(color: Colors.white70),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _messes.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            return _buildGlassCard(_messes[index], index == 0);
+                          },
+                        ),
                 ),
               ],
             ),
@@ -625,7 +849,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   }
 
   Widget _buildGlassCard(_MessItem item, bool isTopPick) {
-    bool isClosed = item.mess.temporarilyClosedUntil != null && item.mess.temporarilyClosedUntil!.isAfter(DateTime.now());
+    bool isClosed =
+        item.mess.temporarilyClosedUntil != null &&
+        item.mess.temporarilyClosedUntil!.isAfter(DateTime.now());
 
     return GestureDetector(
       onTap: () => _showMessDetails(context, item),
@@ -635,11 +861,17 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
           color: const Color(0x1AFFFFFF), // 10% white opacity for glassmorphism
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isTopPick ? const Color(0xFF22C55E).withValues(alpha: 0.5) : const Color(0x33FFFFFF),
+            color: isTopPick
+                ? const Color(0xFF22C55E).withValues(alpha: 0.5)
+                : const Color(0x33FFFFFF),
             width: isTopPick ? 1.5 : 1.0,
           ),
           boxShadow: const [
-            BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, 8)),
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
           ],
         ),
         child: Column(
@@ -651,29 +883,53 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 Expanded(
                   child: Text(
                     item.mess.name,
-                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (isTopPick)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEAB308),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('★ TOP PICK', style: GoogleFonts.inter(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '★ TOP PICK',
+                      style: GoogleFonts.inter(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0x3322C55E),
                     border: Border.all(color: const Color(0xFF22C55E)),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text('${item.distanceKm?.toStringAsFixed(1) ?? '--'} km', style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    '${item.distanceKm?.toStringAsFixed(1) ?? '--'} km',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -683,22 +939,44 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
               Row(
                 children: [
                   Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  Text(item.isServingNow ? 'SERVING NOW' : 'NEXT UP', style: GoogleFonts.inter(color: const Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text(
+                    item.isServingNow ? 'SERVING NOW' : 'NEXT UP',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF22C55E),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             if (isClosed)
               Row(
                 children: [
                   Container(
-                    width: 8, height: 8,
-                    decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  Text('CLOSED', style: GoogleFonts.inter(color: const Color(0xFFEF4444), fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text(
+                    'CLOSED',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFEF4444),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             const SizedBox(height: 12),
@@ -706,20 +984,24 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isClosed ? const Color(0x33EF4444) : const Color(0xFFD97706),
-                border: isClosed ? Border.all(color: const Color(0xFFEF4444)) : null,
+                color: isClosed
+                    ? const Color(0x33EF4444)
+                    : const Color(0xFFD97706),
+                border: isClosed
+                    ? Border.all(color: const Color(0xFFEF4444))
+                    : null,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                isClosed 
-                  ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
-                  : (item.currentOrNextMealName == 'No meal set'
-                      ? 'MENU NOT UPDATED'
-                      : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'),
+                isClosed
+                    ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
+                    : (item.currentOrNextMealName == 'No meal set'
+                          ? 'MENU NOT UPDATED'
+                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'),
                 style: GoogleFonts.inter(
-                  color: isClosed ? const Color(0xFFFCA5A5) : Colors.white, 
-                  fontSize: 12, 
-                  fontWeight: FontWeight.w500
+                  color: isClosed ? const Color(0xFFFCA5A5) : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -731,23 +1013,45 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('₹${item.mess.monthlyFee.toStringAsFixed(0)}/mo', style: GoogleFonts.inter(color: const Color(0xFF22C55E), fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  '₹${item.mess.monthlyFee.toStringAsFixed(0)}/mo',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF22C55E),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const Spacer(),
                 InkWell(
                   onTap: () => _callOwner(item.mess.ownerPhone),
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.call, color: Color(0xFF0F0C29), size: 18),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.call,
+                      color: Color(0xFF0F0C29),
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 InkWell(
-                  onTap: () => _openNativeDirections(item.mess.gpsLat, item.mess.gpsLng),
+                  onTap: () =>
+                      _openNativeDirections(item.mess.gpsLat, item.mess.gpsLng),
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
-                    child: const Icon(Icons.directions, color: Colors.white, size: 18),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF3B82F6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],

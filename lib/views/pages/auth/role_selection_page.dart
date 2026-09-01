@@ -1,8 +1,10 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
@@ -54,7 +56,7 @@ class RoleSelectionPage extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Content
           SafeArea(
             child: Padding(
@@ -64,43 +66,45 @@ class RoleSelectionPage extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 80),
                   Text(
-                    'Who are you?', 
+                    'Who are you?',
                     style: GoogleFonts.inter(
-                      fontSize: 36, 
-                      fontWeight: FontWeight.w800, 
-                      color: const Color(0xFF0F172A), 
-                      letterSpacing: -1
-                    )
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0F172A),
+                      letterSpacing: -1,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Choose your role to continue setting up your account.', 
+                    'Choose your role to continue setting up your account.',
                     style: GoogleFonts.inter(
-                      fontSize: 16, 
+                      fontSize: 16,
                       color: const Color(0xFF64748B),
                       height: 1.5,
-                    )
+                    ),
                   ),
                   const SizedBox(height: 48),
-                  
+
                   // Owner Card
                   _RoleCard(
                     icon: Icons.storefront_rounded,
                     title: 'Mess Owner',
                     subtitle: 'Manage your mess, menu, orders, and interact with students.',
                     accentColor: const Color(0xFF10B981),
-                    onTap: () => _handleRoleSelection(context, ref, AuthRole.owner),
+                    onTap: () =>
+                        _handleRoleSelection(context, ref, AuthRole.owner),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Student Card
                   _RoleCard(
                     icon: Icons.school_rounded,
                     title: 'Student',
                     subtitle: 'Browse menus, book meals, and manage your monthly bill.',
                     accentColor: const Color(0xFF3B82F6),
-                    onTap: () => _handleRoleSelection(context, ref, AuthRole.student),
+                    onTap: () =>
+                        _handleRoleSelection(context, ref, AuthRole.student),
                   ),
                 ],
               ),
@@ -111,38 +115,50 @@ class RoleSelectionPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleRoleSelection(BuildContext context, WidgetRef ref, AuthRole role) async {
+  Future<void> _handleRoleSelection(
+    BuildContext context,
+    WidgetRef ref,
+    AuthRole role,
+  ) async {
     ref.read(authProvider.notifier).setRole(role);
-    
+
     // Modern loading overlay
     showDialog(
-      context: context, 
-      barrierDismissible: false, 
+      context: context,
+      barrierDismissible: false,
       builder: (_) => Center(
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20),
+            ],
           ),
           child: const CircularProgressIndicator(strokeWidth: 3),
-        )
-      )
+        ),
+      ),
     );
-    
+
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) throw Exception('Not logged in');
-      
+
       if (role == AuthRole.owner) {
         final mess = await ref.read(appServiceProvider).getMessByOwnerId(uid);
         if (context.mounted) {
           Navigator.pop(context); // hide loading
           if (mess == null) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerSetupPage()));
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
+            );
           } else {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerMainPage()));
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+            );
           }
         }
       } else {
@@ -150,16 +166,23 @@ class RoleSelectionPage extends ConsumerWidget {
         if (context.mounted) {
           Navigator.pop(context); // hide loading
           if (student == null) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentSetupPage()));
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+            );
           } else {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const StudentMainPage()));
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            );
           }
         }
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -173,11 +196,11 @@ class _RoleCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _RoleCard({
-    required this.icon, 
-    required this.title, 
-    required this.subtitle, 
-    required this.accentColor, 
-    required this.onTap
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accentColor,
+    required this.onTap,
   });
 
   @override
@@ -191,10 +214,10 @@ class _RoleCard extends StatelessWidget {
           border: Border.all(color: Colors.white, width: 2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF94A3B8).withOpacity(0.15), 
-              blurRadius: 24, 
-              offset: const Offset(0, 8)
-            )
+              color: const Color(0xFF94A3B8).withOpacity(0.15),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
         child: ClipRRect(
@@ -206,45 +229,49 @@ class _RoleCard extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 64, 
-                    height: 64, 
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1), 
-                      borderRadius: BorderRadius.circular(20)
-                    ), 
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Center(
-                      child: Icon(icon, color: accentColor, size: 32)
-                    )
+                      child: Icon(icon, color: accentColor, size: 32),
+                    ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start, 
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title, 
+                          title,
                           style: GoogleFonts.inter(
-                            fontSize: 20, 
-                            fontWeight: FontWeight.bold, 
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                             color: const Color(0xFF0F172A),
-                            letterSpacing: -0.5
-                          )
+                            letterSpacing: -0.5,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          subtitle, 
+                          subtitle,
                           style: GoogleFonts.inter(
-                            fontSize: 14, 
+                            fontSize: 14,
                             color: const Color(0xFF64748B),
-                            height: 1.4
-                          )
+                            height: 1.4,
+                          ),
                         ),
-                      ]
-                    )
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, color: accentColor.withOpacity(0.5), size: 24),
-                ]
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: accentColor.withOpacity(0.5),
+                    size: 24,
+                  ),
+                ],
               ),
             ),
           ),

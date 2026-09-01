@@ -1,4 +1,5 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/app_models.dart';
 
 /// Service for the global_dishes Firestore collection.
@@ -13,7 +14,10 @@ class DishCatalogService {
 
   /// Search dishes by partial name match using searchKeywords array.
   /// Returns up to [limit] results.
-  static Future<List<DishModel>> searchDishes(String query, {int limit = 10}) async {
+  static Future<List<DishModel>> searchDishes(
+    String query, {
+    int limit = 10,
+  }) async {
     if (query.trim().isEmpty) return [];
 
     final normalizedQuery = query.toLowerCase().trim();
@@ -39,11 +43,16 @@ class DishCatalogService {
         .limit(limit)
         .get();
 
-    return rangeSnapshot.docs.map((doc) => DishModel.fromFirestore(doc)).toList();
+    return rangeSnapshot.docs
+        .map((doc) => DishModel.fromFirestore(doc))
+        .toList();
   }
 
   /// Get all dishes for a specific category (e.g., 'veg', 'nonveg', 'dal').
-  static Future<List<DishModel>> getByCategory(String category, {int limit = 50}) async {
+  static Future<List<DishModel>> getByCategory(
+    String category, {
+    int limit = 50,
+  }) async {
     final snapshot = await _db
         .collection(_collection)
         .where('category', isEqualTo: category)
@@ -54,10 +63,7 @@ class DishCatalogService {
 
   /// Fetch all dishes (use sparingly — only for offline caching purposes).
   static Future<List<DishModel>> getAllDishes({int limit = 1000}) async {
-    final snapshot = await _db
-        .collection(_collection)
-        .limit(limit)
-        .get();
+    final snapshot = await _db.collection(_collection).limit(limit).get();
     return snapshot.docs.map((doc) => DishModel.fromFirestore(doc)).toList();
   }
 

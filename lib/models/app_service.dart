@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'app_models.dart';
 
 /// Abstract service interface — Firebase implementation will replace stub later.
@@ -27,7 +28,7 @@ abstract class AppService {
   // MENU (Weekly Templates)
   Future<List<MenuModel>> getWeeklyTemplate(String messId);
   Future<void> saveWeeklyTemplate(MenuModel menu, String dayOfWeek);
-  
+
   // LEGACY MENU (Keep for now to not break students immediately)
   Future<List<MenuModel>> getWeeklyMenu(String messId, DateTime weekStart);
   Stream<List<MenuModel>> streamDailyMenus(String messId, DateTime date);
@@ -41,11 +42,34 @@ abstract class AppService {
   // MEAL RECORDS
   Future<void> skipMeal(MealRecordModel record);
   Future<void> undoSkipMeal(String recordId);
-  Future<List<MealRecordModel>> getMealRecords(String studentId, int month, int year);
-  Stream<List<MealRecordModel>> streamDailyMealRecords(String messId, DateTime date);
-  Stream<List<MealRecordModel>> streamStudentDailyMealRecords(String studentId, String messId, DateTime date);
+  Future<List<MealRecordModel>> getMealRecords(
+    String studentId,
+    int month,
+    int year,
+  );
+  Stream<List<MealRecordModel>> streamDailyMealRecords(
+    String messId,
+    DateTime date,
+  );
+  Stream<List<MealRecordModel>> streamStudentDailyMealRecords(
+    String studentId,
+    String messId,
+    DateTime date,
+  );
   Future<void> ownerCloseDay(String messId, DateTime date, String mealSlot);
-  Future<void> scheduleClosure(MessModel mess, DateTime startDate, String startSlot, DateTime endDate, String endSlot);
+  Future<void> scheduleClosure(
+    MessModel mess,
+    DateTime startDate,
+    String startSlot,
+    DateTime endDate,
+    String endSlot,
+    String reason,
+  );
+  Future<void> emergencyCloseMess(String messId, String reason);
+  
+  // FEEDBACK
+  Future<void> submitFeedback(FeedbackModel feedback);
+
 
   // LEAVES
   Future<void> applyLeave(LeaveModel leave);
@@ -59,7 +83,13 @@ abstract class AppService {
   Future<double> getPreviousUnpaidDues(String studentId, int month, int year);
   Future<void> saveBill(BillModel bill);
   Future<void> markAsPaid(String billId);
-  Future<void> addGuestMeal(String studentId, String mealSlot, DateTime date, double cost, {int count = 1});
+  Future<void> addGuestMeal(
+    String studentId,
+    String mealSlot,
+    DateTime date,
+    double cost, {
+    int count = 1,
+  });
 
   // ANNOUNCEMENTS
   Future<void> sendAnnouncement(String messId, String message);

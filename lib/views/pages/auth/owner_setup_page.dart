@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'dart:math';
+
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
+
 import 'package:image_picker/image_picker.dart';
+
 import 'dart:typed_data';
 
 class OwnerSetupPage extends ConsumerStatefulWidget {
@@ -54,30 +58,42 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   }
 
   Future<void> _submit() async {
-    if (_messNameCtrl.text.trim().isEmpty || _ownerNameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields')));
+    if (_messNameCtrl.text.trim().isEmpty ||
+        _ownerNameCtrl.text.trim().isEmpty ||
+        _phoneCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
 
       // Generate a strictly unique 6-digit numeric code from the backend
-      final messCode = await ref.read(appServiceProvider).generateUniqueMessCode();
+      final messCode = await ref
+          .read(appServiceProvider)
+          .generateUniqueMessCode();
 
-      final newMessId = FirebaseFirestore.instance.collection('messes').doc().id;
+      final newMessId = FirebaseFirestore.instance
+          .collection('messes')
+          .doc()
+          .id;
 
       String? photoUrl;
       try {
         if (_selectedImageBytes != null && _imageExtension != null) {
-          photoUrl = await ref.read(appServiceProvider).uploadImage('profiles', _selectedImageBytes!, _imageExtension!);
+          photoUrl = await ref
+              .read(appServiceProvider)
+              .uploadImage('profiles', _selectedImageBytes!, _imageExtension!);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
           setState(() => _isLoading = false);
         }
         return; // Stop mess creation if photo upload fails
@@ -107,11 +123,15 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       await ref.read(appServiceProvider).createMess(newMess);
 
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerMainPage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isLoading = false);
       }
     }
@@ -122,7 +142,14 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text('Setup Mess Profile', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF111827))),
+        title: Text(
+          'Setup Mess Profile',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: const Color(0xFF111827),
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF111827)),
@@ -133,26 +160,66 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome! 🎉', style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              Text(
+                'Welcome! 🎉',
+                style: GoogleFonts.inter(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
+              ),
               const SizedBox(height: 8),
-              Text('Let\'s set up your mess details. You can always change these later.', style: GoogleFonts.inter(fontSize: 15, color: const Color(0xFF6B7280))),
+              Text(
+                'Let\'s set up your mess details. You can always change these later.',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: const Color(0xFF6B7280),
+                ),
+              ),
               const SizedBox(height: 32),
-              
-              _buildTextField('Mess Name', _messNameCtrl, 'e.g. Sharma Bhojnalaya'),
-              _buildTextField('Owner Full Name', _ownerNameCtrl, 'e.g. Raj Sharma'),
-              _buildTextField('Phone Number', _phoneCtrl, 'e.g. 9876543210', isNumber: true),
+
+              _buildTextField(
+                'Mess Name',
+                _messNameCtrl,
+                'e.g. Sharma Bhojnalaya',
+              ),
+              _buildTextField(
+                'Owner Full Name',
+                _ownerNameCtrl,
+                'e.g. Raj Sharma',
+              ),
+              _buildTextField(
+                'Phone Number',
+                _phoneCtrl,
+                'e.g. 9876543210',
+                isNumber: true,
+              ),
               const SizedBox(height: 16),
               _buildImagePicker(),
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
-                  Expanded(child: _buildTextField('Capacity', _capacityCtrl, 'e.g. 50', isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Capacity',
+                      _capacityCtrl,
+                      'e.g. 50',
+                      isNumber: true,
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildTextField('Monthly Fee (Rs)', _monthlyFeeCtrl, 'e.g. 3000', isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Monthly Fee (Rs)',
+                      _monthlyFeeCtrl,
+                      'e.g. 3000',
+                      isNumber: true,
+                    ),
+                  ),
                 ],
               ),
-              
+
               _buildDropdownField(
                 'Meals Included in Monthly Fee',
                 _mealsIncludedPerDay,
@@ -164,15 +231,29 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 ],
                 (val) => setState(() => _mealsIncludedPerDay = val as int),
               ),
-              
+
               Row(
                 children: [
-                  Expanded(child: _buildTextField('Per Meal Rate (Rs)', _perMealRateCtrl, 'e.g. 50', isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Per Meal Rate (Rs)',
+                      _perMealRateCtrl,
+                      'e.g. 50',
+                      isNumber: true,
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildTextField('Cutoff (Hours)', _cutoffCtrl, 'e.g. 2', isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      'Cutoff (Hours)',
+                      _cutoffCtrl,
+                      'e.g. 2',
+                      isNumber: true,
+                    ),
+                  ),
                 ],
               ),
-              
+
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -181,11 +262,20 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF22C55E),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text('Create Mess Profile', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Create Mess Profile',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -195,13 +285,25 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool isNumber = false}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    String hint, {
+    bool isNumber = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF374151),
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
@@ -211,9 +313,18 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               hintStyle: GoogleFonts.inter(color: const Color(0xFF9CA3AF)),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF22C55E))),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF22C55E)),
+              ),
             ),
           ),
         ],
@@ -221,13 +332,25 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     );
   }
 
-  Widget _buildDropdownField(String label, dynamic value, List<DropdownMenuItem<dynamic>> items, void Function(dynamic)? onChanged) {
+  Widget _buildDropdownField(
+    String label,
+    dynamic value,
+    List<DropdownMenuItem<dynamic>> items,
+    void Function(dynamic)? onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF374151),
+            ),
+          ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -242,7 +365,10 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 isExpanded: true,
                 items: items,
                 onChanged: onChanged,
-                style: GoogleFonts.inter(color: const Color(0xFF111827), fontSize: 14),
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF111827),
+                  fontSize: 14,
+                ),
                 dropdownColor: Colors.white,
               ),
             ),
@@ -267,18 +393,26 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           }
         },
         child: Container(
-          width: 100, height: 100,
+          width: 100,
+          height: 100,
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
             border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
             image: _selectedImageBytes != null
-              ? DecorationImage(image: MemoryImage(_selectedImageBytes!), fit: BoxFit.cover)
-              : null,
+                ? DecorationImage(
+                    image: MemoryImage(_selectedImageBytes!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
           child: _selectedImageBytes == null
-            ? const Icon(Icons.add_a_photo, color: Color(0xFF9CA3AF), size: 32)
-            : null,
+              ? const Icon(
+                  Icons.add_a_photo,
+                  color: Color(0xFF9CA3AF),
+                  size: 32,
+                )
+              : null,
         ),
       ),
     );

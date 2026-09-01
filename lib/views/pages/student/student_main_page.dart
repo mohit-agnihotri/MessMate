@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'student_home_page.dart';
 import 'student_history_page.dart';
 import 'student_bill_page.dart';
@@ -27,14 +28,22 @@ class _StudentMainPageState extends State<StudentMainPage> {
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F6FA),
         body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
           child: SafeArea(
             top: false,
@@ -56,8 +65,6 @@ class _StudentMainPageState extends State<StudentMainPage> {
     );
   }
 
-
-
   Widget _buildTab(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
     return Expanded(
@@ -76,13 +83,24 @@ class _StudentMainPageState extends State<StudentMainPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 22, color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF)),
+              Icon(
+                icon,
+                size: 22,
+                color: isActive
+                    ? const Color(0xFF22C55E)
+                    : const Color(0xFF9CA3AF),
+              ),
               const SizedBox(height: 3),
-              Text(label, style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF),
-              )),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFF9CA3AF),
+                ),
+              ),
             ],
           ),
         ),

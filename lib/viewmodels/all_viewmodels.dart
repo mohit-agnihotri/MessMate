@@ -1,131 +1,23 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
 import '../models/app_service.dart';
 import '../models/stub_service.dart';
 import '../models/firebase_service.dart';
 import '../models/app_models.dart';
 import '../services/dish_catalog_service.dart';
+
 import 'package:geolocator/geolocator.dart';
 
 // ─── Global Billing Logic Helper ─────────────────────────────────────────────
-BillModel generateAdvancedBill({
-  required StudentModel student,
-  required MessModel mess,
-  required int month,
-  required int year,
-  required List<MealRecordModel> records,
-  required double previousDues,
-}) {
-  double skipsDeduction = 0.0;
-  double extraMealsAddon = 0.0;
-  double guestAddons = 0.0;
-  double proratedDiscount = 0.0;
-  List<DeductionItem> items = [];
-
-  // Calculate total days in the specified month
-  final totalDays = DateTime(year, month + 1, 0).day;
-  
-  // 1. Calculate prorated discount if joined this month
-  if (student.joinDate.year == year && student.joinDate.month == month && student.joinDate.day > 1) {
-    int missingDays = student.joinDate.day - 1;
-    double dailyRate = mess.monthlyFee / totalDays;
-    proratedDiscount = missingDays * dailyRate;
-    items.add(DeductionItem(
-      date: DateTime(year, month, student.joinDate.day),
-      mealSlot: 'Joined Late',
-      type: 'prorated_discount',
-      amount: -proratedDiscount,
-    ));
-  }
-
-  // 2. Group records by day
-  Map<int, List<MealRecordModel>> dailyRecords = {};
-  for (var r in records) {
-    dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
-  }
-
-  // Calculate offered meals count per day from settings
-  int dailyOfferedMeals = mess.mealTimings.values.where((m) => m['enabled'] == 'true').length;
-  if (dailyOfferedMeals == 0) dailyOfferedMeals = 3; // Fallback
-  
-  int allowedMeals = mess.mealsIncludedPerDay;
-
-  // 3. Evaluate each day in the month up to today (or end of month)
-  int todayDay = (DateTime.now().year == year && DateTime.now().month == month) ? DateTime.now().day : totalDays;
-  
-  for (int day = 1; day <= todayDay; day++) {
-    // If before join date, skip
-    if (student.joinDate.year == year && student.joinDate.month == month && day < student.joinDate.day) {
-      continue;
-    }
-
-    var dayRecs = dailyRecords[day] ?? [];
-    
-    // Count skipped meals
-    int skippedCount = 0;
-    for (var r in dayRecs) {
-      if (r.status == 'absent_self' || r.status == 'absent_owner') {
-        skippedCount++;
-      } else if (r.status == 'guest') {
-        guestAddons += mess.perMealRate;
-        items.add(DeductionItem(date: r.date, mealSlot: r.mealSlot, type: 'guest', amount: mess.perMealRate));
-      }
-    }
-
-    int consumedMeals = dailyOfferedMeals - skippedCount;
-    if (consumedMeals < 0) consumedMeals = 0;
-
-    if (consumedMeals < allowedMeals) {
-      // Refund for (allowed - consumed)
-      int refundMeals = allowedMeals - consumedMeals;
-      double refundAmt = refundMeals * mess.perMealRate;
-      skipsDeduction += refundAmt;
-      
-      items.add(DeductionItem(
-        date: DateTime(year, month, day),
-        mealSlot: 'Valid Skips ($refundMeals)',
-        type: 'self_cancelled',
-        amount: -refundAmt,
-      ));
-    } else if (consumedMeals > allowedMeals) {
-      // Extra charge for (consumed - allowed)
-      int extraCount = consumedMeals - allowedMeals;
-      double extraAmt = extraCount * mess.perMealRate;
-      extraMealsAddon += extraAmt;
-      items.add(DeductionItem(
-        date: DateTime(year, month, day),
-        mealSlot: 'Extra Meals ($extraCount)',
-        type: 'extra_meal',
-        amount: extraAmt,
-      ));
-    }
-  }
-
-  double finalPayable = mess.monthlyFee - proratedDiscount - skipsDeduction + extraMealsAddon + guestAddons + previousDues;
-
-  return BillModel(
-    billId: 'preview',
-    studentId: student.studentId,
-    messId: mess.messId,
-    month: month,
-    year: year,
-    baseFee: mess.monthlyFee,
-    proratedDiscount: proratedDiscount,
-    totalDeductions: skipsDeduction,
-    extraMealsAddon: extraMealsAddon,
-    guestAddons: guestAddons,
-    finalPayable: finalPayable,
-    previousDues: previousDues,
-    isPaid: false,
-    deductions: items,
-  );
-}
+export 'billing_helper.dart';
 
 // ─── Global Service Provider ─────────────────────────────────────────────────
 final appServiceProvider = Provider<AppService>((ref) => FirebaseService());
@@ -150,7 +42,14 @@ class AuthState {
     this.verificationId,
   });
 
-  AuthState copyWith({String? userId, AuthRole? role, bool? isLoading, String? error, bool? otpSent, String? verificationId}) {
+  AuthState copyWith({
+    String? userId,
+    AuthRole? role,
+    bool? isLoading,
+    String? error,
+    bool? otpSent,
+    String? verificationId,
+  }) {
     return AuthState(
       userId: userId ?? this.userId,
       role: role ?? this.role,
@@ -172,8 +71,13 @@ class AuthViewModel extends StateNotifier<AuthState> {
         // Web: Use signInWithPopup
         final googleProvider = GoogleAuthProvider();
         googleProvider.setCustomParameters({'prompt': 'select_account'});
-        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
-        state = state.copyWith(isLoading: false, userId: userCredential.user?.uid);
+        final userCredential = await FirebaseAuth.instance.signInWithPopup(
+          googleProvider,
+        );
+        state = state.copyWith(
+          isLoading: false,
+          userId: userCredential.user?.uid,
+        );
       } else {
         // Native (Android/iOS) - google_sign_in v7 API
         final googleSignIn = GoogleSignIn.instance;
@@ -193,7 +97,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
         String? accessToken;
         try {
           final authClient = googleUser.authorizationClient;
-          final auth = await authClient.authorizationForScopes(['email', 'profile']);
+          final auth = await authClient.authorizationForScopes([
+            'email',
+            'profile',
+          ]);
           accessToken = auth?.accessToken;
         } catch (_) {
           // accessToken not strictly required for Firebase ID token login
@@ -206,27 +113,39 @@ class AuthViewModel extends StateNotifier<AuthState> {
         );
 
         // Once signed in, return the UserCredential
-        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-        state = state.copyWith(isLoading: false, userId: userCredential.user?.uid);
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(
+          credential,
+        );
+        state = state.copyWith(
+          isLoading: false,
+          userId: userCredential.user?.uid,
+        );
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Failed to sign in with Google: ${e.toString()}');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Failed to sign in with Google: ${e.toString()}',
+      );
     }
   }
 
   void setRole(AuthRole role) => state = state.copyWith(role: role);
-  
+
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
     // Also sign out from Google on native platforms
     if (!kIsWeb) {
-      try { await GoogleSignIn.instance.signOut(); } catch (_) {}
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
     }
     state = const AuthState();
   }
 }
 
-final authProvider = StateNotifierProvider<AuthViewModel, AuthState>((ref) => AuthViewModel());
+final authProvider = StateNotifierProvider<AuthViewModel, AuthState>(
+  (ref) => AuthViewModel(),
+);
 
 // ─── Owner Dashboard ─────────────────────────────────────────────────────────
 class OwnerDashboardState {
@@ -240,13 +159,13 @@ class OwnerDashboardState {
   final bool isLoading;
   final String? error;
   final String currentSlot;
-  
+
   // Absentee counts
   final int morningAbsents;
   final int noonAbsents;
   final int eveningAbsents;
   final int nightAbsents;
-  
+
   // Lists for absentee tracker
   final List<MealRecordModel> todayRecords;
   final List<StudentModel> activeStudentsList;
@@ -271,11 +190,22 @@ class OwnerDashboardState {
   });
 
   OwnerDashboardState copyWith({
-    MessModel? mess, int? activeStudents, int? expectedHeadcount, int? skippingCurrentMeal,
-    int? pendingRequests, MenuModel? currentMeal, String? announcement,
-    bool? isLoading, String? error, String? currentSlot,
-    int? morningAbsents, int? noonAbsents, int? eveningAbsents, int? nightAbsents,
-    List<MealRecordModel>? todayRecords, List<StudentModel>? activeStudentsList,
+    MessModel? mess,
+    int? activeStudents,
+    int? expectedHeadcount,
+    int? skippingCurrentMeal,
+    int? pendingRequests,
+    MenuModel? currentMeal,
+    String? announcement,
+    bool? isLoading,
+    String? error,
+    String? currentSlot,
+    int? morningAbsents,
+    int? noonAbsents,
+    int? eveningAbsents,
+    int? nightAbsents,
+    List<MealRecordModel>? todayRecords,
+    List<StudentModel>? activeStudentsList,
     bool clearCurrentMeal = false,
   }) => OwnerDashboardState(
     mess: mess ?? this.mess,
@@ -297,7 +227,8 @@ class OwnerDashboardState {
   );
 }
 
-class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with WidgetsBindingObserver {
+class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
+    with WidgetsBindingObserver {
   final AppService _service;
   final String ownerId;
 
@@ -315,7 +246,8 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
   List<LeaveModel> _activeLeaves = [];
   List<MealRecordModel> _todayRecords = [];
 
-  OwnerDashboardViewModel(this._service, this.ownerId) : super(const OwnerDashboardState()) {
+  OwnerDashboardViewModel(this._service, this.ownerId)
+    : super(const OwnerDashboardState()) {
     WidgetsBinding.instance.addObserver(this);
     _init();
   }
@@ -341,7 +273,9 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
 
   void _checkMidnightRollover() {
     final now = DateTime.now();
-    if (now.day != _today.day || now.month != _today.month || now.year != _today.year) {
+    if (now.day != _today.day ||
+        now.month != _today.month ||
+        now.year != _today.year) {
       _today = now;
       _subscribeToDateDependentStreams();
     }
@@ -351,14 +285,14 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
   void _recalculateCurrentSlot() {
     if (state.mess == null) return;
     final now = DateTime.now();
-    
+
     // Parse meal timings
     final timings = state.mess!.mealTimings;
-    
+
     // Ordered list of slots
     final slots = ['morning', 'noon', 'evening', 'night'];
     String newSlot = '';
-    
+
     for (String slot in slots) {
       final slotData = timings[slot];
       if (slotData != null && slotData['enabled'] == 'true') {
@@ -368,8 +302,9 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
           if (parts.length == 2) {
             int endHour = int.tryParse(parts[0]) ?? 0;
             int endMin = int.tryParse(parts[1]) ?? 0;
-            
-            if (now.hour < endHour || (now.hour == endHour && now.minute < endMin)) {
+
+            if (now.hour < endHour ||
+                (now.hour == endHour && now.minute < endMin)) {
               newSlot = slot;
               break;
             }
@@ -377,11 +312,11 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
         }
       }
     }
-    
+
     if (newSlot.isEmpty) {
       newSlot = 'closed';
     }
-    
+
     if (newSlot != _currentSlot) {
       _currentSlot = newSlot;
       state = state.copyWith(currentSlot: newSlot);
@@ -393,7 +328,10 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
     state = state.copyWith(isLoading: true);
     try {
       final mess = await _service.getMessByOwnerId(ownerId);
-      if (mess == null) { state = state.copyWith(isLoading: false, mess: null); return; }
+      if (mess == null) {
+        state = state.copyWith(isLoading: false, mess: null);
+        return;
+      }
       state = state.copyWith(mess: mess);
 
       _recalculateCurrentSlot();
@@ -413,13 +351,20 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
         _recomputeHeadcount();
       });
 
-      _announcementSub = _service.streamAnnouncements(mess.messId).listen((announcements) {
-        state = state.copyWith(announcement: announcements.firstOrNull?.message);
+      _announcementSub = _service.streamAnnouncements(mess.messId).listen((
+        announcements,
+      ) {
+        state = state.copyWith(
+          announcement: announcements.firstOrNull?.message,
+        );
       });
 
       _subscribeToDateDependentStreams();
 
-      _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkMidnightRollover());
+      _clockTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _checkMidnightRollover(),
+      );
 
       state = state.copyWith(isLoading: false);
     } catch (e) {
@@ -432,40 +377,59 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
     _mealRecordSub?.cancel();
     _menuSub?.cancel();
 
-    _mealRecordSub = _service.streamDailyMealRecords(state.mess!.messId, _today).listen((records) {
-      _todayRecords = records;
-      _recomputeHeadcount();
-    });
+    _mealRecordSub = _service
+        .streamDailyMealRecords(state.mess!.messId, _today)
+        .listen((records) {
+          _todayRecords = records;
+          _recomputeHeadcount();
+        });
 
-    _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((menus) {
-      final currentMenu = menus.where((m) => m.mealSlot == _currentSlot).firstOrNull;
-      state = state.copyWith(currentMeal: currentMenu, clearCurrentMeal: currentMenu == null);
+    _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((
+      menus,
+    ) {
+      final currentMenu = menus
+          .where((m) => m.mealSlot == _currentSlot)
+          .firstOrNull;
+      state = state.copyWith(
+        currentMeal: currentMenu,
+        clearCurrentMeal: currentMenu == null,
+      );
     });
   }
 
   void _recomputeHeadcount() {
-    if (state.mess == null || _currentSlot.isEmpty || _currentSlot == 'closed') {
+    if (state.mess == null ||
+        _currentSlot.isEmpty ||
+        _currentSlot == 'closed') {
       state = state.copyWith(expectedHeadcount: 0, skippingCurrentMeal: 0);
       return;
     }
-    
+
     int expected = 0;
     int skipping = 0;
 
     for (var student in _activeStudents) {
       // 1. Is on leave?
-      bool isOnLeave = _activeLeaves.any((l) => l.studentId == student.studentId && 
-          _today.isAfter(l.startDate.subtract(const Duration(seconds: 1))) && 
-          _today.isBefore(l.endDate.add(const Duration(days: 1))));
-      
+      bool isOnLeave = _activeLeaves.any(
+        (l) =>
+            l.studentId == student.studentId &&
+            _today.isAfter(l.startDate.subtract(const Duration(seconds: 1))) &&
+            _today.isBefore(l.endDate.add(const Duration(days: 1))),
+      );
+
       if (isOnLeave) {
         // bucket: On Leave (not counted in expected or skipping)
         continue;
       }
 
       // 2. Skipped?
-      bool hasSkipped = _todayRecords.any((r) => r.studentId == student.studentId && r.mealSlot == _currentSlot && (r.status == 'absent_self' || r.status == 'absent_owner'));
-      
+      bool hasSkipped = _todayRecords.any(
+        (r) =>
+            r.studentId == student.studentId &&
+            r.mealSlot == _currentSlot &&
+            (r.status == 'absent_self' || r.status == 'absent_owner'),
+      );
+
       if (hasSkipped) {
         skipping++;
       } else {
@@ -480,15 +444,19 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
 
     for (var r in _todayRecords) {
       if (r.status == 'absent_self' || r.status == 'absent_owner') {
-        if (r.mealSlot == 'morning') morning++;
-        else if (r.mealSlot == 'noon') noon++;
-        else if (r.mealSlot == 'evening') evening++;
-        else if (r.mealSlot == 'night') night++;
+        if (r.mealSlot == 'morning')
+          morning++;
+        else if (r.mealSlot == 'noon')
+          noon++;
+        else if (r.mealSlot == 'evening')
+          evening++;
+        else if (r.mealSlot == 'night')
+          night++;
       }
     }
 
     state = state.copyWith(
-      expectedHeadcount: expected, 
+      expectedHeadcount: expected,
       skippingCurrentMeal: skipping,
       morningAbsents: morning,
       noonAbsents: noon,
@@ -503,9 +471,20 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
     await _service.sendAnnouncement(state.mess!.messId, message);
   }
 
-  Future<void> emergencyClose(DateTime startDate, String startSlot, DateTime endDate, String endSlot) async {
+  Future<void> emergencyClose(
+    DateTime startDate,
+    String startSlot,
+    DateTime endDate,
+    String endSlot,
+  ) async {
     if (state.mess == null) return;
-    await _service.scheduleClosure(state.mess!, startDate, startSlot, endDate, endSlot);
+    await _service.scheduleClosure(
+      state.mess!,
+      startDate,
+      startSlot,
+      endDate,
+      endSlot,
+    );
   }
 
   Future<void> reload() async {
@@ -513,10 +492,11 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState> with Wi
   }
 }
 
-final ownerDashboardProvider = StateNotifierProvider<OwnerDashboardViewModel, OwnerDashboardState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return OwnerDashboardViewModel(ref.read(appServiceProvider), uid);
-});
+final ownerDashboardProvider =
+    StateNotifierProvider<OwnerDashboardViewModel, OwnerDashboardState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return OwnerDashboardViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Owner Students ───────────────────────────────────────────────────────────
 class OwnerStudentsState {
@@ -525,17 +505,34 @@ class OwnerStudentsState {
   final String messCode;
   final bool isLoading;
 
-  const OwnerStudentsState({this.students = const [], this.pending = const [], this.messCode = '------', this.isLoading = true});
+  const OwnerStudentsState({
+    this.students = const [],
+    this.pending = const [],
+    this.messCode = '------',
+    this.isLoading = true,
+  });
 
-  OwnerStudentsState copyWith({List<StudentModel>? students, List<StudentModel>? pending, String? messCode, bool? isLoading}) =>
-    OwnerStudentsState(students: students ?? this.students, pending: pending ?? this.pending, messCode: messCode ?? this.messCode, isLoading: isLoading ?? this.isLoading);
+  OwnerStudentsState copyWith({
+    List<StudentModel>? students,
+    List<StudentModel>? pending,
+    String? messCode,
+    bool? isLoading,
+  }) => OwnerStudentsState(
+    students: students ?? this.students,
+    pending: pending ?? this.pending,
+    messCode: messCode ?? this.messCode,
+    isLoading: isLoading ?? this.isLoading,
+  );
 }
 
 class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
   final AppService _service;
   final String ownerId;
 
-  OwnerStudentsViewModel(this._service, this.ownerId) : super(const OwnerStudentsState()) { load(); }
+  OwnerStudentsViewModel(this._service, this.ownerId)
+    : super(const OwnerStudentsState()) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
@@ -547,30 +544,39 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       }
       final students = await _service.getStudents(mess.messId);
       final pending = await _service.getPendingRequests(mess.messId);
-      state = state.copyWith(students: students, pending: pending, messCode: mess.messCode, isLoading: false);
+      state = state.copyWith(
+        students: students,
+        pending: pending,
+        messCode: mess.messCode,
+        isLoading: false,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      print('Error loading students: $e');
+      debugPrint('Error loading students: $e');
     }
   }
 
-  Future<void> accept(String studentId) async { 
+  Future<void> accept(String studentId) async {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
-      await _service.acceptStudent(mess.messId, studentId); 
-      await load(); 
+      await _service.acceptStudent(mess.messId, studentId);
+      await load();
     }
   }
 
-  Future<void> reject(String studentId) async { 
+  Future<void> reject(String studentId) async {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
-      await _service.rejectStudent(mess.messId, studentId); 
-      await load(); 
+      await _service.rejectStudent(mess.messId, studentId);
+      await load();
     }
   }
 
-  Future<void> toggleBillPaymentStatus(StudentModel student, BillModel previewBill, bool isPaid) async {
+  Future<void> toggleBillPaymentStatus(
+    StudentModel student,
+    BillModel previewBill,
+    bool isPaid,
+  ) async {
     final finalBill = BillModel(
       billId: '${student.studentId}_${previewBill.month}_${previewBill.year}',
       studentId: previewBill.studentId,
@@ -589,19 +595,20 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     await _service.saveBill(finalBill);
   }
 
-  Future<void> regenerateCode() async { 
+  Future<void> regenerateCode() async {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
-      final code = await _service.regenerateMessCode(mess.messId); 
-      state = state.copyWith(messCode: code); 
+      final code = await _service.regenerateMessCode(mess.messId);
+      state = state.copyWith(messCode: code);
     }
   }
 }
 
-final ownerStudentsProvider = StateNotifierProvider<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return OwnerStudentsViewModel(ref.read(appServiceProvider), uid); 
-});
+final ownerStudentsProvider =
+    StateNotifierProvider<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return OwnerStudentsViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Owner Menu ───────────────────────────────────────────────────────────────
 class OwnerMenuState {
@@ -612,7 +619,7 @@ class OwnerMenuState {
   final String selectedSlot; // 'morning', 'noon', 'evening', 'night'
   final List<MenuModel> weeklyTemplates;
   final List<DishModel> selectedDishes;
-  
+
   // Search state
   final String searchQuery;
   final List<DishModel> searchResults;
@@ -635,9 +642,13 @@ class OwnerMenuState {
     bool? isLoading,
     String? messId,
     MessModel? mess,
-    String? selectedDay, String? selectedSlot, 
-    List<MenuModel>? weeklyTemplates, List<DishModel>? selectedDishes,
-    String? searchQuery, List<DishModel>? searchResults, bool? isSearching,
+    String? selectedDay,
+    String? selectedSlot,
+    List<MenuModel>? weeklyTemplates,
+    List<DishModel>? selectedDishes,
+    String? searchQuery,
+    List<DishModel>? searchResults,
+    bool? isSearching,
   }) {
     return OwnerMenuState(
       isLoading: isLoading ?? this.isLoading,
@@ -658,7 +669,10 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   final AppService _service;
   final String ownerId;
 
-  OwnerMenuViewModel(this._service, this.ownerId) : super(const OwnerMenuState()) { load(); }
+  OwnerMenuViewModel(this._service, this.ownerId)
+    : super(const OwnerMenuState()) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
@@ -669,7 +683,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
         return;
       }
       final templates = await _service.getWeeklyTemplate(mess.messId);
-      
+
       String activeSlot = state.selectedSlot;
       if (mess.mealTimings[activeSlot]?['enabled'] != 'true') {
         final slots = ['morning', 'noon', 'evening', 'night'];
@@ -681,11 +695,16 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
         }
       }
 
-      state = state.copyWith(messId: mess.messId, mess: mess, isLoading: false, weeklyTemplates: templates);
+      state = state.copyWith(
+        messId: mess.messId,
+        mess: mess,
+        isLoading: false,
+        weeklyTemplates: templates,
+      );
       _updateSelectedFor(state.selectedDay, activeSlot, templates);
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      print('Error loading menu templates: $e');
+      debugPrint('Error loading menu templates: $e');
     }
   }
 
@@ -694,9 +713,20 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
     // The ID could just be '${day}_$slot'
     final template = templates.firstWhere(
       (m) => m.menuId == '${day}_$slot',
-      orElse: () => MenuModel(menuId: '${day}_$slot', messId: state.messId, date: DateTime.now(), mealSlot: slot, dishes: []),
+      orElse: () => MenuModel(
+        menuId: '${day}_$slot',
+        messId: state.messId,
+        date: DateTime.now(),
+        mealSlot: slot,
+        dishes: [],
+      ),
     );
-    state = state.copyWith(selectedDay: day, selectedSlot: slot, weeklyTemplates: templates, selectedDishes: template.dishes);
+    state = state.copyWith(
+      selectedDay: day,
+      selectedSlot: slot,
+      weeklyTemplates: templates,
+      selectedDishes: template.dishes,
+    );
   }
 
   void selectDay(String day) {
@@ -706,10 +736,13 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   void selectSlot(String slot) {
     _updateSelectedFor(state.selectedDay, slot, state.weeklyTemplates);
   }
+
   void _syncTemplates(List<DishModel> newDishes) {
     final menuId = '${state.selectedDay}_${state.selectedSlot}';
-    final existingIndex = state.weeklyTemplates.indexWhere((m) => m.menuId == menuId);
-    
+    final existingIndex = state.weeklyTemplates.indexWhere(
+      (m) => m.menuId == menuId,
+    );
+
     final updatedMenu = MenuModel(
       menuId: menuId,
       messId: state.messId,
@@ -717,15 +750,18 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
       mealSlot: state.selectedSlot,
       dishes: newDishes,
     );
-    
+
     final newTemplates = List<MenuModel>.from(state.weeklyTemplates);
     if (existingIndex >= 0) {
       newTemplates[existingIndex] = updatedMenu;
     } else {
       newTemplates.add(updatedMenu);
     }
-    
-    state = state.copyWith(selectedDishes: newDishes, weeklyTemplates: newTemplates);
+
+    state = state.copyWith(
+      selectedDishes: newDishes,
+      weeklyTemplates: newTemplates,
+    );
   }
 
   void addDish(DishModel dish) {
@@ -735,7 +771,9 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   }
 
   void removeDish(DishModel dish) {
-    _syncTemplates(state.selectedDishes.where((d) => d.dishId != dish.dishId).toList());
+    _syncTemplates(
+      state.selectedDishes.where((d) => d.dishId != dish.dishId).toList(),
+    );
   }
 
   Future<void> searchGlobalDishes(String query) async {
@@ -745,7 +783,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
       state = state.copyWith(searchResults: results, isSearching: false);
     } catch (e) {
       state = state.copyWith(isSearching: false);
-      print('Error searching: $e');
+      debugPrint('Error searching: $e');
     }
   }
 
@@ -758,18 +796,19 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
       mealSlot: state.selectedSlot,
       dishes: state.selectedDishes,
     );
-    
+
     await _service.saveWeeklyTemplate(menu, menuId);
-    
+
     // Also publish it immediately for simplicity in this flow
-    await load(); 
+    await load();
   }
 }
 
-final ownerMenuProvider = StateNotifierProvider<OwnerMenuViewModel, OwnerMenuState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return OwnerMenuViewModel(ref.read(appServiceProvider), uid);
-});
+final ownerMenuProvider =
+    StateNotifierProvider<OwnerMenuViewModel, OwnerMenuState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return OwnerMenuViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // OwnerDishesViewModel removed as per Phase 2
 
@@ -793,14 +832,14 @@ class StudentHomeState {
   final String? error;
 
   const StudentHomeState({
-    this.mess, 
-    this.student, 
-    this.currentMeal, 
-    this.nextMeal, 
-    this.activeLeave, 
-    this.timeLeftToCutoff, 
-    this.hasSelfSkipped = false, 
-    this.isLoading = true, 
+    this.mess,
+    this.student,
+    this.currentMeal,
+    this.nextMeal,
+    this.activeLeave,
+    this.timeLeftToCutoff,
+    this.hasSelfSkipped = false,
+    this.isLoading = true,
     this.announcement,
     this.currentSlot = 'morning',
     this.nextSlot = 'noon',
@@ -810,29 +849,42 @@ class StudentHomeState {
     this.skippedUpcomingMeals = const {},
     this.error,
   });
-  
+
   bool get isNextMealTomorrow {
     final slots = ['morning', 'noon', 'evening', 'night'];
-    return currentSlot == 'closed' || slots.indexOf(nextSlot) <= slots.indexOf(currentSlot);
+    return currentSlot == 'closed' ||
+        slots.indexOf(nextSlot) <= slots.indexOf(currentSlot);
   }
 
   StudentHomeState copyWith({
-    MessModel? mess, StudentModel? student, MenuModel? currentMeal, MenuModel? nextMeal, 
-    LeaveModel? activeLeave, Duration? timeLeftToCutoff, bool? hasSelfSkipped, 
-    bool? isLoading, AnnouncementModel? announcement, String? currentSlot, String? nextSlot,
-    List<String>? upcomingSlots, Map<String, MenuModel>? todayMenus, Map<String, MenuModel>? tomorrowMenus,
+    MessModel? mess,
+    StudentModel? student,
+    MenuModel? currentMeal,
+    MenuModel? nextMeal,
+    LeaveModel? activeLeave,
+    Duration? timeLeftToCutoff,
+    bool? hasSelfSkipped,
+    bool? isLoading,
+    AnnouncementModel? announcement,
+    String? currentSlot,
+    String? nextSlot,
+    List<String>? upcomingSlots,
+    Map<String, MenuModel>? todayMenus,
+    Map<String, MenuModel>? tomorrowMenus,
     Map<String, String>? skippedUpcomingMeals,
     String? error,
-    bool clearCurrentMeal = false, bool clearNextMeal = false, bool clearActiveLeave = false,
+    bool clearCurrentMeal = false,
+    bool clearNextMeal = false,
+    bool clearActiveLeave = false,
   }) => StudentHomeState(
-    mess: mess ?? this.mess, 
-    student: student ?? this.student, 
-    currentMeal: clearCurrentMeal ? null : (currentMeal ?? this.currentMeal), 
-    nextMeal: clearNextMeal ? null : (nextMeal ?? this.nextMeal), 
-    activeLeave: clearActiveLeave ? null : (activeLeave ?? this.activeLeave), 
-    timeLeftToCutoff: timeLeftToCutoff ?? this.timeLeftToCutoff, 
-    hasSelfSkipped: hasSelfSkipped ?? this.hasSelfSkipped, 
-    isLoading: isLoading ?? this.isLoading, 
+    mess: mess ?? this.mess,
+    student: student ?? this.student,
+    currentMeal: clearCurrentMeal ? null : (currentMeal ?? this.currentMeal),
+    nextMeal: clearNextMeal ? null : (nextMeal ?? this.nextMeal),
+    activeLeave: clearActiveLeave ? null : (activeLeave ?? this.activeLeave),
+    timeLeftToCutoff: timeLeftToCutoff ?? this.timeLeftToCutoff,
+    hasSelfSkipped: hasSelfSkipped ?? this.hasSelfSkipped,
+    isLoading: isLoading ?? this.isLoading,
     announcement: announcement ?? this.announcement,
     currentSlot: currentSlot ?? this.currentSlot,
     nextSlot: nextSlot ?? this.nextSlot,
@@ -844,9 +896,10 @@ class StudentHomeState {
   );
 }
 
-class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsBindingObserver {
+class StudentHomeViewModel extends StateNotifier<StudentHomeState>
+    with WidgetsBindingObserver {
   final AppService _service;
-  
+
   StreamSubscription? _mealRecordSub;
   StreamSubscription? _menuSub;
   StreamSubscription? _tomorrowMenuSub;
@@ -854,9 +907,13 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   Timer? _clockTimer;
   DateTime _today = DateTime.now();
 
-  StudentHomeViewModel(this._service) : super(const StudentHomeState()) { 
+  bool _isSkipping = false;
+  bool _isUndoing = false;
+  bool _isAddingGuest = false;
+
+  StudentHomeViewModel(this._service) : super(const StudentHomeState()) {
     WidgetsBinding.instance.addObserver(this);
-    load(); 
+    load();
   }
 
   @override
@@ -879,7 +936,9 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
 
   void _checkMidnightRollover() {
     final now = DateTime.now();
-    if (now.day != _today.day || now.month != _today.month || now.year != _today.year) {
+    if (now.day != _today.day ||
+        now.month != _today.month ||
+        now.year != _today.year) {
       _today = now;
       _subscribeToDateDependentStreams();
     }
@@ -894,31 +953,38 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
         state = state.copyWith(isLoading: false);
         return;
       }
-      
+
       final student = await _service.getStudentById(uid);
-      final mess = student != null ? await _service.getMessById(student.messId) : null;
+      final mess = student != null
+          ? await _service.getMessById(student.messId)
+          : null;
       final leave = student != null ? await _service.getActiveLeave(uid) : null;
-      
+
       if (mess != null) {
         try {
           FirebaseMessaging.instance.subscribeToTopic('mess_${mess.messId}');
         } catch (_) {}
-        
-        _announcementSub = _service.streamAnnouncements(mess.messId).listen((announcements) {
+
+        _announcementSub = _service.streamAnnouncements(mess.messId).listen((
+          announcements,
+        ) {
           state = state.copyWith(announcement: announcements.firstOrNull);
         });
       }
 
       state = state.copyWith(student: student, activeLeave: leave, mess: mess);
-      
+
       _subscribeToDateDependentStreams();
       _recalculateTimeState();
-      
+
       _clockTimer?.cancel();
-      _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkMidnightRollover());
+      _clockTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _checkMidnightRollover(),
+      );
     } catch (e, st) {
-      print('Error loading student dashboard: $e');
-      print(st);
+      debugPrint('Error loading student dashboard: $e');
+      debugPrint(st);
       state = state.copyWith(error: e.toString());
     } finally {
       state = state.copyWith(isLoading: false);
@@ -931,43 +997,51 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
     _menuSub?.cancel();
     _tomorrowMenuSub?.cancel();
 
-    _mealRecordSub = _service.streamStudentDailyMealRecords(state.student!.studentId, state.mess!.messId, _today).listen((records) {
-      bool hasSelfSkipped = false;
-      final Map<String, String> skippedMeals = {};
-      final todayIso = _today.toIso8601String().substring(0, 10);
-      
-      for (final r in records) {
-        if (r.status == 'absent_self') {
-          final rDate = r.date.toIso8601String().substring(0, 10);
-          if (rDate == todayIso && r.mealSlot == state.currentSlot) {
-            hasSelfSkipped = true;
-          }
-          skippedMeals['${rDate}_${r.mealSlot}'] = r.recordId;
-        }
-      }
-      state = state.copyWith(
-        hasSelfSkipped: hasSelfSkipped,
-        skippedUpcomingMeals: skippedMeals,
-      );
-    });
+    _mealRecordSub = _service
+        .streamStudentDailyMealRecords(
+          state.student!.studentId,
+          state.mess!.messId,
+          _today,
+        )
+        .listen((records) {
+          bool hasSelfSkipped = false;
+          final Map<String, String> skippedMeals = {};
+          final todayIso = _today.toIso8601String().substring(0, 10);
 
-    _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((menus) {
+          for (final r in records) {
+            if (r.status == 'absent_self') {
+              final rDate = r.date.toIso8601String().substring(0, 10);
+              if (rDate == todayIso && r.mealSlot == state.currentSlot) {
+                hasSelfSkipped = true;
+              }
+              skippedMeals['${rDate}_${r.mealSlot}'] = r.recordId;
+            }
+          }
+          state = state.copyWith(
+            hasSelfSkipped: hasSelfSkipped,
+            skippedUpcomingMeals: skippedMeals,
+          );
+        });
+
+    _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((
+      menus,
+    ) {
       final Map<String, MenuModel> todayMenusMap = {
-        for (var m in menus) m.mealSlot: m
+        for (var m in menus) m.mealSlot: m,
       };
-      
+
       if (state.currentSlot != 'closed') {
         final currentMenu = todayMenusMap[state.currentSlot];
-        
+
         // Only use today's menu for next meal if next meal is also today
         MenuModel? nextMenu;
         final slots = ['morning', 'noon', 'evening', 'night'];
         if (slots.indexOf(state.nextSlot) > slots.indexOf(state.currentSlot)) {
           nextMenu = todayMenusMap[state.nextSlot];
         }
-        
+
         state = state.copyWith(
-          currentMeal: currentMenu, 
+          currentMeal: currentMenu,
           clearCurrentMeal: currentMenu == null,
           nextMeal: nextMenu ?? state.nextMeal,
           clearNextMeal: nextMenu == null && state.isNextMealTomorrow == false,
@@ -980,37 +1054,48 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
         );
       }
     });
-    
+
     final tomorrow = _today.add(const Duration(days: 1));
-    _tomorrowMenuSub = _service.streamDailyMenus(state.mess!.messId, tomorrow).listen((menus) {
-      final Map<String, MenuModel> tomorrowMap = { for (var m in menus) m.mealSlot: m };
-      final slots = ['morning', 'noon', 'evening', 'night'];
-      // Update nextMeal if the next meal is tomorrow
-      if (state.currentSlot == 'closed' || slots.indexOf(state.nextSlot) <= slots.indexOf(state.currentSlot)) {
-        final nextMenu = tomorrowMap[state.nextSlot];
-        state = state.copyWith(nextMeal: nextMenu, tomorrowMenus: tomorrowMap);
-      } else {
-        state = state.copyWith(tomorrowMenus: tomorrowMap);
-      }
-    });
+    _tomorrowMenuSub = _service
+        .streamDailyMenus(state.mess!.messId, tomorrow)
+        .listen((menus) {
+          final Map<String, MenuModel> tomorrowMap = {
+            for (var m in menus) m.mealSlot: m,
+          };
+          final slots = ['morning', 'noon', 'evening', 'night'];
+          // Update nextMeal if the next meal is tomorrow
+          if (state.currentSlot == 'closed' ||
+              slots.indexOf(state.nextSlot) <=
+                  slots.indexOf(state.currentSlot)) {
+            final nextMenu = tomorrowMap[state.nextSlot];
+            state = state.copyWith(
+              nextMeal: nextMenu,
+              tomorrowMenus: tomorrowMap,
+            );
+          } else {
+            state = state.copyWith(tomorrowMenus: tomorrowMap);
+          }
+        });
   }
 
   void _recalculateTimeState() {
     if (state.mess == null) return;
     final now = DateTime.now();
-    
+
     // Parse meal timings
     final timings = state.mess!.mealTimings;
-    
+
     // Ordered list of slots
     final slots = ['morning', 'noon', 'evening', 'night'];
-    final enabledSlots = slots.where((s) => timings[s]?['enabled'] == 'true').toList();
+    final enabledSlots = slots
+        .where((s) => timings[s]?['enabled'] == 'true')
+        .toList();
     if (enabledSlots.isEmpty) return;
-    
+
     String currentSlot = '';
     String nextSlot = '';
     List<String> upcomingSlots = [];
-    
+
     for (int i = 0; i < enabledSlots.length; i++) {
       String slot = enabledSlots[i];
       final slotData = timings[slot];
@@ -1020,8 +1105,9 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
         if (parts.length == 2) {
           int endHour = int.tryParse(parts[0]) ?? 0;
           int endMin = int.tryParse(parts[1]) ?? 0;
-          
-          if (now.hour < endHour || (now.hour == endHour && now.minute < endMin)) {
+
+          if (now.hour < endHour ||
+              (now.hour == endHour && now.minute < endMin)) {
             currentSlot = slot;
             nextSlot = enabledSlots[(i + 1) % enabledSlots.length];
             if (i + 1 < enabledSlots.length) {
@@ -1032,15 +1118,18 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
         }
       }
     }
-    
+
     if (currentSlot.isEmpty) {
       currentSlot = 'closed';
       nextSlot = enabledSlots.first;
     }
-    
-    final startStr = timings[currentSlot == 'closed' ? nextSlot : currentSlot]?['start'] ?? '00:00';
-    DateTime cutoffTime = _parseTimeToday(startStr).subtract(Duration(hours: state.mess!.cutoffHours));
-    
+
+    final startStr =
+        timings[currentSlot == 'closed' ? nextSlot : currentSlot]?['start'] ??
+        '00:00';
+    DateTime cutoffTime = _parseTimeToday(startStr)
+        .subtract(Duration(hours: state.mess!.cutoffHours));
+
     Duration timeLeft = cutoffTime.difference(now);
     if (timeLeft.isNegative) timeLeft = Duration.zero;
 
@@ -1067,32 +1156,59 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   }
 
   Future<void> skipMeal(String mealSlot, {DateTime? date}) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final mealDate = date ?? _today;
-    final record = MealRecordModel(
-      recordId: '${uid}_${mealSlot}_${mealDate.toIso8601String().substring(0,10)}',
-      studentId: uid,
-      messId: state.mess?.messId ?? '',
-      date: mealDate,
-      mealSlot: mealSlot,
-      status: 'absent_self',
-      cancelledAt: DateTime.now(),
-    );
-    await _service.skipMeal(record);
+    if (_isSkipping) return;
+    _isSkipping = true;
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final mealDate = date ?? _today;
+      final record = MealRecordModel(
+        recordId:
+            '${uid}_${mealSlot}_${mealDate.toIso8601String().substring(0, 10)}',
+        studentId: uid,
+        messId: state.mess?.messId ?? '',
+        date: mealDate,
+        mealSlot: mealSlot,
+        status: 'absent_self',
+        cancelledAt: DateTime.now(),
+      );
+      await _service.skipMeal(record);
+    } finally {
+      _isSkipping = false;
+    }
   }
 
   Future<void> undoSkip(String recordId) async {
-    // We need to find the record ID for today's slot. Since we stream it, we should query the current stream's data or just look it up.
-    // In actual implementation, we might need to store the recordId of the skip in state to undo it.
-    // For now, assume it's passed or handled via backend.
-    await _service.undoSkipMeal(recordId);
+    if (_isUndoing) return;
+    _isUndoing = true;
+    try {
+      await _service.undoSkipMeal(recordId);
+    } finally {
+      _isUndoing = false;
+    }
   }
 
-  Future<void> addGuest(String mealSlot, double cost, {DateTime? date, int count = 1}) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    await _service.addGuestMeal(uid, mealSlot, date ?? DateTime.now(), cost, count: count);
+  Future<void> addGuest(
+    String mealSlot,
+    double cost, {
+    DateTime? date,
+    int count = 1,
+  }) async {
+    if (_isAddingGuest) return;
+    _isAddingGuest = true;
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      await _service.addGuestMeal(
+        uid,
+        mealSlot,
+        date ?? DateTime.now(),
+        cost,
+        count: count,
+      );
+    } finally {
+      _isAddingGuest = false;
+    }
   }
 
   Future<void> cancelLeave() async {
@@ -1103,13 +1219,28 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState> with WidgetsB
   }
 
   Future<void> rateMeal(String menuId, String slot, int rating) async {
-    print("Saved rating of $rating for $slot meal to database.");
+    if (state.student == null || state.mess == null) return;
+    try {
+      final feedback = FeedbackModel(
+        feedbackId: '',
+        messId: state.mess!.messId,
+        studentId: state.student!.studentId,
+        date: DateTime.now(),
+        mealSlot: slot,
+        rating: rating.toDouble(),
+      );
+      await _service.submitFeedback(feedback);
+      debugPrint("Saved rating of $rating for $slot meal to database.");
+    } catch (e) {
+      state = state.copyWith(error: "Failed to submit rating: $e");
+    }
   }
 }
 
-final studentHomeProvider = StateNotifierProvider<StudentHomeViewModel, StudentHomeState>((ref) {
-  return StudentHomeViewModel(ref.read(appServiceProvider));
-});
+final studentHomeProvider =
+    StateNotifierProvider<StudentHomeViewModel, StudentHomeState>((ref) {
+      return StudentHomeViewModel(ref.read(appServiceProvider));
+    });
 
 // ─── Student History ──────────────────────────────────────────────────────────
 class StudentHistoryState {
@@ -1119,32 +1250,71 @@ class StudentHistoryState {
   final DateTime selectedMonth;
   final bool isLoading;
 
-  const StudentHistoryState({this.records = const [], this.selfAbsent = 0, this.ownerOff = 0, required this.selectedMonth, this.isLoading = true});
+  const StudentHistoryState({
+    this.records = const [],
+    this.selfAbsent = 0,
+    this.ownerOff = 0,
+    required this.selectedMonth,
+    this.isLoading = true,
+  });
 
-  StudentHistoryState copyWith({List<MealRecordModel>? records, int? selfAbsent, int? ownerOff, DateTime? selectedMonth, bool? isLoading}) =>
-    StudentHistoryState(records: records ?? this.records, selfAbsent: selfAbsent ?? this.selfAbsent, ownerOff: ownerOff ?? this.ownerOff, selectedMonth: selectedMonth ?? this.selectedMonth, isLoading: isLoading ?? this.isLoading);
+  StudentHistoryState copyWith({
+    List<MealRecordModel>? records,
+    int? selfAbsent,
+    int? ownerOff,
+    DateTime? selectedMonth,
+    bool? isLoading,
+  }) => StudentHistoryState(
+    records: records ?? this.records,
+    selfAbsent: selfAbsent ?? this.selfAbsent,
+    ownerOff: ownerOff ?? this.ownerOff,
+    selectedMonth: selectedMonth ?? this.selectedMonth,
+    isLoading: isLoading ?? this.isLoading,
+  );
 }
 
 class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
   final AppService _service;
   final String studentId;
 
-  StudentHistoryViewModel(this._service, this.studentId) : super(StudentHistoryState(selectedMonth: DateTime.now())) { load(); }
+  StudentHistoryViewModel(this._service, this.studentId)
+    : super(StudentHistoryState(selectedMonth: DateTime.now())) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
-    final records = await _service.getMealRecords(studentId, state.selectedMonth.month, state.selectedMonth.year);
+    final records = await _service.getMealRecords(
+      studentId,
+      state.selectedMonth.month,
+      state.selectedMonth.year,
+    );
     final self = records.where((r) => r.status == 'absent_self').length;
     final ownerOff = records.where((r) => r.status == 'absent_owner').length;
-    state = state.copyWith(records: records, selfAbsent: self, ownerOff: ownerOff, isLoading: false);
+    state = state.copyWith(
+      records: records,
+      selfAbsent: self,
+      ownerOff: ownerOff,
+      isLoading: false,
+    );
   }
 
-  void changeMonth(DateTime month) { state = state.copyWith(selectedMonth: month); load(); }
+  void changeMonth(DateTime month) {
+    state = state.copyWith(selectedMonth: month);
+    load();
+  }
 
   Future<void> applyLeave(DateTime start, DateTime end) async {
     final student = await _service.getStudentById(studentId);
     if (student == null) return;
-    final leave = LeaveModel(leaveId: DateTime.now().millisecondsSinceEpoch.toString(), studentId: studentId, messId: student.messId, startDate: start, endDate: end, status: 'active');
+    final leave = LeaveModel(
+      leaveId: DateTime.now().millisecondsSinceEpoch.toString(),
+      studentId: studentId,
+      messId: student.messId,
+      startDate: start,
+      endDate: end,
+      status: 'active',
+    );
     await _service.applyLeave(leave);
   }
 
@@ -1154,10 +1324,11 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
   }
 }
 
-final studentHistoryProvider = StateNotifierProvider<StudentHistoryViewModel, StudentHistoryState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return StudentHistoryViewModel(ref.read(appServiceProvider), uid);
-});
+final studentHistoryProvider =
+    StateNotifierProvider<StudentHistoryViewModel, StudentHistoryState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return StudentHistoryViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Student Bill ─────────────────────────────────────────────────────────────
 class StudentBillState {
@@ -1167,23 +1338,47 @@ class StudentBillState {
   final bool isPreview;
   final String? error;
 
-  const StudentBillState({this.bill, required this.selectedMonth, this.isLoading = true, this.isPreview = false, this.error});
+  const StudentBillState({
+    this.bill,
+    required this.selectedMonth,
+    this.isLoading = true,
+    this.isPreview = false,
+    this.error,
+  });
 
-  StudentBillState copyWith({BillModel? bill, DateTime? selectedMonth, bool? isLoading, bool? isPreview, String? error}) =>
-    StudentBillState(bill: bill ?? this.bill, selectedMonth: selectedMonth ?? this.selectedMonth, isLoading: isLoading ?? this.isLoading, isPreview: isPreview ?? this.isPreview, error: error);
+  StudentBillState copyWith({
+    BillModel? bill,
+    DateTime? selectedMonth,
+    bool? isLoading,
+    bool? isPreview,
+    String? error,
+  }) => StudentBillState(
+    bill: bill ?? this.bill,
+    selectedMonth: selectedMonth ?? this.selectedMonth,
+    isLoading: isLoading ?? this.isLoading,
+    isPreview: isPreview ?? this.isPreview,
+    error: error,
+  );
 }
 
 class StudentBillViewModel extends StateNotifier<StudentBillState> {
   final AppService _service;
   final String studentId;
 
-  StudentBillViewModel(this._service, this.studentId) : super(StudentBillState(selectedMonth: DateTime.now())) { load(); }
+  StudentBillViewModel(this._service, this.studentId)
+    : super(StudentBillState(selectedMonth: DateTime.now())) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final bill = await _service.getBill(studentId, state.selectedMonth.month, state.selectedMonth.year);
-      
+      final bill = await _service.getBill(
+        studentId,
+        state.selectedMonth.month,
+        state.selectedMonth.year,
+      );
+
       if (bill != null) {
         state = state.copyWith(bill: bill, isPreview: false, isLoading: false);
       } else {
@@ -1193,17 +1388,25 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           state = state.copyWith(isLoading: false, error: 'Student not found');
           return;
         }
-        
+
         final mess = await _service.getMessById(student.messId);
         if (mess == null) {
           state = state.copyWith(isLoading: false, error: 'Mess not found');
           return;
         }
 
-        final records = await _service.getMealRecords(studentId, state.selectedMonth.month, state.selectedMonth.year);
-        
-        final previousDues = await _service.getPreviousUnpaidDues(studentId, state.selectedMonth.month, state.selectedMonth.year);
-        
+        final records = await _service.getMealRecords(
+          studentId,
+          state.selectedMonth.month,
+          state.selectedMonth.year,
+        );
+
+        final previousDues = await _service.getPreviousUnpaidDues(
+          studentId,
+          state.selectedMonth.month,
+          state.selectedMonth.year,
+        );
+
         final previewBill = generateAdvancedBill(
           student: student,
           mess: mess,
@@ -1213,20 +1416,28 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           previousDues: previousDues,
         );
 
-        state = state.copyWith(bill: previewBill, isPreview: true, isLoading: false);
+        state = state.copyWith(
+          bill: previewBill,
+          isPreview: true,
+          isLoading: false,
+        );
       }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  void changeMonth(DateTime month) { state = state.copyWith(selectedMonth: month); load(); }
+  void changeMonth(DateTime month) {
+    state = state.copyWith(selectedMonth: month);
+    load();
+  }
 }
 
-final studentBillProvider = StateNotifierProvider<StudentBillViewModel, StudentBillState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return StudentBillViewModel(ref.read(appServiceProvider), uid);
-});
+final studentBillProvider =
+    StateNotifierProvider<StudentBillViewModel, StudentBillState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return StudentBillViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Owner Settings ───────────────────────────────────────────────────────────
 class OwnerSettingsState {
@@ -1234,16 +1445,30 @@ class OwnerSettingsState {
   final bool isLoading;
   final bool isSaved;
 
-  const OwnerSettingsState({this.mess, this.isLoading = true, this.isSaved = false});
-  OwnerSettingsState copyWith({MessModel? mess, bool? isLoading, bool? isSaved}) =>
-    OwnerSettingsState(mess: mess ?? this.mess, isLoading: isLoading ?? this.isLoading, isSaved: isSaved ?? this.isSaved);
+  const OwnerSettingsState({
+    this.mess,
+    this.isLoading = true,
+    this.isSaved = false,
+  });
+  OwnerSettingsState copyWith({
+    MessModel? mess,
+    bool? isLoading,
+    bool? isSaved,
+  }) => OwnerSettingsState(
+    mess: mess ?? this.mess,
+    isLoading: isLoading ?? this.isLoading,
+    isSaved: isSaved ?? this.isSaved,
+  );
 }
 
 class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
   final AppService _service;
   final String ownerId;
 
-  OwnerSettingsViewModel(this._service, this.ownerId) : super(const OwnerSettingsState()) { load(); }
+  OwnerSettingsViewModel(this._service, this.ownerId)
+    : super(const OwnerSettingsState()) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
@@ -1254,7 +1479,9 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
   Future<void> save(MessModel updated) async {
     await _service.updateMess(updated);
     state = state.copyWith(mess: updated, isSaved: true);
-    Future.delayed(const Duration(seconds: 2), () { if (mounted) state = state.copyWith(isSaved: false); });
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) state = state.copyWith(isSaved: false);
+    });
   }
 
   /// Toggles an owner-side FCM notification preference.
@@ -1281,7 +1508,8 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
       }
     }
 
-    final updatedPrefs = Map<String, bool>.from(mess.ownerNotificationPrefs)..[key] = value;
+    final updatedPrefs = Map<String, bool>.from(mess.ownerNotificationPrefs)
+      ..[key] = value;
     await save(mess.copyWith(ownerNotificationPrefs: updatedPrefs));
   }
 
@@ -1295,10 +1523,12 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) return false;
       }
-      
+
       if (permission == LocationPermission.deniedForever) return false;
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       if (state.mess != null) {
         final updated = state.mess!.copyWith(
           gpsLat: position.latitude,
@@ -1309,16 +1539,17 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
       }
       return false;
     } catch (e) {
-      print("GPS Error: $e");
+      debugPrint("GPS Error: $e");
       return false;
     }
   }
 }
 
-final ownerSettingsProvider = StateNotifierProvider<OwnerSettingsViewModel, OwnerSettingsState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return OwnerSettingsViewModel(ref.read(appServiceProvider), uid);
-});
+final ownerSettingsProvider =
+    StateNotifierProvider<OwnerSettingsViewModel, OwnerSettingsState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return OwnerSettingsViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Student Profile ──────────────────────────────────────────────────────────
 class StudentProfileState {
@@ -1327,20 +1558,32 @@ class StudentProfileState {
   final bool isLoading;
 
   const StudentProfileState({this.student, this.mess, this.isLoading = true});
-  StudentProfileState copyWith({StudentModel? student, MessModel? mess, bool? isLoading}) =>
-    StudentProfileState(student: student ?? this.student, mess: mess ?? this.mess, isLoading: isLoading ?? this.isLoading);
+  StudentProfileState copyWith({
+    StudentModel? student,
+    MessModel? mess,
+    bool? isLoading,
+  }) => StudentProfileState(
+    student: student ?? this.student,
+    mess: mess ?? this.mess,
+    isLoading: isLoading ?? this.isLoading,
+  );
 }
 
 class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
   final AppService _service;
   final String studentId;
 
-  StudentProfileViewModel(this._service, this.studentId) : super(const StudentProfileState()) { load(); }
+  StudentProfileViewModel(this._service, this.studentId)
+    : super(const StudentProfileState()) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     final student = await _service.getStudentById(studentId);
-    final mess = student != null ? await _service.getMessById(student.messId) : null;
+    final mess = student != null
+        ? await _service.getMessById(student.messId)
+        : null;
     state = state.copyWith(student: student, mess: mess, isLoading: false);
 
     // Sync FCM topic subscriptions to match persisted prefs
@@ -1370,8 +1613,12 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     await _service.updateStudent(updated);
     state = state.copyWith(student: updated);
   }
-  
-  Future<void> uploadProfilePicture(String path, Uint8List bytes, String extension) async {
+
+  Future<void> uploadProfilePicture(
+    String path,
+    Uint8List bytes,
+    String extension,
+  ) async {
     try {
       final url = await _service.uploadImage(path, bytes, extension);
       if (state.student != null) {
@@ -1379,7 +1626,7 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
         await updateProfile(updatedStudent);
       }
     } catch (e) {
-      print("Error uploading profile picture: $e");
+      debugPrint("Error uploading profile picture: $e");
     }
   }
 
@@ -1412,7 +1659,8 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
       }
     }
 
-    final updatedPrefs = Map<String, bool>.from(student.notificationPrefs)..[key] = value;
+    final updatedPrefs = Map<String, bool>.from(student.notificationPrefs)
+      ..[key] = value;
     final updated = student.copyWith(notificationPrefs: updatedPrefs);
     await _service.updateStudent(updated);
     state = state.copyWith(student: updated);
@@ -1424,10 +1672,14 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
       final messId = state.student!.messId;
       final sid = state.student!.studentId;
       for (final topic in [
-        'mess_${messId}_menu', 'mess_${messId}_cutoff',
-        'student_${sid}_bill', 'mess_${messId}_announcements',
+        'mess_${messId}_menu',
+        'mess_${messId}_cutoff',
+        'student_${sid}_bill',
+        'mess_${messId}_announcements',
       ]) {
-        try { await FirebaseMessaging.instance.unsubscribeFromTopic(topic); } catch (_) {}
+        try {
+          await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+        } catch (_) {}
       }
       final updated = state.student!.copyWith(status: 'left', messId: '');
       await _service.updateStudent(updated);
@@ -1436,12 +1688,14 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
   }
 }
 
-final studentProfileProvider = StateNotifierProvider<StudentProfileViewModel, StudentProfileState>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  return StudentProfileViewModel(ref.read(appServiceProvider), uid);
-});
+final studentProfileProvider =
+    StateNotifierProvider<StudentProfileViewModel, StudentProfileState>((ref) {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      return StudentProfileViewModel(ref.read(appServiceProvider), uid);
+    });
 
 // ─── Owner Analytics ────────────────────────────────────────────────────────
-final ownerFeedbacksProvider = StreamProvider.autoDispose.family<List<FeedbackModel>, String>((ref, messId) {
-  return ref.watch(appServiceProvider).streamFeedbacks(messId);
-});
+final ownerFeedbacksProvider = StreamProvider.autoDispose
+    .family<List<FeedbackModel>, String>((ref, messId) {
+      return ref.watch(appServiceProvider).streamFeedbacks(messId);
+    });

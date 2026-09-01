@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
 
 String _hMonthName(int m) {
-  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return months[m];
 }
 
@@ -20,7 +35,9 @@ class StudentHistoryPage extends ConsumerWidget {
       backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
         child: state.isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF22C55E)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+              )
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -64,13 +81,19 @@ class StudentHistoryPage extends ConsumerWidget {
   // ─────────────────────────────────────────────────────────────────────────
   // Attendance Section  (mirrors owner's _buildAttendanceSummary exactly)
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildAttendanceSection(BuildContext context, WidgetRef ref, StudentHistoryState outerState) {
+  Widget _buildAttendanceSection(
+    BuildContext context,
+    WidgetRef ref,
+    StudentHistoryState outerState,
+  ) {
     return StatefulBuilder(
       builder: (context, setLocalState) {
         DateTime selectedMonth = outerState.selectedMonth;
 
         return FutureBuilder<List<MealRecordModel>>(
-          future: ref.read(appServiceProvider).getMealRecords(
+          future: ref
+              .read(appServiceProvider)
+              .getMealRecords(
                 ref.read(studentHistoryProvider).records.isNotEmpty
                     ? ref.read(studentHistoryProvider).records.first.studentId
                     : '',
@@ -80,9 +103,13 @@ class StudentHistoryPage extends ConsumerWidget {
           builder: (context, snapshot) {
             final records = snapshot.data ?? outerState.records;
 
-            final selfOff   = records.where((r) => r.status == 'absent_self').length;
-            final ownerOff  = records.where((r) => r.status == 'absent_owner').length;
-            final totalOff  = selfOff + ownerOff;
+            final selfOff = records
+                .where((r) => r.status == 'absent_self')
+                .length;
+            final ownerOff = records
+                .where((r) => r.status == 'absent_owner')
+                .length;
+            final totalOff = selfOff + ownerOff;
 
             return Column(
               children: [
@@ -90,17 +117,32 @@ class StudentHistoryPage extends ConsumerWidget {
                 Row(
                   children: [
                     _buildSummaryCard(
-                      context, 'Total Meals Off', '$totalOff', const Color(0xFFEF4444),
-                      records.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').toList(),
+                      context,
+                      'Total Meals Off',
+                      '$totalOff',
+                      const Color(0xFFEF4444),
+                      records
+                          .where(
+                            (r) =>
+                                r.status == 'absent_self' ||
+                                r.status == 'absent_owner',
+                          )
+                          .toList(),
                     ),
                     const SizedBox(width: 12),
                     _buildSummaryCard(
-                      context, 'Off by Student', '$selfOff', const Color(0xFFF59E0B),
+                      context,
+                      'Off by Student',
+                      '$selfOff',
+                      const Color(0xFFF59E0B),
                       records.where((r) => r.status == 'absent_self').toList(),
                     ),
                     const SizedBox(width: 12),
                     _buildSummaryCard(
-                      context, 'Off by Mess', '$ownerOff', const Color(0xFF6B7280),
+                      context,
+                      'Off by Mess',
+                      '$ownerOff',
+                      const Color(0xFF6B7280),
                       records.where((r) => r.status == 'absent_owner').toList(),
                     ),
                   ],
@@ -112,10 +154,18 @@ class StudentHistoryPage extends ConsumerWidget {
                   records,
                   selectedMonth,
                   () => setLocalState(() {
-                    selectedMonth = DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
+                    selectedMonth = DateTime(
+                      selectedMonth.year,
+                      selectedMonth.month - 1,
+                      1,
+                    );
                   }),
                   () => setLocalState(() {
-                    selectedMonth = DateTime(selectedMonth.year, selectedMonth.month + 1, 1);
+                    selectedMonth = DateTime(
+                      selectedMonth.year,
+                      selectedMonth.month + 1,
+                      1,
+                    );
                   }),
                 ),
               ],
@@ -143,23 +193,44 @@ class StudentHistoryPage extends ConsumerWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border(left: BorderSide(color: accentColor, width: 4)),
-            boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 4, offset: Offset(0, 2))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value,
-                  style: GoogleFonts.inter(
-                      fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(label,
-                  style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF4B5563))),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: const Color(0xFF4B5563),
+                ),
+              ),
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.bottomRight,
-                child: Text('View Details',
-                    style: GoogleFonts.inter(
-                        fontSize: 10, color: const Color(0xFF3B82F6), fontWeight: FontWeight.w600)),
+                child: Text(
+                  'View Details',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: const Color(0xFF3B82F6),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -169,15 +240,25 @@ class StudentHistoryPage extends ConsumerWidget {
   }
 
   // ── Off-details dialog (same as owner side) ──────────────────────────────
-  void _showOffDetailsDialog(BuildContext context, String title, List<MealRecordModel> offRecords) {
+  void _showOffDetailsDialog(
+    BuildContext context,
+    String title,
+    List<MealRecordModel> offRecords,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: SizedBox(
           width: double.maxFinite,
           child: offRecords.isEmpty
-              ? Text('No records found.', style: GoogleFonts.inter(color: Colors.grey))
+              ? Text(
+                  'No records found.',
+                  style: GoogleFonts.inter(color: Colors.grey),
+                )
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: offRecords.length,
@@ -186,7 +267,7 @@ class StudentHistoryPage extends ConsumerWidget {
                     String typeStr = 'Unknown';
                     IconData icon = Icons.info;
                     Color iconColor = Colors.grey;
-                    
+
                     if (r.status == 'absent_self') {
                       typeStr = 'You Cancelled';
                       icon = Icons.event_busy;
@@ -217,7 +298,10 @@ class StudentHistoryPage extends ConsumerWidget {
                 ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -242,9 +326,14 @@ class StudentHistoryPage extends ConsumerWidget {
     for (var w in weekDays) {
       days.add(
         Center(
-          child: Text(w,
-              style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600, fontSize: 13, color: const Color(0xFF111827))),
+          child: Text(
+            w,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: const Color(0xFF111827),
+            ),
+          ),
         ),
       );
     }
@@ -257,14 +346,19 @@ class StudentHistoryPage extends ConsumerWidget {
       final dateStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${i.toString().padLeft(2, '0')}';
       final dayRecords = records
-          .where((r) =>
-              '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}' ==
-              dateStr)
+          .where(
+            (r) =>
+                '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}' ==
+                dateStr,
+          )
           .toList();
-      final offRecords =
-          dayRecords.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').toList();
-      final guestRecords = dayRecords.where((r) => r.status == 'guest').toList();
-      
+      final offRecords = dayRecords
+          .where((r) => r.status == 'absent_self' || r.status == 'absent_owner')
+          .toList();
+      final guestRecords = dayRecords
+          .where((r) => r.status == 'guest')
+          .toList();
+
       final isOff = offRecords.isNotEmpty;
       final hasGuest = guestRecords.isNotEmpty;
 
@@ -287,16 +381,26 @@ class StudentHistoryPage extends ConsumerWidget {
                   width: 32,
                   height: 32,
                   decoration: isOff
-                      ? const BoxDecoration(color: Color(0xFFFECDD3), shape: BoxShape.circle)
+                      ? const BoxDecoration(
+                          color: Color(0xFFFECDD3),
+                          shape: BoxShape.circle,
+                        )
                       : hasGuest
-                          ? const BoxDecoration(color: Color(0xFFFEF3C7), shape: BoxShape.circle)
-                          : null,
+                      ? const BoxDecoration(
+                          color: Color(0xFFFEF3C7),
+                          shape: BoxShape.circle,
+                        )
+                      : null,
                   alignment: Alignment.center,
                   child: Text(
                     '$i',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: isOff ? const Color(0xFF9F1239) : (hasGuest ? const Color(0xFFD97706) : const Color(0xFF111827)),
+                      color: isOff
+                          ? const Color(0xFF9F1239)
+                          : (hasGuest
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF111827)),
                     ),
                   ),
                 ),
@@ -308,7 +412,10 @@ class StudentHistoryPage extends ConsumerWidget {
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(color: Color(0xFFF59E0B), shape: BoxShape.circle),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF59E0B),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
             ],
@@ -322,7 +429,13 @@ class StudentHistoryPage extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -337,7 +450,10 @@ class StudentHistoryPage extends ConsumerWidget {
               ),
               Text(
                 '${_hMonthName(now.month)} ${now.year}',
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               IconButton(
                 onPressed: onNext,
@@ -372,7 +488,13 @@ class StudentHistoryPage extends ConsumerWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,18 +507,32 @@ class StudentHistoryPage extends ConsumerWidget {
                   color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.beach_access_rounded, color: Color(0xFF16A34A), size: 22),
+                child: const Icon(
+                  Icons.beach_access_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Going away?',
-                        style: GoogleFonts.inter(
-                            fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
-                    Text('Apply for vacation and auto-cancel meals',
-                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280))),
+                    Text(
+                      'Going away?',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    Text(
+                      'Apply for vacation and auto-cancel meals',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -409,13 +545,23 @@ class StudentHistoryPage extends ConsumerWidget {
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF22C55E),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
-              icon: const Icon(Icons.event_available_rounded, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.event_available_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               label: Text(
                 'Apply for Vacation Leave',
-                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
               onPressed: () => _showApplyLeaveSheet(context, ref),
             ),
@@ -433,10 +579,17 @@ class StudentHistoryPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,30 +597,51 @@ class StudentHistoryPage extends ConsumerWidget {
               // Handle
               Center(
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                      color: const Color(0xFFD1D5DB), borderRadius: BorderRadius.circular(2)),
+                    color: const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Apply for Vacation Leave',
-                  style: GoogleFonts.inter(
-                      fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+              Text(
+                'Apply for Vacation Leave',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Meals within this date range will be automatically cancelled before cutoff.',
-                style: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14),
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF6B7280),
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
-                      child: _buildDatePicker(context, 'Start Date', start,
-                          (d) => setModalState(() => start = d))),
+                    child: _buildDatePicker(
+                      context,
+                      'Start Date',
+                      start,
+                      (d) => setModalState(() => start = d),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
-                      child: _buildDatePicker(context, 'End Date', end,
-                          (d) => setModalState(() => end = d))),
+                    child: _buildDatePicker(
+                      context,
+                      'End Date',
+                      end,
+                      (d) => setModalState(() => end = d),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -477,7 +651,9 @@ class StudentHistoryPage extends ConsumerWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF22C55E),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 0,
                   ),
                   onPressed: (start != null && end != null)
@@ -496,9 +672,14 @@ class StudentHistoryPage extends ConsumerWidget {
                           }
                         }
                       : null,
-                  child: Text('Submit Request',
-                      style: GoogleFonts.inter(
-                          fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Submit Request',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -509,7 +690,11 @@ class StudentHistoryPage extends ConsumerWidget {
   }
 
   Widget _buildDatePicker(
-      BuildContext context, String label, DateTime? selected, ValueChanged<DateTime> onSelect) {
+    BuildContext context,
+    String label,
+    DateTime? selected,
+    ValueChanged<DateTime> onSelect,
+  ) {
     return GestureDetector(
       onTap: () async {
         final d = await showDatePicker(
@@ -520,7 +705,10 @@ class StudentHistoryPage extends ConsumerWidget {
           builder: (context, child) => Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                  primary: Color(0xFF22C55E), onPrimary: Colors.white, onSurface: Colors.black),
+                primary: Color(0xFF22C55E),
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
             ),
             child: child!,
           ),
@@ -537,14 +725,23 @@ class StudentHistoryPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: const Color(0xFF6B7280),
+              ),
+            ),
             const SizedBox(height: 6),
             Text(
               selected != null
                   ? '${selected.day} ${_hMonthName(selected.month)} ${selected.year}'
                   : 'Select Date',
               style: GoogleFonts.inter(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF111827),
+              ),
             ),
           ],
         ),

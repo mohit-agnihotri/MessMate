@@ -28,7 +28,10 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                 labelColor: const Color(0xFF16A34A),
                 unselectedLabelColor: const Color(0xFF6B7280),
                 indicatorColor: const Color(0xFF16A34A),
-                labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+                labelStyle: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
                 tabs: [
                   Tab(text: 'All Students (${allStudents.length})'),
                   Tab(text: 'Pending Requests (${pendingStudents.length})'),
@@ -46,20 +49,45 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                           allStudents.isEmpty
                               ? _buildEmpty()
                               : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    80,
+                                  ),
                                   itemCount: allStudents.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                  itemBuilder: (_, i) =>
-                                      _buildStudentRow(context, ref, allStudents[i]),
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (_, i) => _buildStudentRow(
+                                    context,
+                                    ref,
+                                    allStudents[i],
+                                  ),
                                 ),
                           pendingStudents.isEmpty
-                              ? Center(child: Text('No pending requests.', style: GoogleFonts.inter(color: const Color(0xFF6B7280))))
+                              ? Center(
+                                  child: Text(
+                                    'No pending requests.',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                )
                               : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    80,
+                                  ),
                                   itemCount: pendingStudents.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                  itemBuilder: (_, i) =>
-                                      _buildStudentRow(context, ref, pendingStudents[i]),
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (_, i) => _buildStudentRow(
+                                    context,
+                                    ref,
+                                    pendingStudents[i],
+                                  ),
                                 ),
                         ],
                       ),
@@ -561,7 +589,11 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                               } else {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Could not launch phone dialer')),
+                                    const SnackBar(
+                                      content: Text(
+                                        'Could not launch phone dialer',
+                                      ),
+                                    ),
                                   );
                                 }
                               }
@@ -638,74 +670,86 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     return StatefulBuilder(
       builder: (context, setLocalState) {
         return FutureBuilder<List<MealRecordModel>>(
-          future: ref.read(appServiceProvider).getMealRecords(
+          future: ref
+              .read(appServiceProvider)
+              .getMealRecords(
                 student.studentId,
                 selectedMonthDate.month,
                 selectedMonthDate.year,
               ),
           builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-        final records = snapshot.data!;
-        final selfOff = records.where((r) => r.status == 'absent_self').length;
-        final ownerOff = records
-            .where((r) => r.status == 'absent_owner')
-            .length;
-        final totalOff = selfOff + ownerOff;
-        return Column(
-          children: [
-            Row(
+            if (!snapshot.hasData)
+              return const Center(child: CircularProgressIndicator());
+            final records = snapshot.data!;
+            final selfOff = records
+                .where((r) => r.status == 'absent_self')
+                .length;
+            final ownerOff = records
+                .where((r) => r.status == 'absent_owner')
+                .length;
+            final totalOff = selfOff + ownerOff;
+            return Column(
               children: [
-                _buildSummaryCard(
-                  context,
-                  'Total Meals Off',
-                  '$totalOff',
-                  const Color(0xFFEF4444),
-                  records
-                      .where(
-                        (r) =>
-                            r.status == 'absent_self' ||
-                            r.status == 'absent_owner',
-                      )
-                      .toList(),
+                Row(
+                  children: [
+                    _buildSummaryCard(
+                      context,
+                      'Total Meals Off',
+                      '$totalOff',
+                      const Color(0xFFEF4444),
+                      records
+                          .where(
+                            (r) =>
+                                r.status == 'absent_self' ||
+                                r.status == 'absent_owner',
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryCard(
+                      context,
+                      'Off by Student',
+                      '$selfOff',
+                      const Color(0xFFF59E0B),
+                      records.where((r) => r.status == 'absent_self').toList(),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryCard(
+                      context,
+                      'Off by Mess',
+                      '$ownerOff',
+                      const Color(0xFF6B7280),
+                      records.where((r) => r.status == 'absent_owner').toList(),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                _buildSummaryCard(
+                _buildInteractiveCalendar(
                   context,
-                  'Off by Student',
-                  '$selfOff',
-                  const Color(0xFFF59E0B),
-                  records.where((r) => r.status == 'absent_self').toList(),
-                ),
-                const SizedBox(width: 12),
-                _buildSummaryCard(
-                  context,
-                  'Off by Mess',
-                  '$ownerOff',
-                  const Color(0xFF6B7280),
-                  records.where((r) => r.status == 'absent_owner').toList(),
+                  records,
+                  selectedMonthDate,
+                  () {
+                    setLocalState(() {
+                      selectedMonthDate = DateTime(
+                        selectedMonthDate.year,
+                        selectedMonthDate.month - 1,
+                        1,
+                      );
+                    });
+                  },
+                  () {
+                    setLocalState(() {
+                      selectedMonthDate = DateTime(
+                        selectedMonthDate.year,
+                        selectedMonthDate.month + 1,
+                        1,
+                      );
+                    });
+                  },
                 ),
               ],
-            ),
-            _buildInteractiveCalendar(
-              context, 
-              records,
-              selectedMonthDate,
-              () {
-                setLocalState(() {
-                  selectedMonthDate = DateTime(selectedMonthDate.year, selectedMonthDate.month - 1, 1);
-                });
-              },
-              () {
-                setLocalState(() {
-                  selectedMonthDate = DateTime(selectedMonthDate.year, selectedMonthDate.month + 1, 1);
-                });
-              },
-            ),
-          ],
+            );
+          },
         );
-      },
-    );
       },
     );
   }
@@ -909,15 +953,19 @@ class OwnerStudentManagementPage extends ConsumerWidget {
 
     final mess = await service.getMessById(student.messId);
     if (mess == null) throw Exception("Mess not found");
-    
+
     final records = await service.getMealRecords(
       student.studentId,
       now.month,
       now.year,
     );
-    
-    final previousDues = await service.getPreviousUnpaidDues(student.studentId, now.month, now.year);
-    
+
+    final previousDues = await service.getPreviousUnpaidDues(
+      student.studentId,
+      now.month,
+      now.year,
+    );
+
     return generateAdvancedBill(
       student: student,
       mess: mess,
@@ -937,10 +985,13 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       future: _calculateBillPreview(ref, student),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          print('Billing Summary Error: ${snapshot.error}\n${snapshot.stackTrace}');
+          debugPrint(
+            'Billing Summary Error: ${snapshot.error}\n${snapshot.stackTrace}',
+          );
           return Center(child: Text('Error: ${snapshot.error}'));
         }
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
         var bill = snapshot.data!;
         bool localIsPaid = bill.isPaid;
         return Container(
@@ -1032,7 +1083,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                           Text(
                             localIsPaid ? 'Paid' : 'Mark as Paid',
                             style: GoogleFonts.inter(
-                              color: localIsPaid ? const Color(0xFF16A34A) : const Color(0xFF6B7280),
+                              color: localIsPaid
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF6B7280),
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -1061,17 +1114,27 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                               );
                               await ref
                                   .read(ownerStudentsProvider.notifier)
-                                  .toggleBillPaymentStatus(student, updatedBill, value);
-                              
-                              // We also update the initial bill variable so it stays consistent 
+                                  .toggleBillPaymentStatus(
+                                    student,
+                                    updatedBill,
+                                    value,
+                                  );
+
+                              // We also update the initial bill variable so it stays consistent
                               // across StatefulBuilder rebuilds if anything else triggers it
                               bill = updatedBill;
 
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(value ? 'Bill marked as paid!' : 'Bill marked as unpaid!'),
-                                    backgroundColor: value ? Colors.green : Colors.orange,
+                                    content: Text(
+                                      value
+                                          ? 'Bill marked as paid!'
+                                          : 'Bill marked as unpaid!',
+                                    ),
+                                    backgroundColor: value
+                                        ? Colors.green
+                                        : Colors.orange,
                                   ),
                                 );
                               }
@@ -1089,12 +1152,17 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                 child: TextButton.icon(
                   onPressed: () => _showDetailedBreakdown(context, bill),
                   icon: const Icon(Icons.receipt_long, size: 18),
-                  label: Text('View Detailed Breakdown', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                  label: Text(
+                    'View Detailed Breakdown',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF3B82F6),
                     backgroundColor: const Color(0xFFEFF6FF),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -1277,7 +1345,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1286,7 +1356,11 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                 children: [
                   Text(
                     'Bill Breakdown',
-                    style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+                    style: GoogleFonts.outfit(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
@@ -1299,35 +1373,68 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               const SizedBox(height: 24),
               _buildBillRow('Basic Fee', '₹${bill.baseFee.toStringAsFixed(0)}'),
               if (bill.proratedDiscount > 0)
-                _buildBillRow('Mid-Month Joining Discount', '-₹${bill.proratedDiscount.toStringAsFixed(0)}', color: Colors.green),
+                _buildBillRow(
+                  'Mid-Month Joining Discount',
+                  '-₹${bill.proratedDiscount.toStringAsFixed(0)}',
+                  color: Colors.green,
+                ),
               if (bill.totalDeductions > 0)
-                _buildBillRow('Valid Skipped Meals Refunds', '-₹${bill.totalDeductions.toStringAsFixed(0)}', color: Colors.green),
+                _buildBillRow(
+                  'Valid Skipped Meals Refunds',
+                  '-₹${bill.totalDeductions.toStringAsFixed(0)}',
+                  color: Colors.green,
+                ),
               if (bill.extraMealsAddon > 0)
-                _buildBillRow('Extra Meals Consumed', '+₹${bill.extraMealsAddon.toStringAsFixed(0)}', color: Colors.red),
+                _buildBillRow(
+                  'Extra Meals Consumed',
+                  '+₹${bill.extraMealsAddon.toStringAsFixed(0)}',
+                  color: Colors.red,
+                ),
               if (bill.guestAddons > 0)
-                _buildBillRow('Guest Meals', '+₹${bill.guestAddons.toStringAsFixed(0)}', color: Colors.red),
+                _buildBillRow(
+                  'Guest Meals',
+                  '+₹${bill.guestAddons.toStringAsFixed(0)}',
+                  color: Colors.red,
+                ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Divider(),
               ),
-              _buildBillRow('Final Payable', '₹${bill.finalPayable.toStringAsFixed(0)}', isBold: true, size: 18),
-              
+              _buildBillRow(
+                'Final Payable',
+                '₹${bill.finalPayable.toStringAsFixed(0)}',
+                isBold: true,
+                size: 18,
+              ),
+
               const SizedBox(height: 24),
               Text(
                 'Itemized Details',
-                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827)),
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
               ),
               const SizedBox(height: 12),
               Expanded(
                 child: bill.deductions.isEmpty
-                    ? Center(child: Text("No itemized details this month.", style: GoogleFonts.inter(color: Colors.grey)))
+                    ? Center(
+                        child: Text(
+                          "No itemized details this month.",
+                          style: GoogleFonts.inter(color: Colors.grey),
+                        ),
+                      )
                     : ListView.separated(
                         itemCount: bill.deductions.length,
-                        separatorBuilder: (context, index) => const Divider(height: 16),
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 16),
                         itemBuilder: (context, index) {
                           final item = bill.deductions[index];
                           final isDeduction = item.amount < 0;
-                          final typeStr = item.type.replaceAll('_', ' ').toUpperCase();
+                          final typeStr = item.type
+                              .replaceAll('_', ' ')
+                              .toUpperCase();
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1337,12 +1444,19 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                   children: [
                                     Text(
                                       '${item.date.day}/${item.date.month} - ${item.mealSlot}',
-                                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF111827),
+                                      ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       typeStr,
-                                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: const Color(0xFF6B7280),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1352,7 +1466,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: isDeduction ? Colors.green : Colors.red,
+                                  color: isDeduction
+                                      ? Colors.green
+                                      : Colors.red,
                                 ),
                               ),
                             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'owner_dashboard_page.dart';
 import 'owner_menu_planner_v2_page.dart';
 import 'owner_absentee_tracker_page.dart';
@@ -9,6 +10,7 @@ import 'owner_settings_page.dart';
 import 'owner_analytics_page.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/owner_setup_page.dart';
 
@@ -34,19 +36,30 @@ class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
   Widget build(BuildContext context) {
     ref.listen(ownerDashboardProvider, (prev, next) {
       if (!next.isLoading && next.mess == null) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerSetupPage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
+        );
       }
     });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F5F7),
         body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            boxShadow: [BoxShadow(color: Color(0x15000000), blurRadius: 20, offset: Offset(0, -4))],
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x15000000),
+                blurRadius: 20,
+                offset: Offset(0, -4),
+              ),
+            ],
           ),
           child: SafeArea(
             top: false,
@@ -78,13 +91,24 @@ class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 22, color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF)),
+            Icon(
+              icon,
+              size: 22,
+              color: isActive
+                  ? const Color(0xFF22C55E)
+                  : const Color(0xFF9CA3AF),
+            ),
             const SizedBox(height: 3),
-            Text(label, style: GoogleFonts.inter(
-              fontSize: 9.5,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive ? const Color(0xFF22C55E) : const Color(0xFF9CA3AF),
-            )),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: isActive
+                    ? const Color(0xFF22C55E)
+                    : const Color(0xFF9CA3AF),
+              ),
+            ),
           ],
         ),
       ),

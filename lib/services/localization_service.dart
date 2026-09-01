@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final localizationProvider = StateNotifierProvider<LocalizationNotifier, String>((ref) {
-  return LocalizationNotifier();
-});
+final localizationProvider =
+    StateNotifierProvider<LocalizationNotifier, String>((ref) {
+      return LocalizationNotifier();
+    });
 
 class LocalizationNotifier extends StateNotifier<String> {
   LocalizationNotifier() : super('en'); // Default to English
@@ -34,7 +35,7 @@ const Map<String, Map<String, String>> _translations = {
     'Students': 'Vidyarthi',
     'Analytics': 'Analytics',
     'Settings': 'Settings',
-  }
+  },
 };
 
 extension LocalizationExtension on String {

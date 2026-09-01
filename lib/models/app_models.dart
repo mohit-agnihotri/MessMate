@@ -131,8 +131,10 @@ class MessModel {
   final bool showMenuToStudents;
   final String language; // 'en' or 'hi'
   final String? ownerPhotoUrl;
-  final List<String> messPhotos; // Up to 4 Supabase photo URLs for the mess gallery
-  final int mealsIncludedPerDay; // e.g., 1, 2, or 3 meals included in the monthly plan
+  final List<String>
+  messPhotos; // Up to 4 Supabase photo URLs for the mess gallery
+  final int
+  mealsIncludedPerDay; // e.g., 1, 2, or 3 meals included in the monthly plan
   final Map<String, Map<String, String>> mealTimings;
   final DateTime? temporarilyClosedUntil;
   // Owner notification preferences - controls FCM topic subscriptions
@@ -218,8 +220,10 @@ class MessModel {
       messPhotos: messPhotos ?? this.messPhotos,
       mealsIncludedPerDay: mealsIncludedPerDay ?? this.mealsIncludedPerDay,
       mealTimings: mealTimings ?? this.mealTimings,
-      temporarilyClosedUntil: temporarilyClosedUntil ?? this.temporarilyClosedUntil,
-      ownerNotificationPrefs: ownerNotificationPrefs ?? this.ownerNotificationPrefs,
+      temporarilyClosedUntil:
+          temporarilyClosedUntil ?? this.temporarilyClosedUntil,
+      ownerNotificationPrefs:
+          ownerNotificationPrefs ?? this.ownerNotificationPrefs,
     );
   }
 
@@ -244,7 +248,7 @@ class MessModel {
       showMenuToStudents: map['showMenuToStudents'] ?? true,
       language: map['language'] ?? 'en',
       mealsIncludedPerDay: map['mealsIncludedPerDay'] ?? 3,
-      mealTimings: map['mealTimings'] != null 
+      mealTimings: map['mealTimings'] != null
           ? (map['mealTimings'] as Map).map((k, v) {
               final val = Map<String, String>.from(v as Map);
               // Ensure 'enabled' exists for backward compatibility
@@ -257,7 +261,9 @@ class MessModel {
               'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
               'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
             },
-      temporarilyClosedUntil: map['temporarilyClosedUntil'] != null ? DateTime.tryParse(map['temporarilyClosedUntil']) : null,
+      temporarilyClosedUntil: map['temporarilyClosedUntil'] != null
+          ? DateTime.tryParse(map['temporarilyClosedUntil'])
+          : null,
       ownerNotificationPrefs: (() {
         final raw = map['ownerNotificationPrefs'] as Map<String, dynamic>?;
         return <String, bool>{
@@ -408,7 +414,9 @@ class LeaveModel {
       startDate: DateTime.tryParse(map['startDate'] ?? '') ?? DateTime.now(),
       endDate: DateTime.tryParse(map['endDate'] ?? '') ?? DateTime.now(),
       status: map['status'] ?? 'active',
-      cancelledAt: map['cancelledAt'] != null ? DateTime.tryParse(map['cancelledAt']) : null,
+      cancelledAt: map['cancelledAt'] != null
+          ? DateTime.tryParse(map['cancelledAt'])
+          : null,
     );
   }
 
@@ -428,8 +436,9 @@ class MealRecordModel {
   final String studentId;
   final String messId;
   final DateTime date;
-  final String mealSlot; // 'morning', 'noon', 'night'
+  final String mealSlot; // 'morning', 'noon', 'night', 'evening'
   final String status; // 'present', 'absent_self', 'absent_owner', 'guest'
+  final double? cost;
   final DateTime? cancelledAt;
 
   MealRecordModel({
@@ -439,6 +448,7 @@ class MealRecordModel {
     required this.date,
     required this.mealSlot,
     required this.status,
+    this.cost,
     this.cancelledAt,
   });
 
@@ -450,7 +460,10 @@ class MealRecordModel {
       date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
       mealSlot: map['mealSlot'] ?? 'noon',
       status: map['status'] ?? 'present',
-      cancelledAt: map['cancelledAt'] != null ? DateTime.tryParse(map['cancelledAt']) : null,
+      cost: map['cost'] != null ? (map['cost'] as num).toDouble() : null,
+      cancelledAt: map['cancelledAt'] != null
+          ? DateTime.tryParse(map['cancelledAt'])
+          : null,
     );
   }
 
@@ -458,9 +471,10 @@ class MealRecordModel {
     'recordId': recordId,
     'studentId': studentId,
     'messId': messId,
-    'date': date.toIso8601String(),
+    'date': date.toIso8601String().substring(0, 10),
     'mealSlot': mealSlot,
     'status': status,
+    if (cost != null) 'cost': cost,
     'cancelledAt': cancelledAt?.toIso8601String(),
   };
 }
@@ -642,4 +656,3 @@ class FeedbackModel {
     'dishes': dishes,
   };
 }
-
