@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/app_service.dart';
 import '../models/stub_service.dart';
@@ -49,44 +51,52 @@ class AuthState {
 class AuthViewModel extends StateNotifier<AuthState> {
   AuthViewModel() : super(const AuthState());
 
-  Future<void> sendOtp(String phone) async {
+  Future<void> signInWithGoogle() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: '+91$phone', // Assuming India, can be made dynamic
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
-          state = state.copyWith(isLoading: false, userId: FirebaseAuth.instance.currentUser?.uid);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          state = state.copyWith(isLoading: false, error: e.message);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          state = state.copyWith(isLoading: false, otpSent: true, verificationId: verificationId);
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          if (mounted) {
-            state = state.copyWith(verificationId: verificationId);
-          }
-        },
-      );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-    }
-  }
+      if (kIsWeb) {
+        // Web: Use signInWithPopup
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        state = state.copyWith(isLoading: false, userId: userCredential.user?.uid);
+      } else {
+        // Native (Android/iOS) - google_sign_in v7 API
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize();
 
-  Future<void> verifyOtp(String otp) async {
-    if (state.verificationId == null) return;
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: state.verificationId!,
-        smsCode: otp,
-      );
-      final cred = await FirebaseAuth.instance.signInWithCredential(credential);
-      state = state.copyWith(isLoading: false, userId: cred.user?.uid);
+        // Trigger the authentication flow
+        final googleUser = await googleSignIn.authenticate();
+        if (googleUser == null) {
+          state = state.copyWith(isLoading: false, error: 'Sign in canceled');
+          return;
+        }
+
+        // v7: idToken from .authentication, accessToken from authorizationClient
+        final String? idToken = googleUser.authentication.idToken;
+
+        // Request accessToken via authorization
+        String? accessToken;
+        try {
+          final authClient = googleUser.authorizationClient;
+          final auth = await authClient.authorizationForScopes(['email', 'profile']);
+          accessToken = auth?.accessToken;
+        } catch (_) {
+          // accessToken not strictly required for Firebase ID token login
+        }
+
+        // Create a new credential
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: accessToken,
+          idToken: idToken,
+        );
+
+        // Once signed in, return the UserCredential
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        state = state.copyWith(isLoading: false, userId: userCredential.user?.uid);
+      }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Invalid OTP');
+      state = state.copyWith(isLoading: false, error: 'Failed to sign in with Google: ${e.toString()}');
     }
   }
 
@@ -94,6 +104,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
   
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
+    // Also sign out from Google on native platforms
+    if (!kIsWeb) {
+      try { await GoogleSignIn.instance.signOut(); } catch (_) {}
+    }
     state = const AuthState();
   }
 }

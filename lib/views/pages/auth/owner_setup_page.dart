@@ -20,6 +20,7 @@ class OwnerSetupPage extends ConsumerStatefulWidget {
 class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   final _messNameCtrl = TextEditingController();
   final _ownerNameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _capacityCtrl = TextEditingController(text: '50');
   final _monthlyFeeCtrl = TextEditingController(text: '3000');
   final _perMealRateCtrl = TextEditingController(text: '50');
@@ -29,9 +30,21 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   String? _imageExtension;
 
   @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (user.displayName != null) {
+        _ownerNameCtrl.text = user.displayName!;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _messNameCtrl.dispose();
     _ownerNameCtrl.dispose();
+    _phoneCtrl.dispose();
     _capacityCtrl.dispose();
     _monthlyFeeCtrl.dispose();
     _perMealRateCtrl.dispose();
@@ -40,7 +53,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   }
 
   Future<void> _submit() async {
-    if (_messNameCtrl.text.trim().isEmpty || _ownerNameCtrl.text.trim().isEmpty) {
+    if (_messNameCtrl.text.trim().isEmpty || _ownerNameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields')));
       return;
     }
@@ -74,7 +87,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         name: _messNameCtrl.text.trim(),
         ownerId: user.uid,
         ownerName: _ownerNameCtrl.text.trim(),
-        ownerPhone: user.phoneNumber ?? '',
+        ownerPhone: _phoneCtrl.text.trim(),
         ownerPhotoUrl: photoUrl,
         gpsLat: 0.0,
         gpsLng: 0.0,
@@ -125,6 +138,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               
               _buildTextField('Mess Name', _messNameCtrl, 'e.g. Sharma Bhojnalaya'),
               _buildTextField('Owner Full Name', _ownerNameCtrl, 'e.g. Raj Sharma'),
+              _buildTextField('Phone Number', _phoneCtrl, 'e.g. 9876543210', isNumber: true),
               const SizedBox(height: 16),
               _buildImagePicker(),
               const SizedBox(height: 16),

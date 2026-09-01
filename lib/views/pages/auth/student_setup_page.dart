@@ -15,6 +15,7 @@ class StudentSetupPage extends ConsumerStatefulWidget {
 
 class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
   final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _roomCtrl = TextEditingController();
   final _collegeCtrl = TextEditingController();
   final _courseCtrl = TextEditingController();
@@ -23,8 +24,19 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
   bool _requestSent = false;
 
   @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (user.displayName != null) {
+        _nameCtrl.text = user.displayName!;
+      }
+    }
+  }
+
+  @override
   void dispose() {
-    _nameCtrl.dispose(); _roomCtrl.dispose(); _collegeCtrl.dispose(); _courseCtrl.dispose(); _codeCtrl.dispose();
+    _nameCtrl.dispose(); _phoneCtrl.dispose(); _roomCtrl.dispose(); _collegeCtrl.dispose(); _courseCtrl.dispose(); _codeCtrl.dispose();
     super.dispose();
   }
 
@@ -72,7 +84,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       final student = StudentModel(
         studentId: user.uid,
         name: _nameCtrl.text.trim(),
-        phone: user.phoneNumber ?? '',
+        phone: _phoneCtrl.text.trim(),
         status: 'pending',
         messId: mess.messId,
         joinDate: DateTime.now(),
@@ -182,6 +194,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
           ])),
           const SizedBox(height: 32),
           _buildInput('Full Name', _nameCtrl, hint: 'Rahul Sharma'),
+          _buildInput('Phone Number', _phoneCtrl, hint: '9876543210'),
           _buildInput('Room / Hostel', _roomCtrl, hint: 'Room 204, A Block'),
           _buildInput('College Name', _collegeCtrl, hint: 'IIT Bombay'),
           _buildInput('Course', _courseCtrl, hint: 'B.Tech Computer Science'),

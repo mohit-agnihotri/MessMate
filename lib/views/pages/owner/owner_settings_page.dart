@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../auth/login_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -40,6 +41,10 @@ class OwnerSettingsPage extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(child: _buildToggleCard(context, ref, mess)),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(child: _buildMessPhotosCard(context, ref, mess)),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -306,6 +311,147 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  Widget _buildMessPhotosCard(BuildContext context, WidgetRef ref, MessModel? mess) {
+    if (mess == null) return const SizedBox.shrink();
+    final photos = mess.messPhotos;
+    final canAdd = photos.length < 4;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 12),
+          child: Text('Mess Gallery',
+            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
+        ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add up to 4 photos of your mess. Students will see these when browsing.',
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280)),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    // Existing photos
+                    ...photos.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final url = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                url, width: 100, height: 100, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 100, height: 100,
+                                  decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+                                  child: const Icon(Icons.broken_image_rounded, color: Color(0xFF9CA3AF)),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4, right: 4,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final newPhotos = List<String>.from(photos)..removeAt(idx);
+                                  await ref.read(ownerSettingsProvider.notifier)
+                                    .save(mess.copyWith(messPhotos: newPhotos));
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                  ),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    // Add button
+                    if (canAdd)
+                      GestureDetector(
+                        onTap: () async {
+                          final picker = ImagePicker();
+                          final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                          if (file == null) return;
+                          final bytes = await file.readAsBytes();
+                          final ext = file.name.split('.').last;
+                          try {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Uploading photo...'), duration: Duration(seconds: 10)));
+                            final url = await ref.read(appServiceProvider)
+                              .uploadImage('mess_photos', bytes, ext);
+                            final newPhotos = List<String>.from(photos)..add(url);
+                            await ref.read(ownerSettingsProvider.notifier)
+                              .save(mess.copyWith(messPhotos: newPhotos));
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Photo added! ✅'), backgroundColor: Color(0xFF22C55E)));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Upload failed: $e'), backgroundColor: const Color(0xFFEF4444)));
+                            }
+                          }
+                        },
+                        child: Container(
+                          width: 100, height: 100,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF22C55E), width: 1.5, style: BorderStyle.solid),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF22C55E), size: 28),
+                              const SizedBox(height: 4),
+                              Text('Add Photo',
+                                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF22C55E))),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (photos.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    '${photos.length}/4 photos added',
+                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9CA3AF)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionsCard(BuildContext context, WidgetRef ref) {
     return Material(
       color: Colors.white,
@@ -351,9 +497,15 @@ class OwnerSettingsPage extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support portal coming soon!')));
           }),
           const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
-          _buildActionTile(Icons.logout_rounded, 'Sign Out', const Color(0xFFEF4444), () {
-            ref.read(authProvider.notifier).signOut();
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: Text('Logged Out. Please restart the app.')))));
+          _buildActionTile(Icons.logout_rounded, 'Sign Out', const Color(0xFFEF4444), () async {
+            await ref.read(authProvider.notifier).signOut();
+            if (context.mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            }
           }),
         ]),
       ),
@@ -453,12 +605,15 @@ class OwnerSettingsPage extends ConsumerWidget {
                     ownerName: ownerNameCtrl.text.trim().isEmpty ? mess.ownerName : ownerNameCtrl.text.trim(), 
                     ownerPhone: mess.ownerPhone, 
                     ownerPhotoUrl: newPhotoUrl,
+                    messPhotos: mess.messPhotos,
                     gpsLat: mess.gpsLat, 
                     gpsLng: mess.gpsLng,
                     capacity: mess.capacity, messCode: mess.messCode, isListedOnMap: mess.isListedOnMap, showMenuToOutsiders: mess.showMenuToOutsiders, showMenuToStudents: mess.showMenuToStudents, language: mess.language,
                     monthlyFee: double.tryParse(feeCtrl.text) ?? mess.monthlyFee,
                     perMealRate: double.tryParse(rateCtrl.text) ?? mess.perMealRate,
                     cutoffHours: int.tryParse(cutoffCtrl.text) ?? mess.cutoffHours,
+                    mealTimings: mess.mealTimings,
+                    ownerNotificationPrefs: mess.ownerNotificationPrefs,
                   );
                   ref.read(ownerSettingsProvider.notifier).save(updated);
                   if (ctx.mounted) Navigator.pop(ctx);

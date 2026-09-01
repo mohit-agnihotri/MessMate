@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../viewmodels/all_viewmodels.dart';
-import 'auth/phone_login_page.dart';
+import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
 import 'student/student_main_page.dart';
@@ -64,7 +64,7 @@ class _SplashPageState extends ConsumerState<SplashPage> with SingleTickerProvid
       }
     } else {
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PhoneLoginPage()));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
       }
     }
   }

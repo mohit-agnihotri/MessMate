@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../auth/login_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../viewmodels/all_viewmodels.dart';
@@ -262,17 +263,33 @@ class StudentProfilePage extends ConsumerWidget {
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Help center coming soon!'))),
           child: _buildArrowTile(Icons.help_outline_rounded, 'Help & Support', ''),
         ),
+        const Divider(height: 24, color: Color(0xFFF3F4F6)),
+        InkWell(
+          onTap: () async {
+            await ref.read(authProvider.notifier).signOut();
+            if (context.mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            }
+          },
+          child: _buildArrowTile(Icons.logout_rounded, 'Sign Out', '', color: const Color(0xFFEF4444)),
+        ),
       ]),
     );
   }
 
-  Widget _buildArrowTile(IconData icon, String title, String trailing) {
+  Widget _buildArrowTile(IconData icon, String title, String trailing, {Color? color}) {
+    final textColor = color ?? const Color(0xFF374151);
+    final iconColor = color ?? const Color(0xFF6B7280);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(children: [
-        Icon(icon, size: 20, color: const Color(0xFF6B7280)),
+        Icon(icon, size: 20, color: iconColor),
         const SizedBox(width: 12),
-        Expanded(child: Text(title, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF374151)))),
+        Expanded(child: Text(title, style: GoogleFonts.inter(fontSize: 14, color: textColor))),
         if (trailing.isNotEmpty)
           Text(trailing, style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF9CA3AF))),
         const SizedBox(width: 4),

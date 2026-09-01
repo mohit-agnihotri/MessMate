@@ -131,6 +131,7 @@ class MessModel {
   final bool showMenuToStudents;
   final String language; // 'en' or 'hi'
   final String? ownerPhotoUrl;
+  final List<String> messPhotos; // Up to 4 Supabase photo URLs for the mess gallery
   final Map<String, Map<String, String>> mealTimings;
   // Owner notification preferences - controls FCM topic subscriptions
   final Map<String, bool> ownerNotificationPrefs;
@@ -158,6 +159,7 @@ class MessModel {
     this.showMenuToStudents = true,
     this.language = 'en',
     this.ownerPhotoUrl,
+    this.messPhotos = const [],
     this.mealTimings = const {
       'morning': {'start': '08:00', 'end': '10:00', 'enabled': 'true'},
       'noon': {'start': '12:30', 'end': '14:30', 'enabled': 'true'},
@@ -185,6 +187,7 @@ class MessModel {
     bool? showMenuToStudents,
     String? language,
     String? ownerPhotoUrl,
+    List<String>? messPhotos,
     Map<String, Map<String, String>>? mealTimings,
     Map<String, bool>? ownerNotificationPrefs,
   }) {
@@ -206,6 +209,7 @@ class MessModel {
       showMenuToStudents: showMenuToStudents ?? this.showMenuToStudents,
       language: language ?? this.language,
       ownerPhotoUrl: ownerPhotoUrl ?? this.ownerPhotoUrl,
+      messPhotos: messPhotos ?? this.messPhotos,
       mealTimings: mealTimings ?? this.mealTimings,
       ownerNotificationPrefs: ownerNotificationPrefs ?? this.ownerNotificationPrefs,
     );
@@ -219,6 +223,7 @@ class MessModel {
       ownerName: map['ownerName'] ?? '',
       ownerPhone: map['ownerPhone'] ?? '',
       ownerPhotoUrl: map['ownerPhotoUrl'],
+      messPhotos: List<String>.from(map['messPhotos'] ?? []),
       gpsLat: (map['gpsLat'] ?? 0.0).toDouble(),
       gpsLng: (map['gpsLng'] ?? 0.0).toDouble(),
       capacity: map['capacity'] ?? 0,
@@ -271,6 +276,7 @@ class MessModel {
     'showMenuToStudents': showMenuToStudents,
     'language': language,
     'ownerPhotoUrl': ownerPhotoUrl,
+    'messPhotos': messPhotos,
     'mealTimings': mealTimings,
     'ownerNotificationPrefs': ownerNotificationPrefs,
   };

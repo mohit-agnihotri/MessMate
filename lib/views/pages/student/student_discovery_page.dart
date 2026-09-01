@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
 
@@ -39,7 +38,6 @@ class StudentDiscoveryPage extends ConsumerStatefulWidget {
 class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   bool _isLoading = true;
   List<_MessItem> _messes = [];
-  String _selectedFilter = 'All';
 
   @override
   void initState() {
@@ -86,7 +84,8 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
         String slotType = 'Noon';
         
         final now = DateTime.now();
-        final currentMinutes = now.hour * 60 + now.minute;
+        // currentMinutes used for future time-based serving logic
+        // final currentMinutes = now.hour * 60 + now.minute;
         
         // Simple logic for UI purpose
         if (menus.isNotEmpty) {
@@ -188,39 +187,42 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Hero Image
-              Container(
-                height: 180,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  image: const DecorationImage(
-                    image: NetworkImage('https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=1000&auto=format&fit=crop'), // placeholder thali
-                    fit: BoxFit.cover,
+              // Hero Image / Photo Carousel
+              if (mess.messPhotos.isNotEmpty)
+                _buildPhotoCarousel(mess.messPhotos, item)
+              else
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    image: const DecorationImage(
+                      image: NetworkImage('https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=1000&auto=format&fit=crop'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xCC000000),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          item.currentOrNextMealName == 'No meal set' 
-                            ? 'MENU NOT UPDATED'
-                            : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC000000),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            item.currentOrNextMealName == 'No meal set'
+                              ? 'MENU NOT UPDATED'
+                              : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 24),
               Text(mess.name, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF111827))),
               const SizedBox(height: 4),
@@ -367,6 +369,94 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPhotoCarousel(List<String> photos, _MessItem item) {
+    final PageController controller = PageController();
+    int _currentPage = 0;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Column(
+          children: [
+            SizedBox(
+              height: 200,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: PageView.builder(
+                      controller: controller,
+                      itemCount: photos.length,
+                      onPageChanged: (i) => setState(() => _currentPage = i),
+                      itemBuilder: (ctx, i) => Image.network(
+                        photos[i],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: const Color(0xFFF3F4F6),
+                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF9CA3AF), size: 48),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Meal status badge
+                  Positioned(
+                    top: 12, left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC000000),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        item.currentOrNextMealName == 'No meal set'
+                          ? 'MENU NOT UPDATED'
+                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  // Photo count badge
+                  Positioned(
+                    top: 12, right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC000000),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_currentPage + 1}/${photos.length}',
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Page indicator dots
+            if (photos.length > 1) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(photos.length, (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentPage == i ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentPage == i ? const Color(0xFF22C55E) : const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                )),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
