@@ -183,7 +183,7 @@ class StudentHomePage extends ConsumerWidget {
                           ),
                         ),
                         SizedBox(
-                          height: 140,
+                          height: 155, // Increased height to prevent bottom overflow
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1101,7 +1101,7 @@ class _UpcomingMealCard extends StatelessWidget {
                   ),
                 ],
               ),
-            const Spacer(),
+            const SizedBox(height: 4),
             Text(
               dishesStr,
               style: GoogleFonts.inter(

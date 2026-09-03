@@ -1,7 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:mess_app/firebase_options.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await reconcileGuestRecords();
+}
 /// Script to safely migrate old guest records that are missing `messId`.
 /// It reconciles the correct `messId` by checking the generated `bills` for that month.
 /// If a bill exists, it uses the bill's `messId`.

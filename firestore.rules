@@ -1,51 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Dishes: Read-only for authenticated users. Backend handles writes.
+
+    // Global Dishes
     match /global_dishes/{dishId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read, write: if true;
     }
 
-    // Messes: Anyone can read (to join via code), only the owner can write.
+    // Messes
     match /messes/{messId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
       allow update: if request.auth != null && (request.auth.uid == resource.data.ownerId || !("ownerId" in resource.data));
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
-      
-      // Subcollections under messes
+
       match /dishes/{dishId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
       }
-      
+
       match /weekly_templates/{templateId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
       }
-      
+
       match /closed_slots/{slotId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
       }
-      
+
       match /feedbacks/{feedbackId} {
-        allow read: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
-        allow create: if request.auth != null 
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
           && request.auth.uid == request.resource.data.studentId
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId
-          && request.resource.data.rating >= 1 
+          && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5;
+        allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+        allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
       }
     }
 
     // Students
     match /students/{studentId} {
-      allow get, list: if request.auth != null && (request.auth.uid == studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid;
-      allow update: if request.auth != null && (request.auth.uid == studentId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow update: if request.auth != null && (
+        request.auth.uid == studentId ||
+        (resource != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid)
+      );
       allow delete: if request.auth != null && request.auth.uid == studentId;
     }
 
@@ -59,7 +62,7 @@ service cloud.firestore {
 
     // Announcements
     match /announcements/{docId} {
-      allow read: if request.auth != null && (get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == resource.data.messId || get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid);
+      allow read: if request.auth != null;
       allow create: if request.auth != null && get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid;
       allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid && request.resource.data.messId == resource.data.messId;
       allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid;
@@ -67,34 +70,28 @@ service cloud.firestore {
 
     // Meal Records
     match /meal_records/{recordId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
-      );
-      allow create: if request.auth != null && 
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.studentId &&
         get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
+      allow update: if request.auth != null && resource != null && (
+        request.auth.uid == resource.data.studentId ||
         get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
       ) && request.resource.data.studentId == resource.data.studentId;
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
+      allow delete: if request.auth != null && resource != null && (
+        request.auth.uid == resource.data.studentId ||
         get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
       );
     }
 
     // Leaves
     match /leaves/{leaveId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
-      );
-      allow create: if request.auth != null && 
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.studentId &&
         get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
+      allow update: if request.auth != null && resource != null && (
+        request.auth.uid == resource.data.studentId ||
         get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
       ) && request.resource.data.studentId == resource.data.studentId;
       allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
@@ -102,10 +99,7 @@ service cloud.firestore {
 
     // Bills
     match /bills/{billId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.studentId || 
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
-      );
+      allow read: if request.auth != null;
       allow create: if request.auth != null && (
         request.auth.uid == request.resource.data.studentId ||
         get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid

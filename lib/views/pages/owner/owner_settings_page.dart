@@ -11,6 +11,7 @@ import 'dart:typed_data';
 
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
+import 'owner_about_mess_page.dart';
 
 class OwnerSettingsPage extends ConsumerWidget {
   const OwnerSettingsPage({super.key});
@@ -68,6 +69,12 @@ class OwnerSettingsPage extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
                   child: _buildMessPhotosCard(context, ref, mess),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _buildAboutMessCard(context, ref, mess),
                 ),
               ),
               SliverPadding(
@@ -759,6 +766,111 @@ class OwnerSettingsPage extends ConsumerWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildAboutMessCard(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+  ) {
+    final hasContent =
+        mess?.aboutContent != null && mess!.aboutContent!.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 12),
+          child: Text(
+            'Mess Description',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF111827),
+            ),
+          ),
+        ),
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 1,
+          shadowColor: const Color(0x14000000),
+          child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.description_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 22,
+                ),
+              ),
+              title: Text(
+                'More About My Mess',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              subtitle: Text(
+                hasContent
+                    ? 'Tap to edit your mess description'
+                    : 'Add rules, specials, food details & more',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF6B7280),
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasContent)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Added ✓',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF16A34A),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ],
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OwnerAboutMessPage(
+                      initialDeltaJson: mess?.aboutContent,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }

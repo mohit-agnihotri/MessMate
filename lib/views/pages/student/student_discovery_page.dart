@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
@@ -534,6 +536,70 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   ),
                 ),
               ),
+              // ── More About This Mess button ──────────────────────────────
+              if (mess.aboutContent != null && mess.aboutContent!.isNotEmpty) ...
+              [
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => _showAboutMessSheet(context, mess),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFF16A34A),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'More About This Mess',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF15803D),
+                              ),
+                            ),
+                            Text(
+                              'Rules, specials, food details & more',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: const Color(0xFF4ADE80),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFF16A34A),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               // Contact info
               Row(
@@ -641,6 +707,163 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
         ),
       ),
     );
+  }
+
+  void _showAboutMessSheet(BuildContext context, MessModel mess) {
+    QuillController? controller;
+    try {
+      final doc = Document.fromJson(
+        jsonDecode(mess.aboutContent!) as List<dynamic>,
+      );
+      controller = QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    } catch (_) {
+      controller = QuillController.basic();
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (ctx, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1D5DB),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Title row
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFF16A34A),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'More About This Mess',
+                                style: GoogleFonts.inter(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF111827),
+                                ),
+                              ),
+                              Text(
+                                mess.name,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                  // Content - read only quill editor
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                      child: QuillEditor(
+                        controller: controller!,
+                        scrollController: ScrollController(),
+                        config: QuillEditorConfig(
+                          padding: EdgeInsets.zero,
+                          showCursor: false,
+                          enableInteractiveSelection: false,
+                          scrollable: false,
+                          expands: false,
+                          autoFocus: false,
+                          customStyles: DefaultStyles(
+                            paragraph: DefaultTextBlockStyle(
+                              GoogleFonts.inter(
+                                fontSize: 15,
+                                color: const Color(0xFF111827),
+                                height: 1.65,
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(0, 4),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            h1: DefaultTextBlockStyle(
+                              GoogleFonts.inter(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(10, 4),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            h2: DefaultTextBlockStyle(
+                              GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF1F2937),
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(8, 2),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                          ),
+                        ),
+                        focusNode: FocusNode(canRequestFocus: false),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() => controller?.dispose());
   }
 
   Widget _buildPhotoCarousel(List<String> photos, _MessItem item) {

@@ -113,6 +113,11 @@ class StudentModel {
   }
 }
 
+// Sentinel value to distinguish "not provided" from "null" in copyWith
+class _Sentinel {
+  const _Sentinel();
+}
+
 class MessModel {
   final String messId;
   final String name;
@@ -139,6 +144,8 @@ class MessModel {
   final DateTime? temporarilyClosedUntil;
   // Owner notification preferences - controls FCM topic subscriptions
   final Map<String, bool> ownerNotificationPrefs;
+  // Rich text content in Quill Delta JSON format describing the mess in detail
+  final String? aboutContent;
 
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
     'skipAlert': true,
@@ -173,6 +180,7 @@ class MessModel {
     },
     this.temporarilyClosedUntil,
     this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
+    this.aboutContent,
   });
 
   MessModel copyWith({
@@ -198,6 +206,7 @@ class MessModel {
     Map<String, Map<String, String>>? mealTimings,
     DateTime? temporarilyClosedUntil,
     Map<String, bool>? ownerNotificationPrefs,
+    Object? aboutContent = const _Sentinel(),
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -224,6 +233,8 @@ class MessModel {
           temporarilyClosedUntil ?? this.temporarilyClosedUntil,
       ownerNotificationPrefs:
           ownerNotificationPrefs ?? this.ownerNotificationPrefs,
+      aboutContent:
+          aboutContent is _Sentinel ? this.aboutContent : aboutContent as String?,
     );
   }
 
@@ -271,6 +282,7 @@ class MessModel {
           'joinRequest': raw?['joinRequest'] as bool? ?? true,
         };
       })(),
+      aboutContent: map['aboutContent'] as String?,
     );
   }
 
@@ -297,6 +309,7 @@ class MessModel {
     'mealTimings': mealTimings,
     'temporarilyClosedUntil': temporarilyClosedUntil?.toIso8601String(),
     'ownerNotificationPrefs': ownerNotificationPrefs,
+    if (aboutContent != null) 'aboutContent': aboutContent,
   };
 }
 

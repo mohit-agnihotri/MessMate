@@ -137,7 +137,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
     // Also sign out from Google on native platforms
     if (!kIsWeb) {
       try {
-        await GoogleSignIn.instance.signOut();
+        final gSignIn = GoogleSignIn.instance;
+        await gSignIn.initialize();
+        await gSignIn.signOut();
+        await gSignIn.disconnect();
       } catch (_) {}
     }
     state = const AuthState();
@@ -496,7 +499,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
 }
 
 final ownerDashboardProvider =
-    StateNotifierProvider<OwnerDashboardViewModel, OwnerDashboardState>((ref) {
+    StateNotifierProvider.autoDispose<OwnerDashboardViewModel, OwnerDashboardState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return OwnerDashboardViewModel(ref.read(appServiceProvider), uid);
     });
@@ -608,7 +611,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
 }
 
 final ownerStudentsProvider =
-    StateNotifierProvider<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
+    StateNotifierProvider.autoDispose<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return OwnerStudentsViewModel(ref.read(appServiceProvider), uid);
     });
@@ -808,7 +811,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
 }
 
 final ownerMenuProvider =
-    StateNotifierProvider<OwnerMenuViewModel, OwnerMenuState>((ref) {
+    StateNotifierProvider.autoDispose<OwnerMenuViewModel, OwnerMenuState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return OwnerMenuViewModel(ref.read(appServiceProvider), uid);
     });
@@ -1241,7 +1244,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
 }
 
 final studentHomeProvider =
-    StateNotifierProvider<StudentHomeViewModel, StudentHomeState>((ref) {
+    StateNotifierProvider.autoDispose<StudentHomeViewModel, StudentHomeState>((ref) {
       return StudentHomeViewModel(ref.read(appServiceProvider));
     });
 
@@ -1328,7 +1331,7 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
 }
 
 final studentHistoryProvider =
-    StateNotifierProvider<StudentHistoryViewModel, StudentHistoryState>((ref) {
+    StateNotifierProvider.autoDispose<StudentHistoryViewModel, StudentHistoryState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return StudentHistoryViewModel(ref.read(appServiceProvider), uid);
     });
@@ -1437,7 +1440,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
 }
 
 final studentBillProvider =
-    StateNotifierProvider<StudentBillViewModel, StudentBillState>((ref) {
+    StateNotifierProvider.autoDispose<StudentBillViewModel, StudentBillState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return StudentBillViewModel(ref.read(appServiceProvider), uid);
     });
@@ -1546,10 +1549,24 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
       return false;
     }
   }
+
+  Future<bool> updateAboutContent(String deltaJson) async {
+    try {
+      final mess = state.mess;
+      if (mess == null) return false;
+      final updated = mess.copyWith(aboutContent: deltaJson);
+      await _service.updateMess(updated);
+      state = state.copyWith(mess: updated);
+      return true;
+    } catch (e) {
+      debugPrint('updateAboutContent error: $e');
+      return false;
+    }
+  }
 }
 
 final ownerSettingsProvider =
-    StateNotifierProvider<OwnerSettingsViewModel, OwnerSettingsState>((ref) {
+    StateNotifierProvider.autoDispose<OwnerSettingsViewModel, OwnerSettingsState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return OwnerSettingsViewModel(ref.read(appServiceProvider), uid);
     });
@@ -1692,7 +1709,7 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
 }
 
 final studentProfileProvider =
-    StateNotifierProvider<StudentProfileViewModel, StudentProfileState>((ref) {
+    StateNotifierProvider.autoDispose<StudentProfileViewModel, StudentProfileState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       return StudentProfileViewModel(ref.read(appServiceProvider), uid);
     });
