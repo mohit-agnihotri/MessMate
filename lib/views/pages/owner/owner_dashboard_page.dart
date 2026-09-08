@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -38,6 +38,9 @@ class OwnerDashboardPage extends ConsumerWidget {
                     ),
                     SliverToBoxAdapter(
                       child: _buildAnnouncementBanner(context, ref, state),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildGuestBanner(context, state),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -253,6 +256,68 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestBanner(BuildContext context, OwnerDashboardState state) {
+    int totalGuests = 0;
+    state.guestsBySlot.forEach((k, v) => totalGuests += v.length);
+
+    if (totalGuests == 0) return const SizedBox.shrink();
+
+    // Just show a quick summary e.g. "Morning: 2, Night: 5"
+    final summaryParts = <String>[];
+    if ((state.guestsBySlot['morning']?.length ?? 0) > 0) summaryParts.add('Morning: ${state.guestsBySlot['morning']!.length}');
+    if ((state.guestsBySlot['noon']?.length ?? 0) > 0) summaryParts.add('Noon: ${state.guestsBySlot['noon']!.length}');
+    if ((state.guestsBySlot['evening']?.length ?? 0) > 0) summaryParts.add('Evening: ${state.guestsBySlot['evening']!.length}');
+    if ((state.guestsBySlot['night']?.length ?? 0) > 0) summaryParts.add('Night: ${state.guestsBySlot['night']!.length}');
+
+    final summaryText = summaryParts.join(' • ');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5), // Light Green
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF34D399).withOpacity(0.5)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.group_add_rounded,
+              color: Color(0xFF065F46), // Dark Green
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$totalGuests Extra Guest${totalGuests > 1 ? 's' : ''} Today',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF064E3B),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    summaryText,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF065F46),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

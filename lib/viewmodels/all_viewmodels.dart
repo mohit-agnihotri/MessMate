@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
@@ -174,6 +174,9 @@ class OwnerDashboardState {
   final List<MealRecordModel> todayRecords;
   final List<StudentModel> activeStudentsList;
 
+  // Guest meals: slot -> list of guest records
+  final Map<String, List<MealRecordModel>> guestsBySlot;
+
   const OwnerDashboardState({
     this.mess,
     this.activeStudents = 0,
@@ -191,6 +194,7 @@ class OwnerDashboardState {
     this.nightAbsents = 0,
     this.todayRecords = const [],
     this.activeStudentsList = const [],
+    this.guestsBySlot = const {},
   });
 
   OwnerDashboardState copyWith({
@@ -210,6 +214,7 @@ class OwnerDashboardState {
     int? nightAbsents,
     List<MealRecordModel>? todayRecords,
     List<StudentModel>? activeStudentsList,
+    Map<String, List<MealRecordModel>>? guestsBySlot,
     bool clearCurrentMeal = false,
   }) => OwnerDashboardState(
     mess: mess ?? this.mess,
@@ -228,6 +233,7 @@ class OwnerDashboardState {
     nightAbsents: nightAbsents ?? this.nightAbsents,
     todayRecords: todayRecords ?? this.todayRecords,
     activeStudentsList: activeStudentsList ?? this.activeStudentsList,
+    guestsBySlot: guestsBySlot ?? this.guestsBySlot,
   );
 }
 
@@ -242,6 +248,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   StreamSubscription? _menuSub;
   StreamSubscription? _tomorrowMenuSub;
   StreamSubscription? _announcementSub;
+  StreamSubscription? _guestSub;
   Timer? _clockTimer;
   DateTime _today = DateTime.now();
   String _currentSlot = 'noon';
@@ -264,6 +271,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
     _mealRecordSub?.cancel();
     _menuSub?.cancel();
     _announcementSub?.cancel();
+    _guestSub?.cancel();
     _clockTimer?.cancel();
     super.dispose();
   }
@@ -386,6 +394,17 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
         .listen((records) {
           _todayRecords = records;
           _recomputeHeadcount();
+        });
+
+    _guestSub?.cancel();
+    _guestSub = _service
+        .streamTodayGuestRecords(state.mess!.messId, _today)
+        .listen((guestRecords) {
+          final bySlot = <String, List<MealRecordModel>>{};
+          for (final r in guestRecords) {
+            bySlot.putIfAbsent(r.mealSlot, () => []).add(r);
+          }
+          state = state.copyWith(guestsBySlot: bySlot);
         });
 
     _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((
@@ -1310,7 +1329,12 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
     load();
   }
 
-  Future<void> applyLeave(DateTime start, DateTime end) async {
+  Future<void> applyLeave(
+    DateTime start,
+    DateTime end, {
+    String? startSlot,
+    String? endSlot,
+  }) async {
     final student = await _service.getStudentById(studentId);
     if (student == null) return;
     final leave = LeaveModel(
@@ -1320,12 +1344,19 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
       startDate: start,
       endDate: end,
       status: 'active',
+      startSlot: startSlot,
+      endSlot: endSlot,
     );
     await _service.applyLeave(leave);
   }
 
   Future<void> cancelLeave(String leaveId) async {
     await _service.cancelLeave(leaveId, DateTime.now());
+    await load();
+  }
+
+  Future<void> cancelGuest(String recordId) async {
+    await _service.removeGuestMeal(recordId);
     await load();
   }
 }

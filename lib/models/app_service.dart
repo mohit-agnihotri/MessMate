@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'app_models.dart';
 
@@ -90,6 +90,9 @@ abstract class AppService {
     double cost, {
     int count = 1,
   });
+
+  Future<void> removeGuestMeal(String recordId);
+  Stream<List<MealRecordModel>> streamTodayGuestRecords(String messId, DateTime today);
 
   // ANNOUNCEMENTS
   Future<void> sendAnnouncement(String messId, String message);

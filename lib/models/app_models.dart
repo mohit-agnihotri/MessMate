@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // All Data Models for MessMate App
 // ============================================================
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -408,6 +408,8 @@ class LeaveModel {
   final DateTime endDate;
   final String status; // 'active', 'cancelled'
   final DateTime? cancelledAt;
+  final String? startSlot; // 'morning', 'noon', 'evening', 'night'
+  final String? endSlot;
 
   LeaveModel({
     required this.leaveId,
@@ -417,6 +419,8 @@ class LeaveModel {
     required this.endDate,
     required this.status,
     this.cancelledAt,
+    this.startSlot,
+    this.endSlot,
   });
 
   factory LeaveModel.fromMap(Map<String, dynamic> map) {
@@ -430,18 +434,25 @@ class LeaveModel {
       cancelledAt: map['cancelledAt'] != null
           ? DateTime.tryParse(map['cancelledAt'])
           : null,
+      startSlot: map['startSlot'],
+      endSlot: map['endSlot'],
     );
   }
 
-  Map<String, dynamic> toMap() => {
-    'leaveId': leaveId,
-    'studentId': studentId,
-    'messId': messId,
-    'startDate': startDate.toIso8601String(),
-    'endDate': endDate.toIso8601String(),
-    'status': status,
-    'cancelledAt': cancelledAt?.toIso8601String(),
-  };
+  Map<String, dynamic> toMap() {
+    final m = <String, dynamic>{
+      'leaveId': leaveId,
+      'studentId': studentId,
+      'messId': messId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'status': status,
+      'cancelledAt': cancelledAt?.toIso8601String(),
+    };
+    if (startSlot != null) m['startSlot'] = startSlot;
+    if (endSlot != null) m['endSlot'] = endSlot;
+    return m;
+  }
 }
 
 class MealRecordModel {

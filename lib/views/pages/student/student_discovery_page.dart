@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -82,7 +82,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       final items = await Future.wait(
         allMesses.map((m) async {
           double? dist;
-          if (pos != null) {
+          if (pos != null && m.gpsLat != 0.0 && m.gpsLng != 0.0) {
             dist =
                 Geolocator.distanceBetween(
                   pos.latitude,

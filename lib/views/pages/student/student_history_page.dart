@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -117,7 +117,7 @@ class StudentHistoryPage extends ConsumerWidget {
                 Row(
                   children: [
                     _buildSummaryCard(
-                      context,
+                      context, ref,
                       'Total Meals Off',
                       '$totalOff',
                       const Color(0xFFEF4444),
@@ -131,7 +131,7 @@ class StudentHistoryPage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     _buildSummaryCard(
-                      context,
+                      context, ref,
                       'Off by Student',
                       '$selfOff',
                       const Color(0xFFF59E0B),
@@ -139,7 +139,7 @@ class StudentHistoryPage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     _buildSummaryCard(
-                      context,
+                      context, ref,
                       'Off by Mess',
                       '$ownerOff',
                       const Color(0xFF6B7280),
@@ -151,6 +151,7 @@ class StudentHistoryPage extends ConsumerWidget {
                 // Calendar
                 _buildInteractiveCalendar(
                   context,
+                  ref,
                   records,
                   selectedMonth,
                   () => setLocalState(() {
@@ -179,6 +180,7 @@ class StudentHistoryPage extends ConsumerWidget {
   // ── Stat Card (same look as owner side) ─────────────────────────────────
   Widget _buildSummaryCard(
     BuildContext context,
+    WidgetRef ref,
     String label,
     String value,
     Color accentColor,
@@ -186,7 +188,7 @@ class StudentHistoryPage extends ConsumerWidget {
   ) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => _showOffDetailsDialog(context, label, records),
+        onTap: () => _showOffDetailsDialog(context, ref, label, records),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
@@ -242,6 +244,7 @@ class StudentHistoryPage extends ConsumerWidget {
   // ── Off-details dialog (same as owner side) ──────────────────────────────
   void _showOffDetailsDialog(
     BuildContext context,
+    WidgetRef ref,
     String title,
     List<MealRecordModel> offRecords,
   ) {
@@ -310,6 +313,7 @@ class StudentHistoryPage extends ConsumerWidget {
   // ── Interactive Calendar (same as owner side) ────────────────────────────
   Widget _buildInteractiveCalendar(
     BuildContext context,
+    WidgetRef ref,
     List<MealRecordModel> records,
     DateTime selectedMonthDate,
     VoidCallback onPrev,
@@ -367,7 +371,7 @@ class StudentHistoryPage extends ConsumerWidget {
           onTap: () {
             if (isOff || hasGuest) {
               _showOffDetailsDialog(
-                context,
+                context, ref,
                 'Details on $i ${_hMonthName(now.month)}',
                 dayRecords.where((r) => r.status != 'present').toList(),
               );
@@ -575,6 +579,8 @@ class StudentHistoryPage extends ConsumerWidget {
   void _showApplyLeaveSheet(BuildContext context, WidgetRef ref) {
     DateTime? start;
     DateTime? end;
+    String? startSlot = 'morning';
+    String? endSlot = 'night';
 
     showModalBottomSheet(
       context: context,
@@ -644,6 +650,46 @@ class StudentHistoryPage extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: startSlot,
+                      decoration: InputDecoration(
+                        labelText: 'From Slot',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'morning', child: Text('Morning')),
+                        DropdownMenuItem(value: 'noon', child: Text('Noon')),
+                        DropdownMenuItem(value: 'evening', child: Text('Evening')),
+                        DropdownMenuItem(value: 'night', child: Text('Night')),
+                      ],
+                      onChanged: (val) => setModalState(() => startSlot = val),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: endSlot,
+                      decoration: InputDecoration(
+                        labelText: 'To Slot',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'morning', child: Text('Morning')),
+                        DropdownMenuItem(value: 'noon', child: Text('Noon')),
+                        DropdownMenuItem(value: 'evening', child: Text('Evening')),
+                        DropdownMenuItem(value: 'night', child: Text('Night')),
+                      ],
+                      onChanged: (val) => setModalState(() => endSlot = val),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -660,7 +706,7 @@ class StudentHistoryPage extends ConsumerWidget {
                       ? () async {
                           await ref
                               .read(studentHistoryProvider.notifier)
-                              .applyLeave(start!, end!);
+                              .applyLeave(start!, end!, startSlot: startSlot, endSlot: endSlot);
                           if (context.mounted) {
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(

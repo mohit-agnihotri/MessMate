@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -506,6 +506,26 @@ class FirebaseService implements AppService {
       });
     }
     await batch.commit();
+  }
+
+  // GUEST MEAL REMOVAL
+  @override
+  Future<void> removeGuestMeal(String recordId) async {
+    await _db.collection('meal_records').doc(recordId).delete();
+  }
+
+  @override
+  Stream<List<MealRecordModel>> streamTodayGuestRecords(
+      String messId, DateTime today) {
+    final dateStr = today.toIso8601String().substring(0, 10);
+    return _db
+        .collection('meal_records')
+        .where('messId', isEqualTo: messId)
+        .where('date', isEqualTo: dateStr)
+        .where('status', isEqualTo: 'guest')
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => MealRecordModel.fromMap(d.data())).toList());
   }
 
   // ANNOUNCEMENTS

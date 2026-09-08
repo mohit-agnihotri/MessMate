@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'app_models.dart';
 import 'app_service.dart';
@@ -342,6 +342,13 @@ class StubService implements AppService {
     double cost, {
     int count = 1,
   }) async {}
+
+  @override
+  Future<void> removeGuestMeal(String recordId) async {}
+
+  @override
+  Stream<List<MealRecordModel>> streamTodayGuestRecords(String messId, DateTime today) =>
+      Stream.value([]);
   @override
   Future<void> sendAnnouncement(String messId, String message) async {}
   @override

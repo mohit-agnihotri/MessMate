@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -391,9 +391,13 @@ class StudentHomePage extends ConsumerWidget {
                           Expanded(
                             flex: 2,
                             child: _GuestButton(
-                              ref: ref,
-                              mealSlot: menu.mealSlot,
-                              perMealRate: state.mess?.perMealRate ?? 0.0,
+                              onAddGuest: () => _showAddGuestDialog(
+                                context,
+                                ref,
+                                state,
+                                menu.mealSlot,
+                                DateTime.now(),
+                              ),
                             ),
                           ),
                         ],
@@ -1314,27 +1318,15 @@ class _SkipButton extends StatelessWidget {
 
 // ─── Guest Button ─────────────────────────────────────────────────────────────
 class _GuestButton extends StatelessWidget {
-  final WidgetRef ref;
-  final String mealSlot;
-  final double perMealRate;
+  final VoidCallback onAddGuest;
   const _GuestButton({
-    required this.ref,
-    required this.mealSlot,
-    required this.perMealRate,
+    required this.onAddGuest,
   });
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton(
-      onPressed: () {
-        ref.read(studentHomeProvider.notifier).addGuest(mealSlot, perMealRate);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Guest added!'),
-            backgroundColor: Color(0xFF22C55E),
-          ),
-        );
-      },
+      onPressed: onAddGuest,
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFF22C55E),
         side: const BorderSide(color: Color(0xFF4ADE80)),
