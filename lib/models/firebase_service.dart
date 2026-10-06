@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,11 +43,21 @@ class FirebaseService implements AppService {
   }
 
   @override
-  Future<List<MessModel>> getAllListedMesses() async {
-    final snapshot = await _db
+  Future<List<MessModel>> getAllListedMesses({String? lastMessId, int limit = 10}) async {
+    var query = _db
         .collection('messes')
         .where('isListedOnMap', isEqualTo: true)
-        .get();
+        .orderBy(FieldPath.documentId)
+        .limit(limit);
+
+    if (lastMessId != null) {
+      final doc = await _db.collection('messes').doc(lastMessId).get();
+      if (doc.exists) {
+        query = query.startAfterDocument(doc);
+      }
+    }
+
+    final snapshot = await query.get();
     return snapshot.docs.map((doc) => MessModel.fromMap(doc.data())).toList();
   }
 
@@ -550,6 +560,16 @@ class FirebaseService implements AppService {
               .map((d) => AnnouncementModel.fromMap(d.data()))
               .toList(),
         );
+  }
+
+  @override
+  Future<List<AnnouncementModel>> getAnnouncements(String messId) async {
+    final snap = await _db
+        .collection('announcements')
+        .where('messId', isEqualTo: messId)
+        .orderBy('timestamp', descending: true)
+        .get();
+    return snap.docs.map((d) => AnnouncementModel.fromMap(d.data())).toList();
   }
 
   @override

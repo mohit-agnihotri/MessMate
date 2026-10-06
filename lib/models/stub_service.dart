@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'app_models.dart';
 import 'app_service.dart';
@@ -226,7 +226,7 @@ class StubService implements AppService {
   @override
   Future<MessModel?> getMessById(String messId) async => _mess;
   @override
-  Future<List<MessModel>> getAllListedMesses() async => [_mess];
+  Future<List<MessModel>> getAllListedMesses({String? lastMessId, int limit = 10}) async => [_mess];
   @override
   Future<void> createMess(MessModel mess) async {}
   @override
@@ -354,6 +354,8 @@ class StubService implements AppService {
   @override
   Stream<List<AnnouncementModel>> streamAnnouncements(String messId) =>
       Stream.value([]);
+  @override
+  Future<List<AnnouncementModel>> getAnnouncements(String messId) async => [];
   @override
   Future<String> generateUniqueMessCode() async => '123456';
   @override

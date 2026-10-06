@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -90,22 +90,11 @@ class StudentHistoryPage extends ConsumerWidget {
       builder: (context, setLocalState) {
         DateTime selectedMonth = outerState.selectedMonth;
 
-        return FutureBuilder<List<MealRecordModel>>(
-          future: ref
-              .read(appServiceProvider)
-              .getMealRecords(
-                ref.read(studentHistoryProvider).records.isNotEmpty
-                    ? ref.read(studentHistoryProvider).records.first.studentId
-                    : '',
-                selectedMonth.month,
-                selectedMonth.year,
-              ),
-          builder: (context, snapshot) {
-            final records = snapshot.data ?? outerState.records;
+        final records = outerState.records;
 
-            final selfOff = records
-                .where((r) => r.status == 'absent_self')
-                .length;
+        final selfOff = records
+            .where((r) => r.status == 'absent_self')
+            .length;
             final ownerOff = records
                 .where((r) => r.status == 'absent_owner')
                 .length;
@@ -154,25 +143,29 @@ class StudentHistoryPage extends ConsumerWidget {
                   ref,
                   records,
                   selectedMonth,
-                  () => setLocalState(() {
-                    selectedMonth = DateTime(
-                      selectedMonth.year,
-                      selectedMonth.month - 1,
-                      1,
-                    );
-                  }),
-                  () => setLocalState(() {
-                    selectedMonth = DateTime(
-                      selectedMonth.year,
-                      selectedMonth.month + 1,
-                      1,
-                    );
-                  }),
+                  () {
+                    setLocalState(() {
+                      selectedMonth = DateTime(
+                        selectedMonth.year,
+                        selectedMonth.month - 1,
+                        1,
+                      );
+                    });
+                    ref.read(studentHistoryProvider.notifier).changeMonth(selectedMonth);
+                  },
+                  () {
+                    setLocalState(() {
+                      selectedMonth = DateTime(
+                        selectedMonth.year,
+                        selectedMonth.month + 1,
+                        1,
+                      );
+                    });
+                    ref.read(studentHistoryProvider.notifier).changeMonth(selectedMonth);
+                  },
                 ),
               ],
             );
-          },
-        );
       },
     );
   }

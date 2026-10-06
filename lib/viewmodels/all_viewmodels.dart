@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
@@ -246,7 +246,6 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   StreamSubscription? _leaveSub;
   StreamSubscription? _mealRecordSub;
   StreamSubscription? _menuSub;
-  StreamSubscription? _tomorrowMenuSub;
   StreamSubscription? _announcementSub;
   StreamSubscription? _guestSub;
   Timer? _clockTimer;
@@ -348,30 +347,24 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
 
       _recalculateCurrentSlot();
 
-      _studentSub = _service.streamStudents(mess.messId).listen((students) {
-        _activeStudents = students.where((s) => s.status == 'active').toList();
-        state = state.copyWith(
-          pendingRequests: students.where((s) => s.status == 'pending').length,
-          activeStudents: _activeStudents.length,
-          activeStudentsList: _activeStudents,
-        );
-        _recomputeHeadcount();
-      });
+      final students = await _service.getStudents(mess.messId);
+      _activeStudents = students.where((s) => s.status == 'active').toList();
+      state = state.copyWith(
+        pendingRequests: students.where((s) => s.status == 'pending').length,
+        activeStudents: _activeStudents.length,
+        activeStudentsList: _activeStudents,
+      );
 
-      _leaveSub = _service.streamLeaves(mess.messId).listen((leaves) {
-        _activeLeaves = leaves.where((l) => l.status == 'active').toList();
-        _recomputeHeadcount();
-      });
+      final leaves = await _service.getUpcomingLeaves(mess.messId);
+      _activeLeaves = leaves.where((l) => l.status == 'active').toList();
 
-      _announcementSub = _service.streamAnnouncements(mess.messId).listen((
-        announcements,
-      ) {
-        state = state.copyWith(
-          announcement: announcements.firstOrNull?.message,
-        );
-      });
+      final announcements = await _service.getAnnouncements(mess.messId);
+      state = state.copyWith(
+        announcement: announcements.firstOrNull?.message,
+      );
 
-      _subscribeToDateDependentStreams();
+      await _subscribeToDateDependentStreams();
+      _recomputeHeadcount();
 
       _clockTimer = Timer.periodic(
         const Duration(minutes: 1),
@@ -384,10 +377,9 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
     }
   }
 
-  void _subscribeToDateDependentStreams() {
+  Future<void> _subscribeToDateDependentStreams() async {
     if (state.mess == null) return;
     _mealRecordSub?.cancel();
-    _menuSub?.cancel();
 
     _mealRecordSub = _service
         .streamDailyMealRecords(state.mess!.messId, _today)
@@ -407,17 +399,14 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
           state = state.copyWith(guestsBySlot: bySlot);
         });
 
-    _menuSub = _service.streamDailyMenus(state.mess!.messId, _today).listen((
-      menus,
-    ) {
-      final currentMenu = menus
-          .where((m) => m.mealSlot == _currentSlot)
-          .firstOrNull;
-      state = state.copyWith(
-        currentMeal: currentMenu,
-        clearCurrentMeal: currentMenu == null,
-      );
-    });
+    final menus = await _service.getDailyMenus(state.mess!.messId, _today);
+    final currentMenu = menus
+        .where((m) => m.mealSlot == _currentSlot)
+        .firstOrNull;
+    state = state.copyWith(
+      currentMeal: currentMenu,
+      clearCurrentMeal: currentMenu == null,
+    );
   }
 
   void _recomputeHeadcount() {

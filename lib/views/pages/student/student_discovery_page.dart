@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -42,6 +42,9 @@ class StudentDiscoveryPage extends ConsumerStatefulWidget {
 
 class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  String? _lastMessId;
   List<_MessItem> _allItems = [];
   List<_MessItem> _messes = [];
   String _searchQuery = '';
@@ -51,6 +54,150 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final pos = await _getUserLocation();
+      final newMesses = await ref.read(appServiceProvider).getAllListedMesses(lastMessId: _lastMessId, limit: 10);
+      
+      if (newMesses.isEmpty || newMesses.length < 10) {
+        _hasMore = false;
+      }
+      if (newMesses.isNotEmpty) {
+        _lastMessId = newMesses.last.messId;
+        
+        final items = await _processMesses(newMesses, pos);
+        
+        setState(() {
+          _allItems.addAll(items);
+        });
+        _filterItems();
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
+  }
+
+  Future<List<_MessItem>> _processMesses(List<MessModel> messesList, Position? pos) async {
+    final items = await Future.wait(
+      messesList.map((m) async {
+        double? dist;
+        if (pos != null && m.gpsLat != 0.0 && m.gpsLng != 0.0) {
+          dist =
+              Geolocator.distanceBetween(
+                pos.latitude,
+                pos.longitude,
+                m.gpsLat,
+                m.gpsLng,
+              ) /
+              1000.0;
+        }
+
+        final menus = await ref
+            .read(appServiceProvider)
+            .getDailyMenus(m.messId, DateTime.now());
+
+        bool isServingNow = false;
+        String mealName = 'No meal set';
+        String dishes = 'Menu not updated';
+        String? timeUntilNext;
+        String slotType = 'Noon';
+
+        final now = DateTime.now();
+        final currentMinutes = now.hour * 60 + now.minute;
+
+        if (menus.isNotEmpty) {
+          bool found = false;
+          final slotOrder = ['morning', 'noon', 'evening', 'night'];
+
+          for (var slot in slotOrder) {
+            final timing = m.mealTimings[slot];
+            if (timing != null && timing['enabled'] == 'true') {
+              final startStr = timing['start'] ?? '00:00';
+              final endStr = timing['end'] ?? '00:00';
+              final startMin = _parseTime(startStr);
+              final endMin = _parseTime(endStr);
+
+              if (currentMinutes <= endMin) {
+                final matchingMenu = menus
+                    .where((menu) => menu.mealSlot.toLowerCase() == slot)
+                    .firstOrNull;
+
+                slotType = slot == 'morning'
+                    ? 'Morning'
+                    : slot == 'noon'
+                    ? 'Noon'
+                    : slot == 'evening'
+                    ? 'Evening'
+                    : 'Night';
+                mealName = slot == 'morning'
+                    ? 'Breakfast'
+                    : slot == 'noon'
+                    ? 'Lunch'
+                    : slot == 'evening'
+                    ? 'Snacks'
+                    : 'Dinner';
+
+                if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
+                  dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                } else {
+                  dishes = 'Menu not updated';
+                }
+
+                if (currentMinutes >= startMin && currentMinutes <= endMin) {
+                  isServingNow = true;
+                } else {
+                  isServingNow = false;
+                }
+
+                found = true;
+                break;
+              }
+            }
+          }
+
+          if (!found) {
+            for (var slot in slotOrder) {
+              final timing = m.mealTimings[slot];
+              if (timing != null && timing['enabled'] == 'true') {
+                slotType = slot == 'morning'
+                    ? 'Morning'
+                    : slot == 'noon'
+                    ? 'Noon'
+                    : slot == 'evening'
+                    ? 'Evening'
+                    : 'Night';
+                mealName = 'Tomorrow ${slotType}';
+                final matchingMenu = menus
+                    .where((menu) => menu.mealSlot.toLowerCase() == slot)
+                    .firstOrNull;
+                if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
+                  dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                } else {
+                  dishes = 'Menu not updated';
+                }
+                isServingNow = false;
+                break;
+              }
+            }
+          }
+        }
+
+        return _MessItem(
+          mess: m,
+          distanceKm: dist,
+          currentOrNextMealName: mealName,
+          currentOrNextMealDishes: dishes,
+          isServingNow: isServingNow,
+          timeUntilNext: timeUntilNext,
+          slotType: slotType,
+        );
+      }),
+    );
+    return items;
   }
 
   Future<Position?> _getUserLocation() async {
@@ -77,128 +224,12 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
     setState(() => _isLoading = true);
     try {
       final pos = await _getUserLocation();
-      final allMesses = await ref.read(appServiceProvider).getAllListedMesses();
+      final allMesses = await ref.read(appServiceProvider).getAllListedMesses(limit: 10);
 
-      final items = await Future.wait(
-        allMesses.map((m) async {
-          double? dist;
-          if (pos != null && m.gpsLat != 0.0 && m.gpsLng != 0.0) {
-            dist =
-                Geolocator.distanceBetween(
-                  pos.latitude,
-                  pos.longitude,
-                  m.gpsLat,
-                  m.gpsLng,
-                ) /
-                1000.0;
-          }
+      if (allMesses.length < 10) _hasMore = false;
+      if (allMesses.isNotEmpty) _lastMessId = allMesses.last.messId;
 
-          final menus = await ref
-              .read(appServiceProvider)
-              .getDailyMenus(m.messId, DateTime.now());
-
-          bool isServingNow = false;
-          String mealName = 'No meal set';
-          String dishes = 'Menu not updated';
-          String? timeUntilNext;
-          String slotType = 'Noon';
-
-          final now = DateTime.now();
-          final currentMinutes = now.hour * 60 + now.minute;
-
-          if (menus.isNotEmpty) {
-            // Basic logic to determine current or next meal
-            bool found = false;
-
-            // We map slots to a standardized order: morning, noon, evening, night
-            final slotOrder = ['morning', 'noon', 'evening', 'night'];
-
-            for (var slot in slotOrder) {
-              final timing = m.mealTimings[slot];
-              if (timing != null && timing['enabled'] == 'true') {
-                final startStr = timing['start'] ?? '00:00';
-                final endStr = timing['end'] ?? '00:00';
-                final startMin = _parseTime(startStr);
-                final endMin = _parseTime(endStr);
-
-                if (currentMinutes <= endMin) {
-                  final matchingMenu = menus
-                      .where((menu) => menu.mealSlot.toLowerCase() == slot)
-                      .firstOrNull;
-
-                  slotType = slot == 'morning'
-                      ? 'Morning'
-                      : slot == 'noon'
-                      ? 'Noon'
-                      : slot == 'evening'
-                      ? 'Evening'
-                      : 'Night';
-                  mealName = slot == 'morning'
-                      ? 'Breakfast'
-                      : slot == 'noon'
-                      ? 'Lunch'
-                      : slot == 'evening'
-                      ? 'Snacks'
-                      : 'Dinner';
-
-                  if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
-                    dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                  } else {
-                    dishes = 'Menu not updated';
-                  }
-
-                  if (currentMinutes >= startMin && currentMinutes <= endMin) {
-                    isServingNow = true;
-                  } else {
-                    isServingNow = false;
-                  }
-
-                  found = true;
-                  break; // Found the current or next meal
-                }
-              }
-            }
-
-            if (!found) {
-              // All meals for today are over, show tomorrow's first meal if available
-              // For simplicity, just show the first active slot as 'Tomorrow'
-              for (var slot in slotOrder) {
-                final timing = m.mealTimings[slot];
-                if (timing != null && timing['enabled'] == 'true') {
-                  slotType = slot == 'morning'
-                      ? 'Morning'
-                      : slot == 'noon'
-                      ? 'Noon'
-                      : slot == 'evening'
-                      ? 'Evening'
-                      : 'Night';
-                  mealName = 'Tomorrow ${slotType}';
-                  final matchingMenu = menus
-                      .where((menu) => menu.mealSlot.toLowerCase() == slot)
-                      .firstOrNull;
-                  if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
-                    dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                  } else {
-                    dishes = 'Menu not updated';
-                  }
-                  isServingNow = false;
-                  break;
-                }
-              }
-            }
-          }
-
-          return _MessItem(
-            mess: m,
-            distanceKm: dist,
-            currentOrNextMealName: mealName,
-            currentOrNextMealDishes: dishes,
-            isServingNow: isServingNow,
-            timeUntilNext: timeUntilNext,
-            slotType: slotType,
-          );
-        }),
-      );
+      final items = await _processMesses(allMesses, pos);
 
       items.sort(
         (a, b) => (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999),
@@ -1055,10 +1086,29 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                             horizontal: 16,
                             vertical: 8,
                           ),
-                          itemCount: _messes.length,
+                          itemCount: _messes.length + (_hasMore ? 1 : 0),
                           separatorBuilder: (context, index) =>
                               const SizedBox(height: 16),
                           itemBuilder: (context, index) {
+                            if (index == _messes.length) {
+                              return Center(
+                                child: _isLoadingMore
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(16.0),
+                                        child: CircularProgressIndicator(
+                                            color: Color(0xFF22C55E)),
+                                      )
+                                    : TextButton(
+                                        onPressed: _loadMore,
+                                        child: Text(
+                                          'Load More',
+                                          style: GoogleFonts.inter(
+                                              color: Colors.white70,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                              );
+                            }
                             return _buildGlassCard(_messes[index], index == 0);
                           },
                         ),

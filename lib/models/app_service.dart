@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'app_models.dart';
 
@@ -11,7 +11,7 @@ abstract class AppService {
   // MESS
   Future<MessModel?> getMessByOwnerId(String ownerId);
   Future<MessModel?> getMessById(String messId);
-  Future<List<MessModel>> getAllListedMesses();
+  Future<List<MessModel>> getAllListedMesses({String? lastMessId, int limit = 10});
   Future<void> createMess(MessModel mess);
   Future<void> updateMess(MessModel mess);
   Future<String> uploadImage(String path, Uint8List bytes, String extension);
@@ -97,6 +97,7 @@ abstract class AppService {
   // ANNOUNCEMENTS
   Future<void> sendAnnouncement(String messId, String message);
   Stream<List<AnnouncementModel>> streamAnnouncements(String messId);
+  Future<List<AnnouncementModel>> getAnnouncements(String messId);
 
   // MESS CODE
   Future<String> generateUniqueMessCode();
