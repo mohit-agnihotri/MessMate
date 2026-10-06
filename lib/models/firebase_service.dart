@@ -287,15 +287,66 @@ class FirebaseService implements AppService {
   // MEAL RECORDS
   @override
   Future<void> skipMeal(MealRecordModel record) async {
-    await _db
-        .collection('meal_records')
-        .doc(record.recordId)
-        .set(record.toMap());
+    final batch = _db.batch();
+    
+    // 1. Save the meal record
+    final recordRef = _db.collection('meal_records').doc(record.recordId);
+    batch.set(recordRef, record.toMap());
+
+    // 2. Check the mess policy
+    final messDoc = await _db.collection('messes').doc(record.messId).get();
+    if (messDoc.exists) {
+      final mess = MessModel.fromMap(messDoc.data()!);
+      if (mess.allowMealSkipping && mess.skipCompensationMethod == 'extend') {
+        final hoursToAdd = 24 ~/ (mess.mealsIncludedPerDay > 0 ? mess.mealsIncludedPerDay : 1);
+        
+        final studentDoc = await _db.collection('students').doc(record.studentId).get();
+        if (studentDoc.exists) {
+          final student = StudentModel.fromMap(studentDoc.data()!);
+          if (student.subscriptionEndDate != null) {
+            final newEndDate = student.subscriptionEndDate!.add(Duration(hours: hoursToAdd));
+            final studentRef = _db.collection('students').doc(record.studentId);
+            batch.update(studentRef, {
+              'subscriptionEndDate': newEndDate.toIso8601String(),
+            });
+          }
+        }
+      }
+    }
+    
+    await batch.commit();
   }
 
   @override
   Future<void> undoSkipMeal(String recordId) async {
-    await _db.collection('meal_records').doc(recordId).delete();
+    final recordDoc = await _db.collection('meal_records').doc(recordId).get();
+    if (!recordDoc.exists) return;
+    
+    final record = MealRecordModel.fromMap(recordDoc.data()!);
+    final batch = _db.batch();
+    batch.delete(recordDoc.reference);
+    
+    final messDoc = await _db.collection('messes').doc(record.messId).get();
+    if (messDoc.exists) {
+      final mess = MessModel.fromMap(messDoc.data()!);
+      if (mess.allowMealSkipping && mess.skipCompensationMethod == 'extend') {
+        final hoursToSubtract = 24 ~/ (mess.mealsIncludedPerDay > 0 ? mess.mealsIncludedPerDay : 1);
+        
+        final studentDoc = await _db.collection('students').doc(record.studentId).get();
+        if (studentDoc.exists) {
+          final student = StudentModel.fromMap(studentDoc.data()!);
+          if (student.subscriptionEndDate != null) {
+            final newEndDate = student.subscriptionEndDate!.subtract(Duration(hours: hoursToSubtract));
+            final studentRef = _db.collection('students').doc(record.studentId);
+            batch.update(studentRef, {
+              'subscriptionEndDate': newEndDate.toIso8601String(),
+            });
+          }
+        }
+      }
+    }
+    
+    await batch.commit();
   }
 
   @override

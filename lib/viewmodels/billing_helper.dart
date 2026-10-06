@@ -88,17 +88,20 @@ BillModel generateAdvancedBill({
     if (consumedMeals < allowedMeals) {
       // Refund for (allowed - consumed)
       int refundMeals = allowedMeals - consumedMeals;
-      double refundAmt = refundMeals * mess.perMealRate;
-      skipsDeduction += refundAmt;
+      
+      if (mess.skipCompensationMethod == 'rebate') {
+        double refundAmt = refundMeals * mess.perMealRate;
+        skipsDeduction += refundAmt;
 
-      items.add(
-        DeductionItem(
-          date: DateTime(year, month, day),
-          mealSlot: 'Valid Skips ($refundMeals)',
-          type: 'self_cancelled',
-          amount: -refundAmt,
-        ),
-      );
+        items.add(
+          DeductionItem(
+            date: DateTime(year, month, day),
+            mealSlot: 'Valid Skips ($refundMeals)',
+            type: 'self_cancelled',
+            amount: -refundAmt,
+          ),
+        );
+      }
     } else if (consumedMeals > allowedMeals) {
       // Extra charge for (consumed - allowed)
       int extraCount = consumedMeals - allowedMeals;

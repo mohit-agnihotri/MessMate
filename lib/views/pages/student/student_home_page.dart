@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -380,16 +380,18 @@ class StudentHomePage extends ConsumerWidget {
                     else
                       Row(
                         children: [
-                          Expanded(
-                            flex: 3,
-                            child: _SkipButton(
-                              ref: ref,
-                              mealSlot: menu.mealSlot,
+                          if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
+                            Expanded(
+                              flex: 3,
+                              child: _SkipButton(
+                                ref: ref,
+                                mealSlot: menu.mealSlot,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
+                            const SizedBox(width: 10),
+                          ],
                           Expanded(
-                            flex: 2,
+                            flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
                             child: _GuestButton(
                               onAddGuest: () => _showAddGuestDialog(
                                 context,
@@ -602,80 +604,82 @@ class StudentHomePage extends ConsumerWidget {
             if (hasCutoff)
               Row(
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: isSkipped
-                        ? ElevatedButton(
-                            onPressed: () {
-                              final mealIso = mealDate
-                                  .toIso8601String()
-                                  .substring(0, 10);
-                              final recordId = state
-                                  .skippedUpcomingMeals['${mealIso}_$slot'];
-                              if (recordId != null) {
+                  if ((state.mess?.allowMealSkipping ?? true) || isSkipped) ...[
+                    Expanded(
+                      flex: 3,
+                      child: isSkipped
+                          ? ElevatedButton(
+                              onPressed: () {
+                                final mealIso = mealDate
+                                    .toIso8601String()
+                                    .substring(0, 10);
+                                final recordId = state
+                                    .skippedUpcomingMeals['${mealIso}_$slot'];
+                                if (recordId != null) {
+                                  ref
+                                      .read(studentHomeProvider.notifier)
+                                      .undoSkip(recordId);
+                                }
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$slotName skip undone!'),
+                                    backgroundColor: const Color(0xFF22C55E),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFEE2E2),
+                                foregroundColor: const Color(0xFFEF4444),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Undo Skip',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : ElevatedButton(
+                              onPressed: () {
                                 ref
                                     .read(studentHomeProvider.notifier)
-                                    .undoSkip(recordId);
-                              }
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('$slotName skip undone!'),
-                                  backgroundColor: const Color(0xFF22C55E),
+                                    .skipMeal(slot, date: mealDate);
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$slotName skipped!'),
+                                    backgroundColor: const Color(0xFFEF4444),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFEF4444),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFEE2E2),
-                              foregroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                elevation: 0,
                               ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Undo Skip',
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        : ElevatedButton(
-                            onPressed: () {
-                              ref
-                                  .read(studentHomeProvider.notifier)
-                                  .skipMeal(slot, date: mealDate);
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('$slotName skipped!'),
-                                  backgroundColor: const Color(0xFFEF4444),
+                              child: Text(
+                                'Skip This Meal',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEF4444),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Skip This Meal',
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                  ),
-                  const SizedBox(width: 10),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
-                    flex: 2,
+                    flex: ((state.mess?.allowMealSkipping ?? true) || isSkipped) ? 2 : 5,
                     child: OutlinedButton(
                       onPressed: () {
                         Navigator.pop(ctx);

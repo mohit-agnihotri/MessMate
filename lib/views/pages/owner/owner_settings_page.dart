@@ -68,6 +68,12 @@ class OwnerSettingsPage extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
+                  child: _buildSkipPolicyCard(context, ref, mess),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
                   child: _buildMessPhotosCard(context, ref, mess),
                 ),
               ),
@@ -543,6 +549,97 @@ class OwnerSettingsPage extends ConsumerWidget {
             onChanged: onChanged,
             activeTrackColor: const Color(0xFF22C55E),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkipPolicyCard(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+  ) {
+    if (mess == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Meal Skipping Policy',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildToggle(
+            'Allow Students to Skip Meals',
+            mess.allowMealSkipping,
+            (val) => ref
+                .read(ownerSettingsProvider.notifier)
+                .save(mess.copyWith(allowMealSkipping: val)),
+          ),
+          if (mess.allowMealSkipping) ...[
+            const Divider(height: 24, color: Color(0xFFF3F4F6)),
+            Text(
+              'Skip Compensation Method',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                children: [
+                  RadioListTile<String>(
+                    title: Text('Reduce amount from next bill', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                    subtitle: Text('Cost of skipped meals is deducted from the upcoming monthly bill.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
+                    value: 'rebate',
+                    groupValue: mess.skipCompensationMethod,
+                    activeColor: const Color(0xFF22C55E),
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(ownerSettingsProvider.notifier).save(mess.copyWith(skipCompensationMethod: val));
+                      }
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                  RadioListTile<String>(
+                    title: Text('Extend subscription validity', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                    subtitle: Text('Validity is carried forward based on the number of skipped meals.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280))),
+                    value: 'extend',
+                    groupValue: mess.skipCompensationMethod,
+                    activeColor: const Color(0xFF22C55E),
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(ownerSettingsProvider.notifier).save(mess.copyWith(skipCompensationMethod: val));
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

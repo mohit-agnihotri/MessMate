@@ -331,6 +331,17 @@ class StudentProfilePage extends ConsumerWidget {
               color: const Color(0xFF6B7280),
             ),
           ),
+          if (state.student?.subscriptionEndDate != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Valid Till: ${state.student!.subscriptionEndDate!.toIso8601String().substring(0, 10)}',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
