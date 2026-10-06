@@ -8,12 +8,13 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
 - **Effortless Student Management:** Add students quickly using a secure 6-digit Mess Code. Track their active status, room numbers, and contact details.
 - **Smart Menu Planner:** A visual 7-day menu planner with an integrated dish catalog. Add breakfast, lunch, snacks, and dinner with high-quality images.
 - **Automated Billing & Deductions:** Automatically calculates end-of-month bills based on the base monthly fee, subtracting any skipped meals (absents) and adding guest meal charges.
+- **Configurable Meal Skip Policies:** Choose how skipped meals are handled. You can either provide a **Rebate** (deducted from the next bill) or **Extend** the student's subscription validity (carry forward skipped meals).
 - **Payment Tracking:** Mark bills as paid with a single tap and send quick WhatsApp reminders for pending dues.
 - **Absence Tracking & Emergency Controls:** View exactly who is eating today and who skipped. Send bulk announcements or declare a "Mess Closed" day for emergencies.
 
 ### For Students
 - **Daily Menu Dashboard:** View today's menu at a glance with beautiful, mouth-watering images of the dishes.
-- **Meal Skipping (Absents):** Mark yourself absent for upcoming meals if you are eating out or going home. The cost is automatically deducted from your monthly bill!
+- **Meal Skipping (Absents):** Mark yourself absent for upcoming meals if you are eating out or going home. Depending on your mess's policy, you will either receive a discount on your next bill or an extension on your subscription validity!
 - **Billing Transparency:** View a detailed breakdown of your monthly bill, including base fees, deductions for skipped meals, and extra guest charges.
 - **Leave History:** A complete calendar history of your past absences and meal records.
 
