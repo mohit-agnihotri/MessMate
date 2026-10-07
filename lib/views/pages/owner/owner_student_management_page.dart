@@ -510,131 +510,156 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.9,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              // Handle for dragging
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Profile Header
-                      Row(
+        DateTime selectedMonthDate = DateTime.now();
+        
+        return ScaffoldMessenger(
+          child: Builder(
+            builder: (innerContext) {
+              return Scaffold(
+                backgroundColor: Colors.transparent,
+                body: StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height * 0.9,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: const Color(0xFFDCFCE7),
-                            child: Text(
-                              student.name[0],
-                              style: GoogleFonts.inter(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF16A34A),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  student.name,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF111827),
-                                  ),
-                                ),
-                                Text(
-                                  'ID: ${student.studentId.substring(0, 8)} • Room ${student.roomNo}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFF6B7280),
-                                  ),
-                                ),
-                                Text(
-                                  'Joined: $joined',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () async {
-                              final url = Uri.parse('tel:${student.phone}');
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Could not launch phone dialer',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
+                          // Handle for dragging
+                          Center(
                             child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFDBEAFE),
-                                shape: BoxShape.circle,
+                              margin: const EdgeInsets.only(top: 12, bottom: 8),
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD1D5DB),
+                                borderRadius: BorderRadius.circular(2),
                               ),
-                              child: const Icon(
-                                Icons.phone,
-                                size: 20,
-                                color: Color(0xFF2563EB),
+                            ),
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Profile Header
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: const Color(0xFFDCFCE7),
+                                        child: Text(
+                                          student.name[0],
+                                          style: GoogleFonts.inter(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF16A34A),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              student.name,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: const Color(0xFF111827),
+                                              ),
+                                            ),
+                                            Text(
+                                              'ID: ${student.studentId.substring(0, 8)} • Room ${student.roomNo}',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                color: const Color(0xFF6B7280),
+                                              ),
+                                            ),
+                                            Text(
+                                              'Joined: $joined',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                color: const Color(0xFF6B7280),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final url = Uri.parse('tel:${student.phone}');
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url);
+                                          } else {
+                                            if (innerContext.mounted) {
+                                              ScaffoldMessenger.of(innerContext).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Could not launch phone dialer',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFDBEAFE),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.phone,
+                                            size: 20,
+                                            color: Color(0xFF2563EB),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // 3 Summary Cards
+                                  _buildAttendanceSummary(
+                                    innerContext, 
+                                    ref, 
+                                    student, 
+                                    selectedMonthDate, 
+                                    (newDate) {
+                                      setModalState(() {
+                                        selectedMonthDate = newDate;
+                                      });
+                                    }
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // Billing Summary
+                                  Text(
+                                    'Billing Summary',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF111827),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildBillingSummary(innerContext, ref, student, selectedMonthDate),
+                                ],
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-
-                      // 3 Summary Cards
-                      _buildAttendanceSummary(context, ref, student),
-                      const SizedBox(height: 24),
-
-                      // Billing Summary
-                      Text(
-                        'Billing Summary',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildBillingSummary(context, ref, student),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -664,96 +689,84 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     StudentModel student,
+    DateTime selectedMonthDate,
+    void Function(DateTime) onMonthChanged,
   ) {
-    return StatefulBuilder(
-      builder: (context, setLocalState) {
-        DateTime selectedMonthDate = DateTime.now();
-
-        return StatefulBuilder(
-          builder: (context, setMonthState) {
-            return FutureBuilder<List<MealRecordModel>>(
-              future: ref
-                  .read(appServiceProvider)
-                  .getMealRecords(
-                    student.studentId,
-                    selectedMonthDate.month,
-                    selectedMonthDate.year,
-                  ),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return const Center(child: CircularProgressIndicator());
-                final records = snapshot.data!;
-                final selfOff = records
-                    .where((r) => r.status == 'absent_self')
-                    .length;
-                final ownerOff = records
-                    .where((r) => r.status == 'absent_owner')
-                    .length;
-                final totalOff = selfOff + ownerOff;
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        _buildSummaryCard(
-                          context,
-                          'Total Meals Off',
-                          '$totalOff',
-                          const Color(0xFFEF4444),
-                          records
-                              .where(
-                                (r) =>
-                                    r.status == 'absent_self' ||
-                                    r.status == 'absent_owner',
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(width: 12),
-                        _buildSummaryCard(
-                          context,
-                          'Off by Student',
-                          '$selfOff',
-                          const Color(0xFFF59E0B),
-                          records.where((r) => r.status == 'absent_self').toList(),
-                        ),
-                        const SizedBox(width: 12),
-                        _buildSummaryCard(
-                          context,
-                          'Off by Mess',
-                          '$ownerOff',
-                          const Color(0xFF6B7280),
-                          records.where((r) => r.status == 'absent_owner').toList(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInteractiveCalendar(
-                      context,
-                      records,
-                      selectedMonthDate,
-                      () {
-                        setMonthState(() {
-                          selectedMonthDate = DateTime(
-                            selectedMonthDate.year,
-                            selectedMonthDate.month - 1,
-                            1,
-                          );
-                        });
-                      },
-                      () {
-                        setMonthState(() {
-                          selectedMonthDate = DateTime(
-                            selectedMonthDate.year,
-                            selectedMonthDate.month + 1,
-                            1,
-                          );
-                        });
-                      },
-                    ),
-                  ],
-                );
+    return FutureBuilder<List<MealRecordModel>>(
+      future: ref
+          .read(appServiceProvider)
+          .getMealRecords(
+            student.studentId,
+            selectedMonthDate.month,
+            selectedMonthDate.year,
+          ),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+        final records = snapshot.data!;
+        final selfOff = records
+            .where((r) => r.status == 'absent_self')
+            .length;
+        final ownerOff = records
+            .where((r) => r.status == 'absent_owner')
+            .length;
+        final totalOff = selfOff + ownerOff;
+        return Column(
+          children: [
+            Row(
+              children: [
+                _buildSummaryCard(
+                  context,
+                  'Total Meals Off',
+                  '$totalOff',
+                  const Color(0xFFEF4444),
+                  records
+                      .where(
+                        (r) =>
+                            r.status == 'absent_self' ||
+                            r.status == 'absent_owner',
+                      )
+                      .toList(),
+                ),
+                const SizedBox(width: 12),
+                _buildSummaryCard(
+                  context,
+                  'Off by Student',
+                  '$selfOff',
+                  const Color(0xFFF59E0B),
+                  records.where((r) => r.status == 'absent_self').toList(),
+                ),
+                const SizedBox(width: 12),
+                _buildSummaryCard(
+                  context,
+                  'Off by Mess',
+                  '$ownerOff',
+                  const Color(0xFF6B7280),
+                  records.where((r) => r.status == 'absent_owner').toList(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildInteractiveCalendar(
+              context,
+              records,
+              selectedMonthDate,
+              () {
+                onMonthChanged(DateTime(
+                  selectedMonthDate.year,
+                  selectedMonthDate.month - 1,
+                  1,
+                ));
               },
-            );
-          },
+              () {
+                onMonthChanged(DateTime(
+                  selectedMonthDate.year,
+                  selectedMonthDate.month + 1,
+                  1,
+                ));
+              },
+            ),
+          ],
         );
       },
     );
@@ -950,9 +963,10 @@ class OwnerStudentManagementPage extends ConsumerWidget {
   Future<Map<String, dynamic>> _fetchBillingData(
     WidgetRef ref,
     StudentModel student,
+    DateTime selectedMonthDate,
   ) async {
     final service = ref.read(appServiceProvider);
-    final now = DateTime.now();
+    final now = selectedMonthDate;
     final bill = await service.getBill(student.studentId, now.month, now.year);
     final mess = await service.getMessById(student.messId);
     if (mess == null) throw Exception("Mess not found");
@@ -983,11 +997,12 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     StudentModel student,
+    DateTime selectedMonthDate,
   ) {
     String localCompensationChoice = 'rebate';
 
     return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchBillingData(ref, student),
+      future: _fetchBillingData(ref, student, selectedMonthDate),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           debugPrint(
