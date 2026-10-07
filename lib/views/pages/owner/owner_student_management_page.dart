@@ -512,16 +512,17 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       builder: (context) {
         DateTime selectedMonthDate = DateTime.now();
         
-        return ScaffoldMessenger(
-          child: Builder(
-            builder: (innerContext) {
-              return Scaffold(
-                backgroundColor: Colors.transparent,
-                body: StatefulBuilder(
-                  builder: (context, setModalState) {
-                    return Container(
-                      height: MediaQuery.of(context).size.height * 0.9,
-                      decoration: const BoxDecoration(
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.9,
+          child: ScaffoldMessenger(
+            child: Builder(
+              builder: (innerContext) {
+                return Scaffold(
+                  backgroundColor: Colors.transparent,
+                  body: StatefulBuilder(
+                    builder: (context, setModalState) {
+                      return Container(
+                        decoration: const BoxDecoration(
                         color: Color(0xFFF9FAFB),
                         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                       ),
@@ -1000,6 +1001,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     DateTime selectedMonthDate,
   ) {
     String localCompensationChoice = 'rebate';
+    bool? localIsPaidOverride;
 
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchBillingData(ref, student, selectedMonthDate),
@@ -1031,7 +1033,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               compensationChoice: localCompensationChoice,
             );
             
-            bool localIsPaid = bill.isPaid;
+            bool localIsPaid = localIsPaidOverride ?? bill.isPaid;
 
             // Calculate skipped meals for extend option
             int skippedMealsCount = records.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').length;
@@ -1212,7 +1214,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                             value: localIsPaid,
                             activeColor: const Color(0xFF16A34A),
                             onChanged: (value) async {
-                              setLocalState(() => localIsPaid = value);
+                              setLocalState(() => localIsPaidOverride = value);
                               // We use copyWith behavior manually for toggle
                               final updatedBill = BillModel(
                                 billId: bill.billId,

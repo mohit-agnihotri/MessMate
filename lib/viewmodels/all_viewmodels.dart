@@ -814,7 +814,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
     final menu = MenuModel(
       menuId: menuId,
       messId: state.messId,
-      date: DateTime.now(), // Ignored in template logic basically
+      date: DateTime.now(), // Ignored in tem plate logic basically
       mealSlot: state.selectedSlot,
       dishes: state.selectedDishes,
     );
