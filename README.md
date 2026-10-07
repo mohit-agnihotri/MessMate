@@ -8,7 +8,9 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
 - **Effortless Student Management:** Add students quickly using a secure 6-digit Mess Code. Track their active status, room numbers, and contact details.
 - **Smart Menu Planner:** A visual 7-day menu planner with an integrated dish catalog. Add breakfast, lunch, snacks, and dinner with high-quality images.
 - **Automated Billing & Deductions:** Automatically calculates end-of-month bills based on the base monthly fee, subtracting any skipped meals (absents) and adding guest meal charges.
-- **Configurable Meal Skip Policies:** Choose how skipped meals are handled. You can either provide a **Rebate** (deducted from the next bill) or **Extend** the student's subscription validity (carry forward skipped meals).
+- **Flexible Subscription Cycle (Rebate vs. Extend):** During bill generation, owners can flexibly decide how to compensate each student for their skipped meals:
+  - **Rebate:** Provide a direct deduction on the current month's bill.
+  - **Extend:** Carry forward the skipped meals by automatically extending the student's subscription end date.
 - **Payment Tracking:** Mark bills as paid with a single tap and send quick WhatsApp reminders for pending dues.
 - **Absence Tracking & Emergency Controls:** View exactly who is eating today and who skipped. Send bulk announcements or declare a "Mess Closed" day for emergencies.
 
@@ -22,7 +24,7 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
 
 - **Frontend:** Flutter (Dart)
 - **State Management:** Riverpod
-- **Backend (BaaS):** Firebase (Firestore, Storage, Authentication)
+- **Backend (BaaS):** Firebase (Firestore, Authentication) & Supabase
 - **Design:** Custom UI with modern aesthetics, glassmorphism elements, and `GoogleFonts`.
 - **Scripts:** Node.js utilities for backend database seeding and fetching high-quality dish images via the Google Custom Search API.
 
@@ -31,7 +33,8 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
 ### Prerequisites
 - Flutter SDK (`>=3.0.0`)
 - Dart SDK
-- A Firebase Project with Firestore and Storage enabled.
+- A Firebase Project with Firestore and Authentication enabled.
+- A Supabase Project for PostgreSQL database and backend edge functions.
 
 ### Installation
 
@@ -50,8 +53,9 @@ MessMate is a comprehensive and modern Flutter application designed to streamlin
    Ensure you have your own `firebase_options.dart` generated via the FlutterFire CLI, and place it in the `lib/` directory.
 
 4. **Run the App:**
+   Pass your Supabase credentials using `--dart-define` when running the app:
    ```bash
-   flutter run
+   flutter run --dart-define=SUPABASE_URL=YOUR_SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
    ```
 
 ## 🔒 Security
