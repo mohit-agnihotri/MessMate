@@ -662,7 +662,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               );
             },
           ),
-        );
+        ),
+      );
       },
     );
   }
