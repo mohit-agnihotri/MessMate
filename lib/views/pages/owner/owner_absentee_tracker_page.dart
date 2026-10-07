@@ -133,7 +133,6 @@ class _OwnerAbsenteeTrackerPageState
             ),
             Expanded(
               child: TabBarView(
-                physics: const NeverScrollableScrollPhysics(),
                 children: allTabs
                     .map((slot) => _AbsenteeList(slot: slot))
                     .toList(),

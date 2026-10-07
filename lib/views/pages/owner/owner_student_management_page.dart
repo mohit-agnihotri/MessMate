@@ -45,7 +45,6 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                         ),
                       )
                     : TabBarView(
-                        physics: const NeverScrollableScrollPhysics(),
                         children: [
                           allStudents.isEmpty
                               ? _buildEmpty()
