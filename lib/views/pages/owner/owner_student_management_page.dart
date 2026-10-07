@@ -665,88 +665,93 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     WidgetRef ref,
     StudentModel student,
   ) {
-    DateTime selectedMonthDate = DateTime.now();
-
     return StatefulBuilder(
       builder: (context, setLocalState) {
-        return FutureBuilder<List<MealRecordModel>>(
-          future: ref
-              .read(appServiceProvider)
-              .getMealRecords(
-                student.studentId,
-                selectedMonthDate.month,
-                selectedMonthDate.year,
-              ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData)
-              return const Center(child: CircularProgressIndicator());
-            final records = snapshot.data!;
-            final selfOff = records
-                .where((r) => r.status == 'absent_self')
-                .length;
-            final ownerOff = records
-                .where((r) => r.status == 'absent_owner')
-                .length;
-            final totalOff = selfOff + ownerOff;
-            return Column(
-              children: [
-                Row(
+        DateTime selectedMonthDate = DateTime.now();
+
+        return StatefulBuilder(
+          builder: (context, setMonthState) {
+            return FutureBuilder<List<MealRecordModel>>(
+              future: ref
+                  .read(appServiceProvider)
+                  .getMealRecords(
+                    student.studentId,
+                    selectedMonthDate.month,
+                    selectedMonthDate.year,
+                  ),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
+                final records = snapshot.data!;
+                final selfOff = records
+                    .where((r) => r.status == 'absent_self')
+                    .length;
+                final ownerOff = records
+                    .where((r) => r.status == 'absent_owner')
+                    .length;
+                final totalOff = selfOff + ownerOff;
+                return Column(
                   children: [
-                    _buildSummaryCard(
-                      context,
-                      'Total Meals Off',
-                      '$totalOff',
-                      const Color(0xFFEF4444),
-                      records
-                          .where(
-                            (r) =>
-                                r.status == 'absent_self' ||
-                                r.status == 'absent_owner',
-                          )
-                          .toList(),
+                    Row(
+                      children: [
+                        _buildSummaryCard(
+                          context,
+                          'Total Meals Off',
+                          '$totalOff',
+                          const Color(0xFFEF4444),
+                          records
+                              .where(
+                                (r) =>
+                                    r.status == 'absent_self' ||
+                                    r.status == 'absent_owner',
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildSummaryCard(
+                          context,
+                          'Off by Student',
+                          '$selfOff',
+                          const Color(0xFFF59E0B),
+                          records.where((r) => r.status == 'absent_self').toList(),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildSummaryCard(
+                          context,
+                          'Off by Mess',
+                          '$ownerOff',
+                          const Color(0xFF6B7280),
+                          records.where((r) => r.status == 'absent_owner').toList(),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
+                    const SizedBox(height: 16),
+                    _buildInteractiveCalendar(
                       context,
-                      'Off by Student',
-                      '$selfOff',
-                      const Color(0xFFF59E0B),
-                      records.where((r) => r.status == 'absent_self').toList(),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      context,
-                      'Off by Mess',
-                      '$ownerOff',
-                      const Color(0xFF6B7280),
-                      records.where((r) => r.status == 'absent_owner').toList(),
+                      records,
+                      selectedMonthDate,
+                      () {
+                        setMonthState(() {
+                          selectedMonthDate = DateTime(
+                            selectedMonthDate.year,
+                            selectedMonthDate.month - 1,
+                            1,
+                          );
+                        });
+                      },
+                      () {
+                        setMonthState(() {
+                          selectedMonthDate = DateTime(
+                            selectedMonthDate.year,
+                            selectedMonthDate.month + 1,
+                            1,
+                          );
+                        });
+                      },
                     ),
                   ],
-                ),
-                _buildInteractiveCalendar(
-                  context,
-                  records,
-                  selectedMonthDate,
-                  () {
-                    setLocalState(() {
-                      selectedMonthDate = DateTime(
-                        selectedMonthDate.year,
-                        selectedMonthDate.month - 1,
-                        1,
-                      );
-                    });
-                  },
-                  () {
-                    setLocalState(() {
-                      selectedMonthDate = DateTime(
-                        selectedMonthDate.year,
-                        selectedMonthDate.month + 1,
-                        1,
-                      );
-                    });
-                  },
-                ),
-              ],
+                );
+              },
             );
           },
         );
@@ -942,15 +947,13 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     );
   }
 
-  Future<BillModel> _calculateBillPreview(
+  Future<Map<String, dynamic>> _fetchBillingData(
     WidgetRef ref,
     StudentModel student,
   ) async {
     final service = ref.read(appServiceProvider);
     final now = DateTime.now();
     final bill = await service.getBill(student.studentId, now.month, now.year);
-    if (bill != null) return bill;
-
     final mess = await service.getMessById(student.messId);
     if (mess == null) throw Exception("Mess not found");
 
@@ -966,14 +969,14 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       now.year,
     );
 
-    return generateAdvancedBill(
-      student: student,
-      mess: mess,
-      month: now.month,
-      year: now.year,
-      records: records,
-      previousDues: previousDues,
-    );
+    return {
+      'bill': bill,
+      'mess': mess,
+      'records': records,
+      'previousDues': previousDues,
+      'month': now.month,
+      'year': now.year,
+    };
   }
 
   Widget _buildBillingSummary(
@@ -981,8 +984,10 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     WidgetRef ref,
     StudentModel student,
   ) {
-    return FutureBuilder<BillModel>(
-      future: _calculateBillPreview(ref, student),
+    String localCompensationChoice = 'rebate';
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchBillingData(ref, student),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           debugPrint(
@@ -990,95 +995,192 @@ class OwnerStudentManagementPage extends ConsumerWidget {
           );
           return Center(child: Text('Error: ${snapshot.error}'));
         }
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
-        var bill = snapshot.data!;
-        bool localIsPaid = bill.isPaid;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+        }
+
+        final data = snapshot.data!;
+        final BillModel? savedBill = data['bill'];
+        final MessModel mess = data['mess'];
+        final List<MealRecordModel> records = data['records'];
+
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            final bill = savedBill ?? generateAdvancedBill(
+              student: student,
+              mess: mess,
+              month: data['month'],
+              year: data['year'],
+              records: records,
+              previousDues: data['previousDues'],
+              compensationChoice: localCompensationChoice,
+            );
+            
+            bool localIsPaid = bill.isPaid;
+
+            // Calculate skipped meals for extend option
+            int skippedMealsCount = records.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').length;
+            int dailyOfferedMeals = mess.mealTimings.values.where((m) => m['enabled'] == 'true').length;
+            if (dailyOfferedMeals == 0) dailyOfferedMeals = 3;
+            int extendDays = skippedMealsCount ~/ dailyOfferedMeals;
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (!bill.isPaid) ...[
+                    Row(
                       children: [
+                        const Icon(Icons.receipt_outlined, size: 14, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 6),
                         Text(
-                          'Basic Fee',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF6B7280),
-                          ),
+                          'Skip Compensation',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: const Color(0xFF374151)),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${bill.baseFee.toStringAsFixed(0)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF111827),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: skippedMealsCount > 0 ? const Color(0xFFFEF3C7) : const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            skippedMealsCount > 0 ? '$skippedMealsCount meals skipped' : 'No skips this month',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: skippedMealsCount > 0 ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Deductions',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF6B7280),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        children: [
+                          RadioListTile<String>(
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Reduce Fees (Rebate)', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text(
+                                  skippedMealsCount > 0 ? 'Deduct ₹${(skippedMealsCount * (mess.monthlyFee / (mess.mealsIncludedPerDay * 30))).toStringAsFixed(0)} from bill' : 'No deduction (0 skips)',
+                                  style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280)),
+                                ),
+                              ],
+                            ),
+                            value: 'rebate',
+                            groupValue: localCompensationChoice,
+                            activeColor: const Color(0xFF22C55E),
+                            onChanged: (val) => setLocalState(() => localCompensationChoice = val!),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '-${bill.totalDeductions.toStringAsFixed(0)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF111827),
+                          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                          RadioListTile<String>(
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Extend Validity', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text(
+                                  extendDays > 0 ? 'Add +$extendDays days to subscription' : 'No extension (0 skips)',
+                                  style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280)),
+                                ),
+                              ],
+                            ),
+                            value: 'extend',
+                            groupValue: localCompensationChoice,
+                            activeColor: const Color(0xFF22C55E),
+                            onChanged: (val) => setLocalState(() => localCompensationChoice = val!),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Final Payable',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF6B7280),
-                          ),
+                    const SizedBox(height: 16),
+                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Basic Fee',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${bill.baseFee.toStringAsFixed(0)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${bill.finalPayable.toStringAsFixed(0)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF111827),
-                          ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Deductions',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '-${bill.totalDeductions.toStringAsFixed(0)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  StatefulBuilder(
-                    builder: (context, setLocalState) {
-                      return Row(
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Final Payable',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${bill.finalPayable.toStringAsFixed(0)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
                         children: [
                           Text(
                             localIsPaid ? 'Paid' : 'Mark as Paid',
@@ -1112,17 +1214,20 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                 isPaid: value,
                                 deductions: bill.deductions,
                               );
+                              
+                              int? daysToExtend;
+                              if (localCompensationChoice == 'extend' && value == true) {
+                                daysToExtend = extendDays;
+                              }
+
                               await ref
                                   .read(ownerStudentsProvider.notifier)
                                   .toggleBillPaymentStatus(
                                     student,
                                     updatedBill,
                                     value,
+                                    extendDays: daysToExtend,
                                   );
-
-                              // We also update the initial bill variable so it stays consistent
-                              // across StatefulBuilder rebuilds if anything else triggers it
-                              bill = updatedBill;
 
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1141,15 +1246,13 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                             },
                           ),
                         ],
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
                   onPressed: () => _showDetailedBreakdown(context, bill),
                   icon: const Icon(Icons.receipt_long, size: 18),
                   label: Text(
@@ -1214,6 +1317,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               ),
             ],
           ),
+        );
+          },
         );
       },
     );

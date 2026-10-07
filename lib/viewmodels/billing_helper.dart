@@ -7,6 +7,7 @@ BillModel generateAdvancedBill({
   required int year,
   required List<MealRecordModel> records,
   required double previousDues,
+  String compensationChoice = 'rebate',
 }) {
   double skipsDeduction = 0.0;
   double extraMealsAddon = 0.0;
@@ -89,7 +90,7 @@ BillModel generateAdvancedBill({
       // Refund for (allowed - consumed)
       int refundMeals = allowedMeals - consumedMeals;
       
-      if (mess.skipCompensationMethod == 'rebate') {
+      if (compensationChoice == 'rebate') {
         double refundAmt = refundMeals * mess.perMealRate;
         skipsDeduction += refundAmt;
 

@@ -149,7 +149,6 @@ class MessModel {
   final Map<String, Map<String, String>> mealTimings;
   final DateTime? temporarilyClosedUntil;
   final bool allowMealSkipping; // Toggle for skip meal functionality
-  final String skipCompensationMethod; // 'rebate' or 'extend'
   // Owner notification preferences - controls FCM topic subscriptions
   final Map<String, bool> ownerNotificationPrefs;
   // Rich text content in Quill Delta JSON format describing the mess in detail
@@ -188,7 +187,6 @@ class MessModel {
     },
     this.temporarilyClosedUntil,
     this.allowMealSkipping = true,
-    this.skipCompensationMethod = 'rebate',
     this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
     this.aboutContent,
   });
@@ -216,7 +214,6 @@ class MessModel {
     Map<String, Map<String, String>>? mealTimings,
     DateTime? temporarilyClosedUntil,
     bool? allowMealSkipping,
-    String? skipCompensationMethod,
     Map<String, bool>? ownerNotificationPrefs,
     Object? aboutContent = const _Sentinel(),
   }) {
@@ -244,7 +241,6 @@ class MessModel {
       temporarilyClosedUntil:
           temporarilyClosedUntil ?? this.temporarilyClosedUntil,
       allowMealSkipping: allowMealSkipping ?? this.allowMealSkipping,
-      skipCompensationMethod: skipCompensationMethod ?? this.skipCompensationMethod,
       ownerNotificationPrefs:
           ownerNotificationPrefs ?? this.ownerNotificationPrefs,
       aboutContent:
@@ -290,7 +286,6 @@ class MessModel {
           ? DateTime.tryParse(map['temporarilyClosedUntil'])
           : null,
       allowMealSkipping: map['allowMealSkipping'] ?? true,
-      skipCompensationMethod: map['skipCompensationMethod'] ?? 'rebate',
       ownerNotificationPrefs: (() {
         final raw = map['ownerNotificationPrefs'] as Map<String, dynamic>?;
         return <String, bool>{
@@ -325,7 +320,6 @@ class MessModel {
     'mealTimings': mealTimings,
     'temporarilyClosedUntil': temporarilyClosedUntil?.toIso8601String(),
     'allowMealSkipping': allowMealSkipping,
-    'skipCompensationMethod': skipCompensationMethod,
     'ownerNotificationPrefs': ownerNotificationPrefs,
     if (aboutContent != null) 'aboutContent': aboutContent,
   };

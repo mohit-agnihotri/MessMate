@@ -589,8 +589,9 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
   Future<void> toggleBillPaymentStatus(
     StudentModel student,
     BillModel previewBill,
-    bool isPaid,
-  ) async {
+    bool isPaid, {
+    int? extendDays,
+  }) async {
     final finalBill = BillModel(
       billId: '${student.studentId}_${previewBill.month}_${previewBill.year}',
       studentId: previewBill.studentId,
@@ -607,6 +608,13 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       deductions: previewBill.deductions,
     );
     await _service.saveBill(finalBill);
+
+    if (isPaid && extendDays != null && extendDays > 0) {
+      if (student.subscriptionEndDate != null) {
+        final newEndDate = student.subscriptionEndDate!.add(Duration(days: extendDays));
+        await _service.updateStudent(student.copyWith(subscriptionEndDate: newEndDate));
+      }
+    }
   }
 
   Future<void> regenerateCode() async {
