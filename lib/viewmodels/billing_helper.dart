@@ -64,11 +64,11 @@ BillModel generateAdvancedBill({
 
     var dayRecs = dailyRecords[day] ?? [];
 
-    // Count skipped meals
-    int skippedCount = 0;
+    // Count skipped meals using a Set to deduplicate overlapping off records
+    Set<String> skippedSlots = {};
     for (var r in dayRecs) {
       if (r.status == 'absent_self' || r.status == 'absent_owner') {
-        skippedCount++;
+        skippedSlots.add(r.mealSlot);
       } else if (r.status == 'guest') {
         double guestCost = r.cost ?? mess.perMealRate;
         guestAddons += guestCost;
@@ -82,6 +82,7 @@ BillModel generateAdvancedBill({
         );
       }
     }
+    int skippedCount = skippedSlots.length;
 
     int consumedMeals = dailyOfferedMeals - skippedCount;
     if (consumedMeals < 0) consumedMeals = 0;

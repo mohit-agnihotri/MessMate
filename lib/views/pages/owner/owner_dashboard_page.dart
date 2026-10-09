@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'owner_student_management_page.dart';
+import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
 import 'owner_absentee_tracker_page.dart';
@@ -185,28 +186,41 @@ class OwnerDashboardPage extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           // Global Search Bar
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
-              hintText: 'Search student or dish...',
-              hintStyle: GoogleFonts.inter(
-                color: const Color(0xFF9CA3AF),
-                fontSize: 14,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF22C55E)),
+          GestureDetector(
+            onTap: () {
+              showSearch(
+                context: context,
+                delegate: OwnerGlobalSearchDelegate(
+                  students: state.activeStudentsList,
+                  ref: ref,
+                ),
+              );
+            },
+            child: AbsorbPointer(
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
+                  hintText: 'Search student or dish...',
+                  hintStyle: GoogleFonts.inter(
+                    color: const Color(0xFF9CA3AF),
+                    fontSize: 14,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF22C55E)),
+                  ),
+                ),
               ),
             ),
           ),
@@ -240,8 +254,7 @@ class OwnerDashboardPage extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  state.announcement ??
-                      'Tap to send announcement to all students',
+                  'Tap to send announcement to all students',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -831,11 +844,21 @@ class OwnerDashboardPage extends ConsumerWidget {
             child: Text('Cancel', style: GoogleFonts.inter()),
           ),
           ElevatedButton(
-            onPressed: () {
-              ref
+            onPressed: () async {
+              if (ctrl.text.trim().isEmpty) return;
+              await ref
                   .read(ownerDashboardProvider.notifier)
                   .sendAnnouncement(ctrl.text);
-              Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Announcement Sent!', style: GoogleFonts.inter(color: Colors.white)),
+                    backgroundColor: const Color(0xFF22C55E),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF22C55E),
@@ -1366,6 +1389,122 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+
+class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
+  final List<StudentModel> students;
+  final WidgetRef ref;
+
+  OwnerGlobalSearchDelegate({required this.students, required this.ref});
+
+  @override
+  String get searchFieldLabel => 'Search student...';
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildList(context);
+
+  Widget _buildList(BuildContext context) {
+    final lowerQuery = query.toLowerCase().trim();
+    if (lowerQuery.isEmpty) {
+      return Center(
+        child: Text(
+          'Type to search students...',
+          style: GoogleFonts.inter(color: Colors.grey),
+        ),
+      );
+    }
+    final filteredStudents = students.where((s) {
+      return s.name.toLowerCase().contains(lowerQuery) ||
+             s.email.toLowerCase().contains(lowerQuery) ||
+             s.roomNo.toLowerCase().contains(lowerQuery) ||
+             s.phone.contains(lowerQuery);
+    }).toList();
+
+    if (filteredStudents.isEmpty) {
+      return Center(
+        child: Text(
+          'No results for ""',
+          style: GoogleFonts.inter(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: filteredStudents.length,
+      itemBuilder: (context, index) {
+        final student = filteredStudents[index];
+        final joined = '${student.joinDate.day} ${_monthName(student.joinDate.month)} ${student.joinDate.year}';
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.2),
+            child: Text(
+              student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+              style: const TextStyle(color: Color(0xFF16A34A)),
+            ),
+          ),
+          title: Text(student.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          subtitle: Text('${student.phone}  Room: ${student.roomNo}'),
+          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+          onTap: () {
+            close(context, '');
+            const OwnerStudentManagementPage().showStudentDetailsModal(
+              context, 
+              ref, 
+              student, 
+              joined,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _monthName(int m) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[m - 1];
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
+              Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

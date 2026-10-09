@@ -302,11 +302,7 @@ class FirebaseService implements AppService {
     int month,
     int year,
   ) async {
-    final startIso = DateTime(
-      year,
-      month,
-      1,
-    ).toIso8601String().substring(0, 10);
+    final startIso = DateTime(year, month, 1).toIso8601String().substring(0, 10);
     final endIso = (month == 12)
         ? DateTime(year + 1, 1, 1).toIso8601String().substring(0, 10)
         : DateTime(year, month + 1, 1).toIso8601String().substring(0, 10);
@@ -317,7 +313,36 @@ class FirebaseService implements AppService {
         .where('date', isGreaterThanOrEqualTo: startIso)
         .where('date', isLessThan: endIso)
         .get();
-    return snap.docs.map((d) => MealRecordModel.fromMap(d.data())).toList();
+    final records = snap.docs.map((d) => MealRecordModel.fromMap(d.data())).toList();
+
+    // Fetch closed slots for the student's mess
+    final studentSnap = await _db.collection('students').doc(studentId).get();
+    if (studentSnap.exists) {
+      final messId = studentSnap.data()?['messId'] as String?;
+      if (messId != null) {
+        final closedSnap = await _db
+            .collection('messes')
+            .doc(messId)
+            .collection('closed_slots')
+            .where('date', isGreaterThanOrEqualTo: startIso)
+            .where('date', isLessThan: endIso)
+            .get();
+
+        for (var doc in closedSnap.docs) {
+          final data = doc.data();
+          records.add(MealRecordModel(
+            recordId: doc.id,
+            studentId: studentId,
+            messId: messId,
+            date: DateTime.parse(data['date'] + 'T00:00:00.000'),
+            mealSlot: data['mealSlot'],
+            status: 'absent_owner',
+          ));
+        }
+      }
+    }
+
+    return records;
   }
 
   @override
@@ -538,6 +563,43 @@ class FirebaseService implements AppService {
 
   // ANNOUNCEMENTS
   @override
+  Future<void> cleanupOldAnnouncements(String messId) async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 15));
+      final snap = await _db
+          .collection('announcements')
+          .where('messId', isEqualTo: messId)
+          .get();
+      
+      final batch = _db.batch();
+      int count = 0;
+      
+      for (var doc in snap.docs) {
+        final data = doc.data();
+        DateTime ts = DateTime.now();
+        final rawTs = data['timestamp'];
+        if (rawTs != null && rawTs.runtimeType.toString().contains('Timestamp')) {
+          try { ts = (rawTs as dynamic).toDate() as DateTime; } catch (_) {}
+        } else if (rawTs is String) {
+          ts = DateTime.tryParse(rawTs) ?? DateTime.now();
+        }
+        
+        if (ts.isBefore(cutoff)) {
+          batch.delete(doc.reference);
+          count++;
+        }
+      }
+      
+      if (count > 0) {
+        await batch.commit();
+        print("Cleaned up $count old announcements");
+      }
+    } catch (e) {
+      print("Failed to clean up announcements: $e");
+    }
+  }
+
+  @override
   Future<void> sendAnnouncement(String messId, String message) async {
     await _db.collection('announcements').add({
       'messId': messId,
@@ -551,13 +613,14 @@ class FirebaseService implements AppService {
     return _db
         .collection('announcements')
         .where('messId', isEqualTo: messId)
-        .orderBy('timestamp', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => AnnouncementModel.fromMap(d.data()))
-              .toList(),
-        );
+        .map((snap) {
+          final list = snap.docs
+              .map((d) => AnnouncementModel.fromMap({...d.data(), 'announcementId': d.id}))
+              .toList();
+          list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return list.take(15).toList();
+        });
   }
 
   @override
@@ -565,9 +628,10 @@ class FirebaseService implements AppService {
     final snap = await _db
         .collection('announcements')
         .where('messId', isEqualTo: messId)
-        .orderBy('timestamp', descending: true)
         .get();
-    return snap.docs.map((d) => AnnouncementModel.fromMap(d.data())).toList();
+    final list = snap.docs.map((d) => AnnouncementModel.fromMap({...d.data(), 'announcementId': d.id})).toList();
+    list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return list.take(15).toList();
   }
 
   @override

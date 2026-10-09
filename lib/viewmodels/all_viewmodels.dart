@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -362,6 +363,9 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
       state = state.copyWith(
         announcement: announcements.firstOrNull?.message,
       );
+
+      // Auto-cleanup old announcements quietly in the background
+      _service.cleanupOldAnnouncements(mess.messId);
 
       await _subscribeToDateDependentStreams();
       _recomputeHeadcount();
@@ -845,6 +849,8 @@ class StudentHomeState {
   final bool hasSelfSkipped;
   final bool isLoading;
   final AnnouncementModel? announcement;
+  final List<AnnouncementModel> announcements;
+  final int unseenAnnouncementsCount;
   final String currentSlot;
   final String nextSlot;
   final List<String> upcomingSlots;
@@ -863,6 +869,8 @@ class StudentHomeState {
     this.hasSelfSkipped = false,
     this.isLoading = true,
     this.announcement,
+    this.announcements = const [],
+    this.unseenAnnouncementsCount = 0,
     this.currentSlot = 'morning',
     this.nextSlot = 'noon',
     this.upcomingSlots = const [],
@@ -888,6 +896,8 @@ class StudentHomeState {
     bool? hasSelfSkipped,
     bool? isLoading,
     AnnouncementModel? announcement,
+    List<AnnouncementModel>? announcements,
+    int? unseenAnnouncementsCount,
     String? currentSlot,
     String? nextSlot,
     List<String>? upcomingSlots,
@@ -908,6 +918,8 @@ class StudentHomeState {
     hasSelfSkipped: hasSelfSkipped ?? this.hasSelfSkipped,
     isLoading: isLoading ?? this.isLoading,
     announcement: announcement ?? this.announcement,
+    announcements: announcements ?? this.announcements,
+    unseenAnnouncementsCount: unseenAnnouncementsCount ?? this.unseenAnnouncementsCount,
     currentSlot: currentSlot ?? this.currentSlot,
     nextSlot: nextSlot ?? this.nextSlot,
     upcomingSlots: upcomingSlots ?? this.upcomingSlots,
@@ -988,9 +1000,20 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         } catch (_) {}
 
         _announcementSub = _service.streamAnnouncements(mess.messId).listen((
-          announcements,
-        ) {
-          state = state.copyWith(announcement: announcements.firstOrNull);
+          anns,
+        ) async {
+          final prefs = await SharedPreferences.getInstance();
+          final lastSeen = prefs.getString('last_seen_announcement_id');
+          int unseenCount = 0;
+          for (final a in anns) {
+            if (a.announcementId == lastSeen) break;
+            unseenCount++;
+          }
+          state = state.copyWith(
+            announcement: anns.firstOrNull,
+            announcements: anns,
+            unseenAnnouncementsCount: unseenCount,
+          );
         });
       }
 
@@ -1255,6 +1278,15 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
       debugPrint("Saved rating of $rating for $slot meal to database.");
     } catch (e) {
       state = state.copyWith(error: "Failed to submit rating: $e");
+    }
+  }
+
+  Future<void> markAnnouncementsAsSeen() async {
+    if (state.announcements.isNotEmpty) {
+      final latestId = state.announcements.first.announcementId;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_seen_announcement_id', latestId);
+      state = state.copyWith(unseenAnnouncementsCount: 0);
     }
   }
 }

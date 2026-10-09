@@ -349,14 +349,14 @@ class StudentHistoryPage extends ConsumerWidget {
                 dateStr,
           )
           .toList();
-      final offRecords = dayRecords
-          .where((r) => r.status == 'absent_self' || r.status == 'absent_owner')
-          .toList();
-      final guestRecords = dayRecords
-          .where((r) => r.status == 'guest')
-          .toList();
+      final selfOffRecords = dayRecords.where((r) => r.status == 'absent_self').toList();
+      final ownerOffRecords = dayRecords.where((r) => r.status == 'absent_owner').toList();
+      final offRecords = [...selfOffRecords, ...ownerOffRecords];
+      final guestRecords = dayRecords.where((r) => r.status == 'guest').toList();
 
-      final isOff = offRecords.isNotEmpty;
+      final isSelfOff = selfOffRecords.isNotEmpty;
+      final isOwnerOff = ownerOffRecords.isNotEmpty;
+      final isOff = isSelfOff || isOwnerOff;
       final hasGuest = guestRecords.isNotEmpty;
 
       days.add(

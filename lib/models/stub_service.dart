@@ -377,4 +377,7 @@ class StubService implements AppService {
   ) async {
     return 0.0;
   }
+
+  @override
+  Future<void> cleanupOldAnnouncements(String messId) async {}
 }

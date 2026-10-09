@@ -77,7 +77,11 @@ class StudentHomePage extends ConsumerWidget {
                 child: _Header(
                   state: state,
                   greeting: _greeting(),
-                  onBellTap: () => _showAnnouncementDialog(context, state),
+                  ref: ref,
+                  onBellTap: () {
+                    ref.read(studentHomeProvider.notifier).markAnnouncementsAsSeen();
+                    _showAnnouncementDialog(context, state);
+                  },
                 ),
               ),
 
@@ -416,7 +420,7 @@ class StudentHomePage extends ConsumerWidget {
 
   // ── Announcement dialog ──────────────────────────────────────────────────
   void _showAnnouncementDialog(BuildContext context, StudentHomeState state) {
-    final msg = state.announcement?.message;
+    final anns = state.announcements;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -426,7 +430,7 @@ class StudentHomePage extends ConsumerWidget {
             const Text('📢', style: TextStyle(fontSize: 22)),
             const SizedBox(width: 8),
             Text(
-              'Announcement',
+              'Announcements',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -434,19 +438,56 @@ class StudentHomePage extends ConsumerWidget {
             ),
           ],
         ),
-        content: Text(
-          msg ?? 'No new announcements from your mess owner.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF4B5563),
-          ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: anns.isEmpty
+              ? Text(
+                  'No new announcements from your mess owner.',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: const Color(0xFF4B5563),
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: anns.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final a = anns[index];
+                    final date = '${a.timestamp.day}/${a.timestamp.month}/${a.timestamp.year}';
+                    final time = '${a.timestamp.hour.toString().padLeft(2, '0')}:${a.timestamp.minute.toString().padLeft(2, '0')}';
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          a.message,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: const Color(0xFF4B5563),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$date at $time',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Close',
-              style: GoogleFonts.inter(color: const Color(0xFF22C55E)),
+              style: GoogleFonts.inter(
+                color: const Color(0xFF22C55E),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -866,18 +907,20 @@ class _Header extends StatelessWidget {
   final StudentHomeState state;
   final String greeting;
   final VoidCallback onBellTap;
+  final WidgetRef ref;
 
   const _Header({
     required this.state,
     required this.greeting,
     required this.onBellTap,
+    required this.ref,
   });
 
   @override
   Widget build(BuildContext context) {
     final name = state.student?.name.split(' ').first ?? 'Student';
     final isClosed = state.currentSlot == 'closed';
-    final hasAnnouncement = state.announcement != null;
+    final hasAnnouncement = state.unseenAnnouncementsCount > 0;
     final photoUrl = state.student?.photoUrl;
 
     return Padding(
@@ -973,14 +1016,22 @@ class _Header extends StatelessWidget {
               ),
               if (hasAnnouncement)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 0,
+                  right: 4,
                   child: Container(
-                    width: 10,
-                    height: 10,
+                    padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
                       color: Color(0xFFEF4444),
                       shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${state.unseenAnnouncementsCount}',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ),

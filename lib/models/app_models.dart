@@ -631,11 +631,21 @@ class AnnouncementModel {
   });
 
   factory AnnouncementModel.fromMap(Map<String, dynamic> map) {
+    DateTime ts = DateTime.now();
+    final rawTs = map['timestamp'];
+    if (rawTs is DateTime) {
+      ts = rawTs;
+    } else if (rawTs != null && rawTs.runtimeType.toString().contains('Timestamp')) {
+      // Firestore Timestamp -> toDate()
+      try { ts = (rawTs as dynamic).toDate() as DateTime; } catch (_) {}
+    } else if (rawTs is String) {
+      ts = DateTime.tryParse(rawTs) ?? DateTime.now();
+    }
     return AnnouncementModel(
       announcementId: map['announcementId'] ?? '',
       messId: map['messId'] ?? '',
       message: map['message'] ?? '',
-      timestamp: DateTime.tryParse(map['timestamp'] ?? '') ?? DateTime.now(),
+      timestamp: ts,
     );
   }
 

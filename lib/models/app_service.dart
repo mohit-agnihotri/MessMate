@@ -98,6 +98,7 @@ abstract class AppService {
   Future<void> sendAnnouncement(String messId, String message);
   Stream<List<AnnouncementModel>> streamAnnouncements(String messId);
   Future<List<AnnouncementModel>> getAnnouncements(String messId);
+  Future<void> cleanupOldAnnouncements(String messId);
 
   // MESS CODE
   Future<String> generateUniqueMessCode();

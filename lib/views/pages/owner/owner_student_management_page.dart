@@ -335,7 +335,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         if (student.status != 'pending') {
-          _showStudentDetailsModal(context, ref, student, joined);
+          showStudentDetailsModal(context, ref, student, joined);
         }
       },
       child: Container(
@@ -499,7 +499,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     );
   }
 
-  void _showStudentDetailsModal(
+  void showStudentDetailsModal(
     BuildContext context,
     WidgetRef ref,
     StudentModel student,
@@ -712,7 +712,35 @@ class OwnerStudentManagementPage extends ConsumerWidget {
         final ownerOff = records
             .where((r) => r.status == 'absent_owner')
             .length;
-        final totalOff = selfOff + ownerOff;
+
+        // Deduplicate: count unique (date+slot) combos
+        final selfSlots = records
+            .where((r) => r.status == 'absent_self')
+            .map((r) => r.date.toIso8601String().substring(0, 10) + '_' + r.mealSlot)
+            .toSet();
+        final ownerSlots = records
+            .where((r) => r.status == 'absent_owner')
+            .map((r) => r.date.toIso8601String().substring(0, 10) + '_' + r.mealSlot)
+            .toSet();
+        
+        final uniqueSlots = {...selfSlots, ...ownerSlots};
+        final totalOff = uniqueSlots.length;
+
+        // Build list for modal with both self/owner data merged
+        final totalOffList = <MealRecordModel>[];
+        for (final slotKey in uniqueSlots) {
+          try {
+            final match = records.firstWhere((r) => 
+                (r.status == 'absent_self' || r.status == 'absent_owner') &&
+                (r.date.toIso8601String().substring(0, 10) + '_' + r.mealSlot == slotKey)
+            );
+            totalOffList.add(match);
+          } catch (_) {}
+        }
+        totalOffList.sort((a, b) {
+          final d = a.date.compareTo(b.date);
+          return d != 0 ? d : a.mealSlot.compareTo(b.mealSlot);
+        });
         return Column(
           children: [
             Row(
@@ -722,13 +750,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                   'Total Meals Off',
                   '$totalOff',
                   const Color(0xFFEF4444),
-                  records
-                      .where(
-                        (r) =>
-                            r.status == 'absent_self' ||
-                            r.status == 'absent_owner',
-                      )
-                      .toList(),
+                  totalOffList,
+                  selfSlots: selfSlots,
+                  ownerSlots: ownerSlots,
                 ),
                 const SizedBox(width: 12),
                 _buildSummaryCard(
@@ -777,8 +801,10 @@ class OwnerStudentManagementPage extends ConsumerWidget {
   void _showOffDetailsDialog(
     BuildContext context,
     String title,
-    List<MealRecordModel> offRecords,
-  ) {
+    List<MealRecordModel> offRecords, {
+    Set<String>? selfSlots,
+    Set<String>? ownerSlots,
+  }) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -806,9 +832,27 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                         '${date.day} ${_getMonthName(date.month)} ${date.year}',
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
-                      subtitle: Text(
-                        '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)} (${r.status == 'absent_self' ? 'Student Cancelled' : 'Mess Closed'})',
-                        style: GoogleFonts.inter(fontSize: 12),
+                      subtitle: Builder(
+                        builder: (ctx) {
+                          final slotKey = '${r.date.toIso8601String().substring(0, 10)}_${r.mealSlot}';
+                          final capSlot = '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)}';
+                          String label = '';
+                          
+                          if (selfSlots != null && ownerSlots != null && selfSlots.contains(slotKey) && ownerSlots.contains(slotKey)) {
+                            label = 'Student + Mess Both Off';
+                          } else if (selfSlots != null && selfSlots.contains(slotKey)) {
+                            label = 'Student Cancelled';
+                          } else if (ownerSlots != null && ownerSlots.contains(slotKey)) {
+                            label = 'Mess Closed';
+                          } else {
+                            label = r.status == 'absent_self' ? 'Student Cancelled' : 'Mess Closed';
+                          }
+                          
+                          return Text(
+                            '$capSlot ($label)',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: label.contains('Both') ? FontWeight.bold : FontWeight.normal, color: label.contains('Both') ? Colors.red : null),
+                          );
+                        }
                       ),
                     );
                   },
@@ -1347,11 +1391,13 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     String title,
     String value,
     Color borderColor,
-    List<MealRecordModel> offRecords,
-  ) {
+    List<MealRecordModel> offRecords, {
+    Set<String>? selfSlots,
+    Set<String>? ownerSlots,
+  }) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => _showOffDetailsDialog(context, title, offRecords),
+        onTap: () => _showOffDetailsDialog(context, title, offRecords, selfSlots: selfSlots, ownerSlots: ownerSlots),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
