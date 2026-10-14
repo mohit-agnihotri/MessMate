@@ -529,6 +529,8 @@ class BillModel {
   final double finalPayable;
   final double previousDues;
   final bool isPaid;
+  final int validSkipsRewarded;
+  final int daysToExtend;
   final List<DeductionItem> deductions;
 
   BillModel({
@@ -545,6 +547,8 @@ class BillModel {
     required this.finalPayable,
     this.previousDues = 0,
     required this.isPaid,
+    this.validSkipsRewarded = 0,
+    this.daysToExtend = 0,
     required this.deductions,
   });
 

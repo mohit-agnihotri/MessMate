@@ -613,9 +613,15 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     );
     await _service.saveBill(finalBill);
 
-    if (isPaid && extendDays != null && extendDays > 0) {
-      if (student.subscriptionEndDate != null) {
+    // Handle Extend Validity logic properly 
+    if (extendDays != null && extendDays > 0 && student.subscriptionEndDate != null) {
+      if (isPaid) {
+        // Toggled ON: Add the extended days
         final newEndDate = student.subscriptionEndDate!.add(Duration(days: extendDays));
+        await _service.updateStudent(student.copyWith(subscriptionEndDate: newEndDate));
+      } else {
+        // Toggled OFF: Subtract the days back to prevent free validity scam
+        final newEndDate = student.subscriptionEndDate!.subtract(Duration(days: extendDays));
         await _service.updateStudent(student.copyWith(subscriptionEndDate: newEndDate));
       }
     }

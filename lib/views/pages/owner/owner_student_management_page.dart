@@ -1081,10 +1081,18 @@ class OwnerStudentManagementPage extends ConsumerWidget {
             bool localIsPaid = localIsPaidOverride ?? bill.isPaid;
 
             // Calculate skipped meals for extend option
-            int skippedMealsCount = records.where((r) => r.status == 'absent_self' || r.status == 'absent_owner').length;
-            int dailyOfferedMeals = mess.mealTimings.values.where((m) => m['enabled'] == 'true').length;
-            if (dailyOfferedMeals == 0) dailyOfferedMeals = 3;
-            int extendDays = skippedMealsCount ~/ dailyOfferedMeals;
+            int skippedMealsCount = bill.validSkipsRewarded;
+            int extendDays = bill.daysToExtend;
+            
+            // Format new validity date
+            DateTime? currentEndDate = student.subscriptionEndDate;
+            String extendDateString = '';
+            if (currentEndDate != null && extendDays > 0) {
+              DateTime newEndDate = currentEndDate.add(Duration(days: extendDays));
+              const abbr = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              String monthStr = (newEndDate.month >= 1 && newEndDate.month <= 12) ? abbr[newEndDate.month - 1] : '';
+              extendDateString = "${newEndDate.day} $monthStr";
+            }
 
             return Container(
               padding: const EdgeInsets.all(16),
@@ -1138,7 +1146,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                               children: [
                                 Text('Reduce Fees (Rebate)', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                                 Text(
-                                  skippedMealsCount > 0 ? 'Deduct ₹${(skippedMealsCount * (mess.monthlyFee / (mess.mealsIncludedPerDay * 30))).toStringAsFixed(0)} from bill' : 'No deduction (0 skips)',
+                                  skippedMealsCount > 0 ? 'Deduct ₹${(skippedMealsCount * (mess.monthlyFee / (DateTime(data['year'] as int, (data['month'] as int) + 1, 0).day * mess.mealsIncludedPerDay))).toStringAsFixed(0)} from bill' : 'No deduction (0 skips)',
                                   style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280)),
                                 ),
                               ],
@@ -1155,7 +1163,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                               children: [
                                 Text('Extend Validity', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                                 Text(
-                                  extendDays > 0 ? 'Add +$extendDays days to subscription' : 'No extension (0 skips)',
+                                  extendDays > 0 ? 'Extend to $extendDateString (+$extendDays days)' : 'No extension (0 skips)',
                                   style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280)),
                                 ),
                               ],

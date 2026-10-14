@@ -49,10 +49,12 @@ BillModel generateAdvancedBill({
 
   int allowedMeals = mess.mealsIncludedPerDay;
 
-  // 3. Evaluate each day in the month up to today (or end of month)
-  int todayDay = (DateTime.now().year == year && DateTime.now().month == month)
-      ? DateTime.now().day
-      : totalDays;
+  // 3. Evaluate each day in the month
+  // We evaluate the full month (totalDays) so that pre-scheduled future absent records 
+  // (e.g. mess off tomorrow) are correctly counted in the monthly bill calculation.
+  int todayDay = totalDays;
+  
+  int totalValidSkips = 0;
 
   for (int day = 1; day <= todayDay; day++) {
     // If before join date, skip
@@ -90,9 +92,12 @@ BillModel generateAdvancedBill({
     if (consumedMeals < allowedMeals) {
       // Refund for (allowed - consumed)
       int refundMeals = allowedMeals - consumedMeals;
+      totalValidSkips += refundMeals;
       
       if (compensationChoice == 'rebate') {
-        double refundAmt = refundMeals * mess.perMealRate;
+        // Calculate dynamic per-meal rebate rate based on this specific month's total meals
+        double monthlyPerMealRate = mess.monthlyFee / (totalDays * allowedMeals);
+        double refundAmt = refundMeals * monthlyPerMealRate;
         skipsDeduction += refundAmt;
 
         items.add(
@@ -127,6 +132,11 @@ BillModel generateAdvancedBill({
       extraMealsAddon +
       guestAddons +
       previousDues;
+      
+  int daysToExtend = 0;
+  if (compensationChoice == 'extend') {
+    daysToExtend = totalValidSkips ~/ allowedMeals;
+  }
 
   return BillModel(
     billId: 'preview',
@@ -142,6 +152,8 @@ BillModel generateAdvancedBill({
     finalPayable: finalPayable,
     previousDues: previousDues,
     isPaid: false,
+    validSkipsRewarded: totalValidSkips,
+    daysToExtend: daysToExtend,
     deductions: items,
   );
 }
