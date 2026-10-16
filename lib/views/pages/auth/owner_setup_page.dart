@@ -1,5 +1,6 @@
 ﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +8,7 @@ import '../../../models/app_models.dart';
 //
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
+import 'role_selection_page.dart';
 
 /// OwnerSetupPage:
 /// 3-step setup wizard for mess owners.
@@ -85,6 +87,61 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   void initState() {
     super.initState();
     _syncPlansToActiveSlots(force: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkRoleConflict());
+  }
+
+
+  Future<void> _checkRoleConflict() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final appService = ref.read(appServiceProvider);
+      final existingStudent = await appService.getStudentById(user.uid);
+      if (existingStudent != null && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'अकाउंट टकराव (Role Conflict)',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'यह ईमेल (${user.email ?? ""}) पहले से ही एक छात्र (${existingStudent.name}) के रूप में पंजीकृत है।\n\nमेस मालिक (Owner) बनने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।',
+              style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(authProvider.notifier).signOut();
+                  if (mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                      (r) => false,
+                    );
+                  }
+                },
+                child: Text(
+                  'दूसरा अकाउंट चुनें (Switch Account)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   @override
@@ -110,12 +167,6 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
   }
 
-  String _formatTimeOfDay24(TimeOfDay time) {
-    final h = time.hour.toString().padLeft(2, '0');
-    final m = time.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
   String _formatTime12(String time24) {
     try {
       final parts = time24.split(':');
@@ -131,41 +182,283 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
   }
 
+  Future<String?> _showAlarmClockTimePicker({
+    required BuildContext context,
+    required String title,
+    required String initialTime24,
+  }) async {
+    final parsed = _parseTimeOfDay(initialTime24);
+    int selectedHour = parsed.hourOfPeriod == 0 ? 12 : parsed.hourOfPeriod;
+    int selectedMinute = parsed.minute;
+    bool isPm = parsed.period == DayPeriod.pm;
+
+    return await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final displayTime =
+                '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')} ${isPm ? 'PM' : 'AM'}';
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(modalCtx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                          style: GoogleFonts.outfit(
+                            fontSize: 42,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                            color: const Color(0xFFE11D48),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => setModalState(() => isPm = false),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: !isPm ? const Color(0xFFE11D48) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'AM',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: !isPm ? Colors.white : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setModalState(() => isPm = true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isPm ? const Color(0xFFE11D48) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'PM',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isPm ? Colors.white : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'घंटा चुनें (Select Hour)',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(12, (index) {
+                      final h = index + 1;
+                      final isSelected = selectedHour == h;
+                      return InkWell(
+                        onTap: () => setModalState(() => selectedHour = h),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 46,
+                          height: 40,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Text(
+                            '$h',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 18),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'मिनट चुनें (Select Minutes)',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [0, 15, 30, 45].map((m) {
+                      final isSelected = selectedMinute == m;
+                      return InkWell(
+                        onTap: () => setModalState(() => selectedMinute = m),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF10B981) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Text(
+                            ':${m.toString().padLeft(2, '0')}',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE11D48),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        int hour24 = selectedHour;
+                        if (isPm && selectedHour < 12) hour24 += 12;
+                        if (!isPm && selectedHour == 12) hour24 = 0;
+                        final result24 =
+                            '${hour24.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
+                        Navigator.pop(modalCtx, result24);
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_rounded, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'समय तय करें ($displayTime)',
+                            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _pickTime(String slotKey, bool isStart) async {
     final slot = _timings[slotKey];
     if (slot == null) return;
     final currentStr = (slot[isStart ? 'start' : 'end'] as String?) ?? '08:00';
-    final initial = _parseTimeOfDay(currentStr);
+    final slotName = (slot['slotName'] as String?) ?? 'भोजन';
+    final title = '$slotName ${isStart ? 'शुरू होने का समय' : 'समाप्त होने का समय'}';
 
-    final picked = await showTimePicker(
+    final picked24 = await _showAlarmClockTimePicker(
       context: context,
-      initialTime: initial,
-      helpText: '${slot['slotName']} ${isStart ? 'शुरू होने का समय' : 'समाप्त होने का समय'}',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFE11D48),
-              onPrimary: Colors.white,
-              onSurface: Color(0xFF0F172A),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      title: title,
+      initialTime24: currentStr,
     );
 
-    if (picked != null) {
+    if (picked24 != null) {
       setState(() {
-        final time24 = _formatTimeOfDay24(picked);
-        slot[isStart ? 'start' : 'end'] = time24;
+        slot[isStart ? 'start' : 'end'] = picked24;
         final s = _formatTime12(slot['start'] as String);
         final e = _formatTime12(slot['end'] as String);
         slot['time'] = '$s से $e';
       });
     }
   }
-
   void _adjustCtrl(TextEditingController ctrl, double delta, {double min = 0, double max = 100000}) {
     final current = double.tryParse(ctrl.text.trim()) ?? 0.0;
     final updated = (current + delta).clamp(min, max);
@@ -496,10 +789,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
 
     final phone = _phoneCtrl.text.trim();
-    if (phone.length < 10) {
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'),
+          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -585,6 +879,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           deductionPolicy: DeductionPolicyModel(
             policyType: 'flat_fixed_rate',
             flatRate: refund,
+            maxSkipsPerMonth: planConfig['maxSkip'] as int?,
           ),
         );
 
@@ -1274,29 +1569,97 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   Text('महीने में स्वीकार्य छुट्टियां', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                 ],
                               ),
-                              Row(
-                                children: [
-                                  _buildMiniStepBtn('-', () {
-                                    final current = plan['maxSkip'] as int;
-                                    if (current > 0) {
-                                      setState(() => plan['maxSkip'] = current - 1);
-                                    }
-                                  }),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                              if ((plan['maxSkip'] as int) == -1) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDCFCE7),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF86EFAC)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.all_inclusive_rounded, size: 15, color: Color(0xFF16A34A)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'असीमित (Unlimited)',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF15803D),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => setState(() => plan['maxSkip'] = 6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                     child: Text(
-                                      '${plan['maxSkip']} मील',
-                                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
+                                      'सीमित करें',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF2563EB),
+                                      ),
                                     ),
                                   ),
-                                  _buildMiniStepBtn('+', () {
-                                    final current = plan['maxSkip'] as int;
-                                    if (current < 30) {
-                                      setState(() => plan['maxSkip'] = current + 1);
-                                    }
-                                  }),
-                                ],
-                              ),
+                                ),
+                              ] else ...[
+                                Row(
+                                  children: [
+                                    _buildMiniStepBtn('-', () {
+                                      final current = plan['maxSkip'] as int;
+                                      if (current > 0) {
+                                        setState(() => plan['maxSkip'] = current - 1);
+                                      }
+                                    }),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Text(
+                                        '${plan['maxSkip']} मील',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ),
+                                    _buildMiniStepBtn('+', () {
+                                      final current = plan['maxSkip'] as int;
+                                      if (current < 30) {
+                                        setState(() => plan['maxSkip'] = current + 1);
+                                      }
+                                    }),
+                                    const SizedBox(width: 6),
+                                    InkWell(
+                                      onTap: () => setState(() => plan['maxSkip'] = -1),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'असीमित',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF16A34A),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -1614,8 +1977,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           child: TextField(
             controller: ctrl,
             keyboardType: keyboardType,
+            inputFormatters: keyboardType == TextInputType.phone
+                ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]
+                : null,
             style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F172A)),
             decoration: InputDecoration(
+              prefixText: keyboardType == TextInputType.phone ? '+91 ' : null,
+              prefixStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
               hintText: hint,
               hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
               prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: const Color(0xFF64748B)) : null,

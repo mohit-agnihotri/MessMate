@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
-import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
 import 'student/student_main_page.dart';
+import 'student/student_pending_approval_page.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -57,10 +57,21 @@ class _SplashPageState extends ConsumerState<SplashPage>
         final student = await service.getStudentById(user.uid);
         if (student != null && mounted) {
           ref.read(authProvider.notifier).setRole(AuthRole.student);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const StudentMainPage()),
-          );
+          if (student.status == 'approved') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentPendingApprovalPage(
+                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
+                ),
+              ),
+            );
+          }
           return;
         }
 

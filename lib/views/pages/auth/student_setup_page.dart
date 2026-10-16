@@ -1,7 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../student/student_pending_approval_page.dart';
+import 'role_selection_page.dart';
 
 import '../../../models/app_models.dart';
 //
@@ -46,6 +49,61 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     if (user != null && user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
       _phoneCtrl.text = user.phoneNumber!;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkRoleConflict());
+  }
+
+
+  Future<void> _checkRoleConflict() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final appService = ref.read(appServiceProvider);
+      final existingMess = await appService.getMessByOwnerId(user.uid);
+      if (existingMess != null && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'अकाउंट टकराव (Role Conflict)',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'यह ईमेल (${user.email ?? ""}) पहले से ही एक मेस मालिक (${existingMess.name}) के रूप में दर्ज है।\n\nछात्र (Student) के रूप में जुड़ने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।',
+              style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(authProvider.notifier).signOut();
+                  if (mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                      (r) => false,
+                    );
+                  }
+                },
+                child: Text(
+                  'दूसरा अकाउंट चुनें (Switch Account)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   @override
@@ -156,12 +214,14 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       children: [
         Row(
           children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1E293B),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B),
+                ),
               ),
             ),
             if (isOptional)
@@ -179,8 +239,13 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
         TextFormField(
           controller: ctrl,
           keyboardType: keyboardType,
+          inputFormatters: keyboardType == TextInputType.phone
+              ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]
+              : null,
           style: GoogleFonts.inter(fontSize: 15, color: const Color(0xFF0F172A)),
           decoration: InputDecoration(
+            prefixText: keyboardType == TextInputType.phone ? '+91 ' : null,
+            prefixStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
             hintText: hint,
             hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 14),
             filled: true,
@@ -284,6 +349,39 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       return;
     }
 
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final emergency = _emergencyCtrl.text.trim();
+    if (emergency.isNotEmpty) {
+      if (!phoneRegex.hasMatch(emergency)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
+      if (emergency == phone) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
+    }
+
     if (_foundMess == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -341,6 +439,18 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
         _joinedMessName = _foundMess!.name;
         _joinedPlanName = planName;
       });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StudentPendingApprovalPage(
+              initialMessName: _foundMess!.name,
+              initialPlanName: planName,
+            ),
+          ),
+        );
+      }
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (mounted) {
@@ -945,13 +1055,47 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                     final phone = _phoneCtrl.text.trim();
                     final room = _roomCtrl.text.trim();
                     if (name.isEmpty || phone.isEmpty || room.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('कृपया मेस देखने से पहले अपना नाम, फोन और रूम नंबर भरें।'),
-                        ),
-                      );
-                      return;
-                    }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('कृपया सभी अनिवार्य फ़ील्ड्स (नाम, फ़ोन, रूम नंबर) भरें।'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final emergency = _emergencyCtrl.text.trim();
+    if (emergency.isNotEmpty) {
+      if (!phoneRegex.hasMatch(emergency)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
+      if (emergency == phone) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
+    }
                     final user = FirebaseAuth.instance.currentUser;
                     if (user != null) {
                       final student = StudentModel(

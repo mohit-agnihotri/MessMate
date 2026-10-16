@@ -11,6 +11,7 @@ import 'student_setup_page.dart';
 import 'login_page.dart';
 import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
+import '../student/student_pending_approval_page.dart';
 
 /// Complete High-Aesthetic Onboarding Experience:
 /// Stage 0: 3-Slide Vibrant 3D Feature Showcase Carousel
@@ -1120,10 +1121,19 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(builder: (_) => const StudentSetupPage()),
             );
-          } else {
+          } else if (student.status == 'approved') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentPendingApprovalPage(
+                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
+                ),
+              ),
             );
           }
         }

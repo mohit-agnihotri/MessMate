@@ -14,12 +14,14 @@ class DeductionPolicyModel {
   final List<String> eligibleMeals;
   final double? flatRate;
   final Map<String, double>? slotRates;
+  final int? maxSkipsPerMonth;
 
   DeductionPolicyModel({
     this.policyType = 'dynamic_prorated',
     this.eligibleMeals = const [],
     this.flatRate,
     this.slotRates,
+    this.maxSkipsPerMonth,
   });
 
   factory DeductionPolicyModel.fromMap(Map<String, dynamic> map) {
@@ -31,6 +33,7 @@ class DeductionPolicyModel {
           ? Map<String, double>.from(
               (map['slotRates'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
           : null,
+      maxSkipsPerMonth: map['maxSkipsPerMonth'] != null ? (map['maxSkipsPerMonth'] as num).toInt() : null,
     );
   }
 
@@ -39,6 +42,7 @@ class DeductionPolicyModel {
         'eligibleMeals': eligibleMeals,
         if (flatRate != null) 'flatRate': flatRate,
         if (slotRates != null) 'slotRates': slotRates,
+        if (maxSkipsPerMonth != null) 'maxSkipsPerMonth': maxSkipsPerMonth,
       };
 }
 
