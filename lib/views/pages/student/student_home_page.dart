@@ -1,3 +1,4 @@
+import '../../../services/localization_service.dart';
 import '../../../viewmodels/cutoff_helper.dart';
 import 'dart:ui';
 
@@ -1632,7 +1633,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                "आज का आपका चुनाव (Today's Choice)",
+                ref.watch(localizationProvider) == 'hi' ? 'आज का चुनाव' : "Today's Choice",
                 style: GoogleFonts.outfit(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
@@ -1718,8 +1719,8 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                             const SizedBox(width: 4),
                             Text(
                               isCutoffPassed
-                                  ? 'समय समाप्त (Locked)'
-                                  : '${diff.inHours > 0 ? '${diff.inHours}h ' : ''}${diff.inMinutes.remainder(60)}m बाकी',
+                                  ? (ref.watch(localizationProvider) == 'hi' ? 'समय समाप्त' : 'Locked')
+                                  : '${diff.inHours > 0 ? '${diff.inHours}h ' : ''}${diff.inMinutes.remainder(60)}m ' + (ref.watch(localizationProvider) == 'hi' ? 'बाकी' : 'left'),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -1733,7 +1734,9 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'आप आज नाश्ता या दोपहर के खाने में से क्या लेंगे?',
+                    ref.watch(localizationProvider) == 'hi'
+                        ? 'आज आप नाश्ता लेंगे या दोपहर का खाना?'
+                        : 'Which meal would you like today?',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -1896,13 +1899,25 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                           const Icon(Icons.check_circle_outline_rounded, size: 16, color: Color(0xFF059669)),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              'पक्का खाना: ${plan.fixedMeals.map((s) => s == 'night' ? 'रात का डिनर (Dinner)' : (s == 'noon' ? 'दोपहर लंच' : 'नाश्ता')).join(', ')} रोज़ाना पक्का मिलेगा।',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF065F46),
-                              ),
+                            child: Builder(
+                              builder: (context) {
+                                final isHi = ref.watch(localizationProvider) == 'hi';
+                                final mealsText = plan.fixedMeals.map((s) {
+                                  if (isHi) {
+                                    return s == 'night' ? 'रात का खाना' : (s == 'noon' ? 'दोपहर का खाना' : 'नाश्ता');
+                                  } else {
+                                    return s == 'night' ? 'Dinner' : (s == 'noon' ? 'Lunch' : 'Breakfast');
+                                  }
+                                }).join(', ');
+                                return Text(
+                                  isHi ? 'पक्का खाना: $mealsText रोज़ाना पक्का मिलेगा।' : 'Fixed Meal: $mealsText is served every day.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF065F46),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -1943,7 +1958,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                         },
                         icon: const Icon(Icons.bookmark_added_rounded, size: 15, color: Color(0xFF2563EB)),
                         label: Text(
-                          'इसे रोज़ का डिफ़ॉल्ट चुनाव बनाएं',
+                          ref.watch(localizationProvider) == 'hi' ? 'इसे रोज़ का डिफ़ॉल्ट बनाएं' : 'Set as daily default',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

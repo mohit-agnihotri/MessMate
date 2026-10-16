@@ -165,7 +165,7 @@ class _StudentPendingApprovalPageState
                   );
                 },
                 child: Text(
-                  'मेस डैशबोर्ड खोलें (Open Dashboard)',
+                  isHindi ? 'मेस डैशबोर्ड खोलें' : 'Open Dashboard',
                   style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700),
                 ),
@@ -296,7 +296,7 @@ class _StudentPendingApprovalPageState
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
-          isHindi ? 'अनुरोध स्थिति (Join Status)' : 'Join Request Status',
+          isHindi ? 'अनुरोध की स्थिति' : 'Join Request Status',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -376,8 +376,8 @@ class _StudentPendingApprovalPageState
 
                   Text(
                     isRejected
-                        ? (isHindi ? 'अनुरोध अस्वीकृत (Request Rejected)' : 'Request Rejected')
-                        : (isHindi ? 'अनुरोध समीक्षाधीन है (Pending Approval)' : 'Approval Pending'),
+                        ? (isHindi ? 'अनुरोध अस्वीकृत' : 'Request Rejected')
+                        : (isHindi ? 'अनुरोध समीक्षाधीन है' : 'Approval Pending'),
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -594,7 +594,7 @@ class _StudentPendingApprovalPageState
                         label: Text(
                           _isChecking
                               ? 'जांच रहे हैं...'
-                              : isHindi ? 'स्थिति रिफ्रेश करें (Check Status Now)' : 'Check Status Now',
+                              : isHindi ? 'स्थिति रिफ्रेश करें' : 'Check Status Now',
                           style: GoogleFonts.outfit(
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),
@@ -614,7 +614,7 @@ class _StudentPendingApprovalPageState
                         onPressed: _cancelAndReapply,
                         icon: const Icon(Icons.close_rounded, size: 18),
                         label: Text(
-                          isHindi ? 'अनुरोध रद्द करें (Cancel Request)' : 'Cancel Request',
+                          isHindi ? 'अनुरोध रद्द करें' : 'Cancel Request',
                           style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w600),
                         ),
@@ -635,7 +635,7 @@ class _StudentPendingApprovalPageState
                         onPressed: _cancelAndReapply,
                         icon: const Icon(Icons.replay_rounded, size: 20),
                         label: Text(
-                          'दूसरा मेस कोड दर्ज करें (Enter Another Code)',
+                          isHindi ? 'दूसरा मेस कोड दर्ज करें' : 'Enter Another Code',
                           style: GoogleFonts.outfit(
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),
@@ -649,7 +649,7 @@ class _StudentPendingApprovalPageState
                     icon: const Icon(Icons.account_circle_outlined,
                         size: 16, color: Color(0xFF64748B)),
                     label: Text(
-                      isHindi ? 'दूसरी ईमेल आईडी से लॉगिन करें (Switch Account)' : 'Switch Account (Sign in with other email)',
+                      isHindi ? 'दूसरा अकाउंट चुनें' : 'Switch Account',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

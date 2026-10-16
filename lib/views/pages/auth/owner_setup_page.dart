@@ -33,8 +33,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   // STEP 0: Meal Timings & Cutoff
   final Map<String, Map<String, dynamic>> _timings = {
     'morning': {
-      'name': 'सुबह का नाश्ता (Breakfast)',
-      'slotName': 'नाश्ता',
+      'name': 'Breakfast', 'nameHi': 'सुबह का नाश्ता',
+      'slotName': 'नाश्ता', 'slotNameEn': 'Breakfast',
       'enabled': true,
       'start': '08:00',
       'end': '10:00',
@@ -43,8 +43,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'color': const Color(0xFFF59E0B),
     },
     'noon': {
-      'name': 'दोपहर का खाना (Lunch)',
-      'slotName': 'दोपहर खाना',
+      'name': 'Lunch', 'nameHi': 'दोपहर का खाना',
+      'slotName': 'दोपहर खाना', 'slotNameEn': 'Lunch',
       'enabled': true,
       'start': '12:30',
       'end': '14:30',
@@ -53,8 +53,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'color': const Color(0xFFEF4444),
     },
     'evening': {
-      'name': 'शाम का चाय/नाश्ता (Evening Snacks)',
-      'slotName': 'शाम नाश्ता',
+      'name': 'Evening Snacks', 'nameHi': 'शाम का नाश्ता',
+      'slotName': 'शाम नाश्ता', 'slotNameEn': 'Evening Snacks',
       'enabled': false,
       'start': '17:00',
       'end': '18:30',
@@ -63,8 +63,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'color': const Color(0xFFD97706),
     },
     'night': {
-      'name': 'रात का खाना (Dinner)',
-      'slotName': 'रात खाना',
+      'name': 'Dinner', 'nameHi': 'रात का खाना',
+      'slotName': 'रात खाना', 'slotNameEn': 'Dinner',
       'enabled': true,
       'start': '19:30',
       'end': '22:00',
@@ -526,9 +526,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'core_2',
-        'name': 'दोपहर + रात का खाना (Lunch & Dinner)',
-        'badge': 'छात्रों की पहली पसंद',
-        'desc': 'दोपहर का भोजन और रात का भोजन',
+        'name': 'Lunch & Dinner Plan',
+        'nameHi': 'दोपहर + रात का खाना',
+        'badge': 'Popular Choice',
+        'badgeHi': 'छात्रों की पसंद',
+        'desc': 'Lunch and Dinner daily',
+        'descHi': 'दोपहर का खाना और रात का खाना',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -571,9 +574,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     } else if (activeSlots.length == 3 && hasMorning && hasNoon && hasNight) {
       newConfigs.add({
         'id': 'full_3',
-        'name': 'तीनों वक्त का खाना (Full 3-Meal Plan)',
-        'badge': 'सबसे लोकप्रिय',
-        'desc': 'सुबह का नाश्ता + दोपहर का भोजन + रात का भोजन',
+        'name': 'Full 3-Meal Plan',
+        'nameHi': 'तीनों वक्त का खाना',
+        'badge': 'Most Popular',
+        'badgeHi': 'सबसे लोकप्रिय',
+        'desc': 'Breakfast + Lunch + Dinner',
+        'descHi': 'सुबह का नाश्ता + दोपहर का खाना + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -586,9 +592,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'core_2',
-        'name': 'दोपहर + रात का खाना (Lunch & Dinner)',
-        'badge': 'छात्रों की पहली पसंद',
-        'desc': 'दोपहर का भोजन और रात का भोजन',
+        'name': 'Lunch & Dinner Plan',
+        'nameHi': 'दोपहर + रात का खाना',
+        'badge': 'Popular Choice',
+        'badgeHi': 'छात्रों की पसंद',
+        'desc': 'Lunch and Dinner daily',
+        'descHi': 'दोपहर का खाना और रात का खाना',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -601,9 +610,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'choice_morning_or_noon',
-        'name': 'फ्लेक्सी चॉइस प्लान (नाश्ता या दोपहर + रात)',
-        'badge': 'फ्लेक्सी चॉइस',
-        'desc': 'रात का खाना अनिवार्य + सुबह नाश्ता या दोपहर के खाने में से कोई 1',
+        'name': 'Flexi Choice Plan (Breakfast/Lunch + Dinner)',
+        'nameHi': 'फ्लेक्सी चॉइस प्लान',
+        'badge': 'Flexi Choice',
+        'badgeHi': 'फ्लेक्सी चॉइस',
+        'desc': 'Guaranteed Dinner + Choice between Breakfast or Lunch',
+        'descHi': 'रात का खाना पक्का + सुबह नाश्ता या दोपहर खाने में से कोई 1',
         'fixedMeals': ['night'],
         'hasChoice': true,
         'choiceSlots': ['morning', 'noon'],
@@ -919,7 +931,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'मेस सेटअप (Mess Setup)',
+          isHindi ? 'मेस सेटअप' : 'Mess Setup',
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18, color: const Color(0xFF0F172A)),
         ),
         centerTitle: true,
@@ -938,11 +950,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               color: Colors.white,
               child: Row(
                 children: [
-                  _buildStepBubble(0, isHindi ? '1. समय (Timings)' : '1. Timings'),
+                  _buildStepBubble(0, isHindi ? '1. समय' : '1. Timings'),
                   _buildStepDivider(0),
-                  _buildStepBubble(1, isHindi ? '2. प्लान्स (Plans)' : '2. Plans'),
+                  _buildStepBubble(1, isHindi ? '2. प्लान्स' : '2. Plans'),
                   _buildStepDivider(1),
-                  _buildStepBubble(2, isHindi ? '3. प्रोफाइल (Profile)' : '3. Profile'),
+                  _buildStepBubble(2, isHindi ? '3. प्रोफाइल' : '3. Profile'),
                 ],
               ),
             ),
@@ -1030,8 +1042,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         children: [
           _buildStepHeader(
             1,
-            'भोजन का समय तय करें (Meal Timings)',
-            'आपकी मेस में कौन-कौन से वक्त खाना बनता है? चालू स्लॉट चुनें और समय पर क्लिक करके अपनी पसंद अनुसार समय सेट करें।',
+            isHindi ? 'भोजन का समय तय करें' : 'Set Meal Timings',
+            isHindi ? 'आपकी मेस में कौन-कौन से वक्त खाना बनता है? चालू स्लॉट चुनें और समय सेट करें।' : 'Which meals do you serve? Enable the active slots and set daily timings.',
           ),
           const SizedBox(height: 20),
 
@@ -1083,7 +1095,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              data['name'] as String,
+                              isHindi ? (data['nameHi'] as String? ?? data['name'] as String) : (data['name'] as String),
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -1092,7 +1104,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              isEnabled ? 'चालू है (Active)' : 'बंद है (Disabled)',
+                              isEnabled ? (isHindi ? 'चालू है' : 'Active') : (isHindi ? 'बंद है' : 'Disabled'),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -1120,7 +1132,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     const SizedBox(height: 12),
 
                     Text(
-                      'समय बदलें (Tap to change time):',
+                      isHindi ? 'समय बदलें:' : 'Tap to change time:',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1150,7 +1162,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('शुरू (From)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                        Text(isHindi ? 'शुरू' : 'From', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                         Text(
                                           _formatTime12(data['start'] as String),
                                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
@@ -1166,7 +1178,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('से', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                          child: Text(isHindi ? 'से' : 'to', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         Expanded(
                           child: InkWell(
@@ -1187,7 +1199,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('समाप्त (To)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                        Text(isHindi ? 'समाप्त' : 'To', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                         Text(
                                           _formatTime12(data['end'] as String),
                                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
@@ -1237,12 +1249,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'कटऑफ समय (Cut-off Notice)',
+                        isHindi ? 'कटऑफ समय' : 'Cut-off Notice',
                         style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'खाना शुरू होने से कितने घंटे पहले छात्र छुट्टी ले सकता है?',
+                        isHindi ? 'खाना शुरू होने से कितने घंटे पहले छात्र मील स्किप कर सकता है?' : 'How many hours before meal start can a student skip?',
                         style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
                       ),
                     ],
@@ -1259,7 +1271,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
-                        '$_cutoffLeadHours घंटे',
+                        isHindi ? '$_cutoffLeadHours घंटे' : '$_cutoffLeadHours hours',
                         style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
                       ),
                     ),
@@ -1275,7 +1287,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           ),
 
           const SizedBox(height: 28),
-          _buildNextBtn(label: 'आगे बढ़ें (Next: Meal Plans)', onTap: _nextPage),
+          _buildNextBtn(label: isHindi ? 'आगे बढ़ें (प्लान्स सेट करें)' : 'Next: Meal Plans', onTap: _nextPage),
         ],
       ),
     );
@@ -1288,8 +1300,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         children: [
           _buildStepHeader(
             2,
-            'मील प्लान और शुल्क (Plans & Pricing)',
-            'आपके द्वारा चुने गए समय अनुसार प्लान तैयार हैं। जो प्लान ऑफर करना चाहते हैं उसे चालू रखें। फीस और रिफंड पर सीधे क्लिक करके कोई भी राशि (जैसे ₹45 या ₹41.2) दर्ज करें।',
+            isHindi ? 'मील प्लान और शुल्क' : 'Plans & Pricing',
+            isHindi ? 'आपके द्वारा चुने गए समय अनुसार प्लान तैयार हैं। जो प्लान ऑफर करना चाहते हैं उसे चालू रखें।' : 'Plans are ready based on your timings. Keep the ones you want active.',
           ),
           const SizedBox(height: 20),
 
@@ -1364,7 +1376,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                plan['desc'] as String,
+                                isHindi ? (plan['descHi'] as String? ?? plan['desc'] as String) : (plan['desc'] as String),
                                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
                               ),
                             ],
@@ -1410,7 +1422,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'छात्र की पसंद: ${choiceSlots.map((s) => _timings[s]?['slotName'] ?? s).join(' या ')} (कोई 1)',
+                                  isHindi ? 'छात्र की पसंद: ${choiceSlots.map((s) => _timings[s]?['slotName'] ?? s).join(' या ')} (कोई 1)' : 'Student Choice: ${choiceSlots.map((s) => _timings[s]?['slotNameEn'] ?? s).join(' or ')} (Any 1)',
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -1441,7 +1453,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isHindi ? 'प्रति माह फीस (Monthly Fee)' : 'Monthly Fee',
+                                      isHindi ? 'महीने की फीस' : 'Monthly Fee',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -1502,7 +1514,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isHindi ? 'छुट्टी रिफंड (Skip Refund / Meal)' : 'Skip Refund (Per Meal)',
+                                      isHindi ? 'मील स्किप रिफंड' : 'Skip Refund (Per Meal)',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -1510,13 +1522,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(isHindi ? 'प्रति मील छूट (e.g. ₹45 या ₹41.2)' : 'Discount per valid skip (e.g. ₹45)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                    Text(isHindi ? 'प्रति मील छूट (जैसे ₹45)' : 'Discount per valid skip (e.g. ₹45)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                   ],
                                 ),
                               ),
                               Row(
                                 children: [
-                                  _buildMiniStepBtn('-', () => _adjustCtrl(skipCtrl, -5, min: 0)),
+                                  _buildMiniStepBtn('-', () => _adjustCtrl(skipCtrl, -1, min: 0), onLongPress: () => _adjustCtrl(skipCtrl, -5, min: 0)),
                                   Container(
                                     width: 88,
                                     height: 38,
@@ -1547,7 +1559,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                   ),
-                                  _buildMiniStepBtn('+', () => _adjustCtrl(skipCtrl, 5)),
+                                  _buildMiniStepBtn('+', () => _adjustCtrl(skipCtrl, 1), onLongPress: () => _adjustCtrl(skipCtrl, 5)),
                                 ],
                               ),
                             ],
@@ -1563,14 +1575,14 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isHindi ? 'अधिकतम छुट्टी सीमा (Max Skips)' : 'Max Skips Limit',
+                                      isHindi ? 'अधिकतम स्किप सीमा' : 'Max Skips Limit',
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: const Color(0xFF64748B),
                                     ),
                                   ),
-                                  Text(isHindi ? 'महीने में स्वीकार्य छुट्टियां' : 'Allowed monthly skip refund limit', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                  Text(isHindi ? 'महीने में अधिकतम स्वीकार्य रिफंड' : 'Allowed monthly skip refund limit', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                 ],
                               ),
                             ),
@@ -1589,7 +1601,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       const Icon(Icons.all_inclusive_rounded, size: 15, color: Color(0xFF16A34A)),
                                       const SizedBox(width: 4),
                                       Text(
-                                        isHindi ? 'असीमित (Unlimited)' : 'Unlimited Skips',
+                                        isHindi ? 'असीमित' : 'Unlimited Skips',
                                         style: GoogleFonts.inter(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
@@ -1609,7 +1621,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      isHindi ? 'सीमित करें' : 'Set Limit',
+                                      isHindi ? 'सीमा तय करें' : 'Set Limit',
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -1678,13 +1690,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           }),
 
           const SizedBox(height: 20),
-          _buildNextBtn(label: 'आगे बढ़ें (Next: Mess Profile)', onTap: _nextPage),
+          _buildNextBtn(label: isHindi ? 'आगे बढ़ें (प्रोफाइल सेट करें)' : 'Next: Mess Profile', onTap: _nextPage),
           const SizedBox(height: 12),
           Center(
             child: TextButton.icon(
               onPressed: _prevPage,
               icon: const Icon(Icons.arrow_back, size: 16),
-              label: Text('समय बदलें (Back to Timings)', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              label: Text(isHindi ? 'समय बदलें' : 'Back to Timings', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -1700,8 +1712,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         children: [
           _buildStepHeader(
             3,
-            'मेस की जानकारी (Mess Profile)',
-            'अंतिम चरण: अपनी मेस का नाम, मालिक का नाम और संपर्क नंबर भरें। यह जानकारी छात्रों को दिखाई जाएगी।',
+            isHindi ? 'मेस की जानकारी' : 'Mess Profile',
+            isHindi ? 'अंतिम चरण: मेस का नाम, अपना नाम और संपर्क नंबर भरें।' : 'Final step: Enter mess name, owner name and contact details.',
           ),
           const SizedBox(height: 20),
 
@@ -1716,7 +1728,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildInputField(
-                  label: 'मेस का नाम (Mess Name) *',
+                  label: isHindi ? 'मेस का नाम *' : 'Mess Name *',
                   hint: 'जैसे: श्री अन्नपूर्णा मेस',
                   ctrl: _messNameCtrl,
                   prefixIcon: Icons.storefront_rounded,
@@ -1724,7 +1736,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 const SizedBox(height: 16),
 
                 _buildInputField(
-                  label: 'मालिक का नाम (Owner Name) *',
+                  label: isHindi ? 'मालिक का नाम *' : 'Owner Name *',
                   hint: 'जैसे: रोहित शर्मा',
                   ctrl: _ownerNameCtrl,
                   prefixIcon: Icons.person_rounded,
@@ -1732,7 +1744,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 const SizedBox(height: 16),
 
                 _buildInputField(
-                  label: 'मोबाइल नंबर (Phone Number) *',
+                  label: isHindi ? 'मोबाइल नंबर *' : 'Phone Number *',
                   hint: '10 अंकों का मोबाइल नंबर',
                   ctrl: _phoneCtrl,
                   keyboardType: TextInputType.phone,
@@ -1741,7 +1753,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 const SizedBox(height: 16),
 
                 _buildInputField(
-                  label: 'बैठने की क्षमता (Seating Capacity)',
+                  label: isHindi ? 'बैठने की क्षमता' : 'Seating Capacity',
                   hint: 'जैसे: 50',
                   ctrl: _capacityCtrl,
                   keyboardType: TextInputType.number,
@@ -1750,7 +1762,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 const SizedBox(height: 20),
 
                 Text(
-                  'भोजन का प्रकार (Food Type)',
+                  isHindi ? 'भोजन का प्रकार' : 'Food Type',
                   style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
                 ),
                 const SizedBox(height: 10),
@@ -1761,7 +1773,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                         'pure_veg',
                         Icons.eco_rounded,
                         const Color(0xFF10B981),
-                        'शुद्ध शाकाहारी\n(Pure Veg)',
+                        isHindi ? 'शुद्ध शाकाहारी' : 'Pure Veg',
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1770,7 +1782,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                         'both',
                         Icons.restaurant_rounded,
                         const Color(0xFFF59E0B),
-                        'शाकाहारी + मांसाहारी\n(Both Veg & Non-Veg)',
+                        isHindi ? 'शाकाहारी + मांसाहारी' : 'Both Veg & Non-Veg',
                       ),
                     ),
                   ],
@@ -1797,12 +1809,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'मेस सेटअप पूरा होने को तैयार है',
+                        isHindi ? 'मेस सेटअप पूरा होने को तैयार है' : 'Ready to Launch Mess',
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'लांच के बाद आप कभी भी सेटिंग्स में जाकर समय या प्लान्स बदल सकते हैं।',
+                        isHindi ? 'लांच के बाद आप सेटिंग्स में कभी भी समय या प्लान्स बदल सकते हैं।' : 'You can adjust timings and plans anytime in Settings later.',
                         style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
                       ),
                     ],
@@ -1815,7 +1827,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           const SizedBox(height: 24),
 
           _buildNextBtn(
-            label: 'मेस शुरू करें (Launch Mess)',
+            label: isHindi ? 'मेस शुरू करें' : 'Launch Mess',
             onTap: _finishSetup,
             isLoading: _isSubmitting,
             color: const Color(0xFFE11D48),
@@ -1826,7 +1838,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
             child: TextButton.icon(
               onPressed: _prevPage,
               icon: const Icon(Icons.arrow_back, size: 16),
-              label: Text('प्लान्स बदलें (Back to Plans)', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              label: Text(isHindi ? 'प्लान्स बदलें' : 'Back to Plans', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -1847,7 +1859,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                'चरण $step / 3 (Step $step of 3)',
+                isHindi ? 'चरण $step / 3' : 'Step $step of 3',
                 style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
               ),
             ),
@@ -1873,7 +1885,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       runSpacing: 6,
       children: meals.map((m) {
         final slot = _timings[m];
-        final name = slot?['slotName'] ?? m;
+        final name = isHindi ? (slot?['slotName'] ?? m) : (slot?['slotNameEn'] ?? slot?['name'] ?? m);
         final icon = slot?['icon'] ?? '🍽️';
         final color = (slot?['color'] as Color?) ?? const Color(0xFFE11D48);
 
@@ -1903,9 +1915,10 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     );
   }
 
-  Widget _buildMiniStepBtn(String icon, VoidCallback onTap) {
+  Widget _buildMiniStepBtn(String icon, VoidCallback onTap, {VoidCallback? onLongPress}) {
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         width: 32,

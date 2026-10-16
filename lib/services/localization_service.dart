@@ -31,6 +31,12 @@ class LocalizationNotifier extends StateNotifier<String> {
   }
 }
 
+/// Helper to get text based on current language
+String appTr(WidgetRef ref, {required String en, required String hi}) {
+  final lang = ref.watch(localizationProvider);
+  return lang == 'hi' ? hi : en;
+}
+
 // Simple translation dictionary
 const Map<String, Map<String, String>> _translations = {
   'en': {
@@ -42,9 +48,22 @@ const Map<String, Map<String, String>> _translations = {
     'Students': 'Students',
     'Analytics': 'Analytics',
     'Settings': 'Settings',
+    'Language': 'Language',
+    'Mess Setup': 'Mess Setup',
+    'Meal Timings': 'Meal Timings',
+    'Plans & Pricing': 'Plans & Pricing',
+    'Profile': 'Profile',
+    'Active': 'Active',
+    'Disabled': 'Disabled',
+    'From': 'From',
+    'To': 'To',
+    'Breakfast': 'Breakfast',
+    'Lunch': 'Lunch',
+    'Evening Snacks': 'Evening Snacks',
+    'Dinner': 'Dinner',
   },
   'hi': {
-    'Live Headcount': 'आज की गिनती (Live)',
+    'Live Headcount': 'लाइव हेडकाउंट',
     'Absent Summary': 'छुट्टी का ब्यौरा',
     'Upcoming Leaves': 'आने वाली छुट्टियां',
     'Dashboard': 'डैशबोर्ड',
@@ -52,11 +71,29 @@ const Map<String, Map<String, String>> _translations = {
     'Students': 'विद्यार्थी',
     'Analytics': 'एनालिटिक्स',
     'Settings': 'सेटिंग्स',
+    'Language': 'भाषा',
+    'Mess Setup': 'मेस सेटअप',
+    'Meal Timings': 'खाने का समय',
+    'Plans & Pricing': 'प्लान और फीस',
+    'Profile': 'प्रोफाइल',
+    'Active': 'चालू',
+    'Disabled': 'बंद',
+    'From': 'शुरू',
+    'To': 'समाप्त',
+    'Breakfast': 'नाश्ता',
+    'Lunch': 'दोपहर का खाना',
+    'Evening Snacks': 'शाम का नाश्ता',
+    'Dinner': 'रात का खाना',
   },
 };
 
 extension LocalizationExtension on String {
   String tr(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(localizationProvider);
+    return _translations[lang]?[this] ?? this;
+  }
+
+  String trRef(WidgetRef ref) {
     final lang = ref.watch(localizationProvider);
     return _translations[lang]?[this] ?? this;
   }

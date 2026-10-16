@@ -1,3 +1,4 @@
+import '../../../services/localization_service.dart';
 import 'owner_plan_builder_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -1419,6 +1420,86 @@ class OwnerSettingsPage extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+
+  void _showLanguageModal(BuildContext context, WidgetRef ref) {
+    final currentLang = ref.read(localizationProvider);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(
+                    currentLang == 'hi' ? 'भाषा चुनें' : 'Choose Language',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
+                  title: Text(
+                    'English',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Clean & simple English',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+                  ),
+                  trailing: currentLang == 'en'
+                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981))
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    ref.read(localizationProvider.notifier).toggleLanguage('en');
+                    Navigator.pop(ctx);
+                  },
+                ),
+                ListTile(
+                  leading: const Text('🇮🇳', style: TextStyle(fontSize: 24)),
+                  title: Text(
+                    'हिंदी (Hindi)',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  subtitle: Text(
+                    'सरल एवं आसान बोलचाल की हिंदी',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+                  ),
+                  trailing: currentLang == 'hi'
+                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981))
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    ref.read(localizationProvider.notifier).toggleLanguage('hi');
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

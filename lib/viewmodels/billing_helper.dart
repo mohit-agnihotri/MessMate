@@ -165,8 +165,9 @@ BillModel generateAdvancedBill({
       : 0.0;
 
   // Determine policy
-  final String policyType = plan?.deductionPolicy.policyType ??
-      (mess.allowMealSkipping ? 'dynamic_prorated' : 'none');
+  final String policyType = !mess.allowMealSkipping
+      ? 'none'
+      : (plan?.deductionPolicy.policyType ?? 'dynamic_prorated');
 
   final double effectiveStudentRebateRate;
   if (policyType == 'none') {
@@ -292,20 +293,25 @@ BillModel generateAdvancedBill({
       int clampedSkips = min(studentSkips.length, remainingAllowance);
 
       if (clampedSkips > 0) {
-        totalValidSkips += clampedSkips;
-        if (compensationChoice == 'rebate' && effectiveStudentRebateRate > 0) {
-          double refundAmt = clampedSkips * effectiveStudentRebateRate;
-          skipsDeduction += refundAmt;
-          items.add(
-            DeductionItem(
-              date: currentDate,
-              mealSlot: clampedSkips == 1
-                  ? '${studentSkips.first.mealSlot} (Valid Skip)'
-                  : 'Valid Skips ($clampedSkips)',
-              type: 'self_cancelled',
-              amount: -refundAmt,
-            ),
-          );
+        final int? maxAllowedSkips = plan?.deductionPolicy.maxSkipsPerMonth;
+        for (int i = 0; i < clampedSkips; i++) {
+          totalValidSkips++;
+          if (maxAllowedSkips != null && maxAllowedSkips > 0 && totalValidSkips > maxAllowedSkips) {
+            // Skips beyond limit are recorded but not refunded financially
+            continue;
+          }
+          final skipCost = studentSkips[i].cost ?? (mess.allowMealSkipping ? effectiveStudentRebateRate : 0.0);
+          if (compensationChoice == 'rebate' && skipCost > 0) {
+            skipsDeduction += skipCost;
+            items.add(
+              DeductionItem(
+                date: currentDate,
+                mealSlot: '${studentSkips[i].mealSlot} (Valid Skip)',
+                type: 'self_cancelled',
+                amount: -skipCost,
+              ),
+            );
+          }
         }
       }
     }

@@ -275,16 +275,16 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
 
   Widget _buildDietaryPreferenceSelector() {
     final options = [
-      {'key': 'veg', 'label': 'शाकाहारी (Veg)', 'sub': 'Veg only meals'},
-      {'key': 'non_veg', 'label': 'मांसाहारी (Non-Veg)', 'sub': 'Includes meat & eggs'},
-      {'key': 'eggetarian', 'label': 'अंडा युक्त (Eggetarian)', 'sub': 'Veg with egg dishes'},
+      {'key': 'veg', 'label': isHindi ? 'शाकाहारी' : 'Vegetarian', 'sub': isHindi ? 'केवल शाकाहारी भोजन' : 'Veg only meals'},
+      {'key': 'non_veg', 'label': isHindi ? 'मांसाहारी' : 'Non-Vegetarian', 'sub': isHindi ? 'अंडा व मीट शामिल' : 'Includes meat & eggs'},
+      {'key': 'eggetarian', 'label': isHindi ? 'अंडा युक्त' : 'Eggetarian', 'sub': isHindi ? 'शाकाहारी + अंडा' : 'Veg with egg dishes'},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'भोजन प्राथमिकता (Dietary Preference)',
+          isHindi ? 'भोजन प्राथमिकता' : 'Dietary Preference',
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -504,7 +504,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                     const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF10B981)),
                     const SizedBox(width: 4),
                     Text(
-                      'मेस मिल गई (Verified)',
+                      isHindi ? 'मेस मिल गई' : 'Mess Found (Verified)',
                       style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF047857)),
                     ),
                   ],
@@ -518,7 +518,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  mess.foodType == 'pure_veg' ? '🌿 शुद्ध शाकाहारी' : '🍲 शाकाहारी + मांसाहारी',
+                  mess.foodType == 'pure_veg' ? (isHindi ? '🌿 शुद्ध शाकाहारी' : '🌿 Pure Veg') : (isHindi ? '🍲 शाकाहारी + मांसाहारी' : '🍲 Veg & Non-Veg'),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -992,7 +992,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                 hint: 'जैसे: रूम 204, ब्लॉक B'),
             _buildDietaryPreferenceSelector(),
             _buildInput(
-              isHindi ? 'आपातकालीन / रूममेट फोन (Emergency Phone)' : 'Emergency / Roommate Phone',
+              isHindi ? 'आपातकालीन / रूममेट फोन' : 'Emergency / Roommate Phone',
               _emergencyCtrl,
               hint: 'जैसे: 9876500000',
               keyboardType: TextInputType.phone,

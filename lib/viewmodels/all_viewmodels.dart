@@ -1308,6 +1308,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
       final mealDate = date ?? _today;
+      final currentSkipRate = state.assignedPlan?.deductionPolicy.flatRate ?? state.mess?.perMealRate;
       final record = MealRecordModel(
         recordId:
             '${uid}_${mealSlot}_${mealDate.toIso8601String().substring(0, 10)}',
@@ -1316,6 +1317,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         date: mealDate,
         mealSlot: mealSlot,
         status: 'absent_self',
+        cost: currentSkipRate,
         cancelledAt: DateTime.now(),
       );
       await _service.skipMeal(record);
