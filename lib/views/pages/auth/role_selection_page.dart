@@ -1121,7 +1121,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(builder: (_) => const StudentSetupPage()),
             );
-          } else if (student.status == 'approved') {
+          } else if (student.status == 'active' || student.status == 'approved') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),

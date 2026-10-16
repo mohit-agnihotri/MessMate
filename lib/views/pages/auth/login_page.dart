@@ -1,3 +1,4 @@
+import '../../../services/localization_service.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,58 +21,66 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  bool get isHindi => ref.watch(localizationProvider) == 'hi';
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-
+    
     // Listen to authentication state changes
     ref.listen(authProvider, (prev, next) async {
       if (next.userId != null && prev?.userId == null) {
         final uid = next.userId!;
         final service = ref.read(appServiceProvider);
 
-        if (widget.initialRole == AuthRole.owner) {
-          final mess = await service.getMessByOwnerId(uid);
-          if (mounted) {
-            if (mess == null) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const OwnerMainPage()),
-              );
-            }
-          }
-        } else if (widget.initialRole == AuthRole.student) {
-          final student = await service.getStudentById(uid);
-          if (mounted) {
-            if (student == null) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const StudentSetupPage()),
-              );
-            } else if (student.status == 'approved') {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const StudentMainPage()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StudentPendingApprovalPage(
-                    initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
-                  ),
+        // Smart Universal Account Auto-Detection:
+        // 1. Check if user already exists as an Owner
+        final mess = await service.getMessByOwnerId(uid);
+        if (mess != null && mounted) {
+          ref.read(authProvider.notifier).setRole(AuthRole.owner);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+          );
+          return;
+        }
+
+        // 2. Check if user already exists as a Student
+        final student = await service.getStudentById(uid);
+        if (student != null && mounted) {
+          ref.read(authProvider.notifier).setRole(AuthRole.student);
+          if (student.status == 'active' || student.status == 'approved') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentPendingApprovalPage(
+                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
                 ),
-              );
-            }
+              ),
+            );
           }
-        } else {
-          // Default navigate to role selection
-          if (mounted) {
+          return;
+        }
+
+        // 3. New User without account:
+        if (mounted) {
+          if (widget.initialRole == AuthRole.owner) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
+            );
+          } else if (widget.initialRole == AuthRole.student) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+            );
+          } else {
+            // Take to Role Selection to choose Owner or Student
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
@@ -132,18 +141,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 children: [
                   const SizedBox(height: 12),
                   // Back button
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                    onPressed: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-                        );
-                      }
-                    },
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (Navigator.canPop(context))
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        )
+                      else
+                        const SizedBox(width: 40),
+                      InkWell(
+                        onTap: () {
+                          ref.read(localizationProvider.notifier).toggleLanguage(isHindi ? 'en' : 'hi');
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.language_rounded, size: 15, color: Color(0xFF34D399)),
+                              const SizedBox(width: 6),
+                              Text(
+                                isHindi ? 'English' : 'हिंदी',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 30),
 
@@ -251,7 +288,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const Icon(Icons.shield_rounded, size: 16, color: Color(0xFF34D399)),
                       const SizedBox(width: 8),
                       Text(
-                        '100% Free & Secure Authentication',
+                        isHindi ? '100% सुरक्षित और निःशुल्क' : '100% Free & Secure Authentication',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: const Color(0xFF94A3B8),
@@ -259,6 +296,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 28),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                        );
+                      },
+                      child: Text(
+                        isHindi ? 'नया खाता बनाना चाहते हैं? रोल चुनें' : 'New to MessMate? Choose Role',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF34D399),
+                        ),
+                      ),
+                    ),
                   ),
 
                 ],

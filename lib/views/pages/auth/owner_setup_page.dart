@@ -1,4 +1,5 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import '../../../services/localization_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,8 @@ class OwnerSetupPage extends ConsumerStatefulWidget {
 }
 
 class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
+  bool get isHindi => ref.watch(localizationProvider) == 'hi';
+
   final PageController _pageController = PageController();
   int _currentStep = 0;
   bool _isSubmitting = false;
@@ -910,7 +913,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+        return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -935,11 +938,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               color: Colors.white,
               child: Row(
                 children: [
-                  _buildStepBubble(0, '1. समय (Timings)'),
+                  _buildStepBubble(0, isHindi ? '1. समय (Timings)' : '1. Timings'),
                   _buildStepDivider(0),
-                  _buildStepBubble(1, '2. प्लान्स (Plans)'),
+                  _buildStepBubble(1, isHindi ? '2. प्लान्स (Plans)' : '2. Plans'),
                   _buildStepDivider(1),
-                  _buildStepBubble(2, '3. प्रोफाइल (Profile)'),
+                  _buildStepBubble(2, isHindi ? '3. प्रोफाइल (Profile)' : '3. Profile'),
                 ],
               ),
             ),
@@ -1438,7 +1441,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'प्रति माह फीस (Monthly Fee)',
+                                      isHindi ? 'प्रति माह फीस (Monthly Fee)' : 'Monthly Fee',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -1446,7 +1449,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text('छात्र से मासिक शुल्क', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                    Text(isHindi ? 'छात्र से मासिक शुल्क' : 'Monthly fee per student', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                   ],
                                 ),
                               ),
@@ -1499,7 +1502,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'छुट्टी रिफंड (Skip Refund / Meal)',
+                                      isHindi ? 'छुट्टी रिफंड (Skip Refund / Meal)' : 'Skip Refund (Per Meal)',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -1507,7 +1510,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text('प्रति मील छूट (e.g. ₹45 या ₹41.2)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                    Text(isHindi ? 'प्रति मील छूट (e.g. ₹45 या ₹41.2)' : 'Discount per valid skip (e.g. ₹45)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                   ],
                                 ),
                               ),
@@ -1555,21 +1558,24 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'अधिकतम छुट्टी सीमा (Max Skips)',
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isHindi ? 'अधिकतम छुट्टी सीमा (Max Skips)' : 'Max Skips Limit',
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: const Color(0xFF64748B),
                                     ),
                                   ),
-                                  Text('महीने में स्वीकार्य छुट्टियां', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
+                                  Text(isHindi ? 'महीने में स्वीकार्य छुट्टियां' : 'Allowed monthly skip refund limit', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
                                 ],
                               ),
-                              if ((plan['maxSkip'] as int) == -1) ...[
+                            ),
+                            const SizedBox(width: 8),
+                            if ((plan['maxSkip'] as int) == -1) ...[
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
@@ -1583,7 +1589,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       const Icon(Icons.all_inclusive_rounded, size: 15, color: Color(0xFF16A34A)),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'असीमित (Unlimited)',
+                                        isHindi ? 'असीमित (Unlimited)' : 'Unlimited Skips',
                                         style: GoogleFonts.inter(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
@@ -1603,7 +1609,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      'सीमित करें',
+                                      isHindi ? 'सीमित करें' : 'Set Limit',
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -1648,7 +1654,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          'असीमित',
+                                          isHindi ? 'असीमित' : 'Unlimited',
                                           style: GoogleFonts.inter(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,

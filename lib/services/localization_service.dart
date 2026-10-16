@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final localizationProvider =
     StateNotifierProvider<LocalizationNotifier, String>((ref) {
@@ -7,10 +8,26 @@ final localizationProvider =
     });
 
 class LocalizationNotifier extends StateNotifier<String> {
-  LocalizationNotifier() : super('en'); // Default to English
+  LocalizationNotifier() : super('en') {
+    _loadSavedLanguage();
+  }
 
-  void toggleLanguage(String lang) {
+  Future<void> _loadSavedLanguage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('app_language');
+      if (saved != null && (saved == 'en' || saved == 'hi')) {
+        state = saved;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> toggleLanguage(String lang) async {
     state = lang;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('app_language', lang);
+    } catch (_) {}
   }
 }
 
@@ -27,14 +44,14 @@ const Map<String, Map<String, String>> _translations = {
     'Settings': 'Settings',
   },
   'hi': {
-    'Live Headcount': 'Aaj Ki Ginti (Live)',
-    'Absent Summary': 'Chhutti Ka Byora',
-    'Upcoming Leaves': 'Aane Wali Chhuttiyan',
-    'Dashboard': 'Dashboard',
-    'Menu Planner': 'Menu Banayen',
-    'Students': 'Vidyarthi',
-    'Analytics': 'Analytics',
-    'Settings': 'Settings',
+    'Live Headcount': 'आज की गिनती (Live)',
+    'Absent Summary': 'छुट्टी का ब्यौरा',
+    'Upcoming Leaves': 'आने वाली छुट्टियां',
+    'Dashboard': 'डैशबोर्ड',
+    'Menu Planner': 'मेन्यू प्लानर',
+    'Students': 'विद्यार्थी',
+    'Analytics': 'एनालिटिक्स',
+    'Settings': 'सेटिंग्स',
   },
 };
 

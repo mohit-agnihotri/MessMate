@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
+import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
 import 'student/student_main_page.dart';
@@ -57,7 +58,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
         final student = await service.getStudentById(user.uid);
         if (student != null && mounted) {
           ref.read(authProvider.notifier).setRole(AuthRole.student);
-          if (student.status == 'approved') {
+          if (student.status == 'active' || student.status == 'approved') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),
@@ -92,10 +93,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
       }
     } else {
       if (mounted) {
-        // First-run experience: Show Onboarding Carousel & Role Selection first
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          MaterialPageRoute(builder: (_) => const LoginPage()),
         );
       }
     }

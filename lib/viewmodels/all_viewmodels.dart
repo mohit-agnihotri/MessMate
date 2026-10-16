@@ -1616,9 +1616,15 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           state.selectedMonth.year,
         );
 
+        MealPlanModel? plan;
+        if (student.assignedPlanId != null && student.assignedPlanId!.isNotEmpty) {
+          plan = await _service.getMealPlanById(student.messId, student.assignedPlanId!);
+        }
+
         final previewBill = generateAdvancedBill(
           student: student,
           mess: mess,
+          plan: plan,
           month: state.selectedMonth.month,
           year: state.selectedMonth.year,
           records: records,

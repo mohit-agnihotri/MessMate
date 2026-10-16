@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import '../../../services/localization_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,8 @@ class StudentSetupPage extends ConsumerStatefulWidget {
 }
 
 class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
+  bool get isHindi => ref.watch(localizationProvider) == 'hi';
+
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _roomCtrl = TextEditingController();
@@ -989,7 +992,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                 hint: 'जैसे: रूम 204, ब्लॉक B'),
             _buildDietaryPreferenceSelector(),
             _buildInput(
-              'आपातकालीन / रूममेट फोन (Emergency Phone)',
+              isHindi ? 'आपातकालीन / रूममेट फोन (Emergency Phone)' : 'Emergency / Roommate Phone',
               _emergencyCtrl,
               hint: 'जैसे: 9876500000',
               keyboardType: TextInputType.phone,

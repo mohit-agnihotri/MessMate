@@ -1017,6 +1017,11 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     final mess = await service.getMessById(student.messId);
     if (mess == null) throw Exception("Mess not found");
 
+    MealPlanModel? plan;
+    if (student.assignedPlanId != null && student.assignedPlanId!.isNotEmpty) {
+      plan = await service.getMealPlanById(student.messId, student.assignedPlanId!);
+    }
+
     final records = await service.getMealRecords(
       student.studentId,
       now.month,
@@ -1032,6 +1037,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     return {
       'bill': bill,
       'mess': mess,
+      'plan': plan,
       'records': records,
       'previousDues': previousDues,
       'month': now.month,
@@ -1064,6 +1070,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
         final data = snapshot.data!;
         final BillModel? savedBill = data['bill'];
         final MessModel mess = data['mess'];
+        final MealPlanModel? plan = data['plan'];
         final List<MealRecordModel> records = data['records'];
 
         return StatefulBuilder(
@@ -1071,6 +1078,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
             final bill = savedBill ?? generateAdvancedBill(
               student: student,
               mess: mess,
+              plan: plan,
               month: data['month'],
               year: data['year'],
               records: records,
@@ -1146,7 +1154,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                               children: [
                                 Text('Reduce Fees (Rebate)', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                                 Text(
-                                  skippedMealsCount > 0 ? 'Deduct ₹${(skippedMealsCount * (mess.monthlyFee / (DateTime(data['year'] as int, (data['month'] as int) + 1, 0).day * mess.mealsIncludedPerDay))).toStringAsFixed(0)} from bill' : 'No deduction (0 skips)',
+                                  skippedMealsCount > 0 ? 'Deduct ₹${(skippedMealsCount * ((plan?.monthlyFee ?? mess.monthlyFee) / (DateTime(data['year'] as int, (data['month'] as int) + 1, 0).day * (plan?.mealsIncludedPerDay ?? mess.mealsIncludedPerDay)))).toStringAsFixed(0)} from bill' : 'No deduction (0 skips)',
                                   style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF6B7280)),
                                 ),
                               ],
