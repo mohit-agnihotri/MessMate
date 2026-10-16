@@ -1176,9 +1176,9 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                             ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(isHindi ? 'से' : 'to', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(isHindi ? 'से' : 'to', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         Expanded(
                           child: InkWell(
