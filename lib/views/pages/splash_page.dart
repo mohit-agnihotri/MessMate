@@ -81,9 +81,10 @@ class _SplashPageState extends ConsumerState<SplashPage>
       }
     } else {
       if (mounted) {
+        // First-run experience: Show Onboarding Carousel & Role Selection first
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
+          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
         );
       }
     }

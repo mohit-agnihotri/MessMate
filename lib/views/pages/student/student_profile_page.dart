@@ -13,6 +13,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../models/app_models.dart';
 
+String _formatPlanName(String? planId) {
+  if (planId == null || planId.isEmpty) return 'Koi plan nahi (No plan)';
+  final parts = planId.split('_');
+  final name = parts.length > 1 ? parts.sublist(1).join(' ') : planId;
+  return name
+      .split('_')
+      .map((w) => w.isNotEmpty ? '' : w)
+      .join(' ');
+}
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({super.key});
 
@@ -342,7 +351,94 @@ class StudentProfilePage extends ConsumerWidget {
               ),
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
+          // Plan Status Banner (Balanced 3D Card)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0C10B981),
+                  blurRadius: 14,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.card_membership_rounded, color: Color(0xFF059669), size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'सक्रिय मील प्लान (Active Plan)',
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF047857)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatPlanName(state.student?.assignedPlanId),
+                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                ),
+                if (state.student?.pendingPlanId != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFD97706)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'अगले माह से लागू: ${_formatPlanName(state.student!.pendingPlanId)}',
+                            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFB45309)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF10B981),
+                side: const BorderSide(color: Color(0xFF10B981)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _showChangePlanSheet(context, ref, state),
+              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+              label: Text(
+                'अगले महीने का प्लान बदलें (Change Next Plan)',
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -523,6 +619,180 @@ class StudentProfilePage extends ConsumerWidget {
           const Icon(Icons.chevron_right, size: 18, color: Color(0xFF9CA3AF)),
         ],
       ),
+    );
+  }
+
+    void _showChangePlanSheet(
+    BuildContext context,
+    WidgetRef ref,
+    StudentProfileState state,
+  ) {
+    final mess = state.mess;
+    if (mess == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: FutureBuilder<List<MealPlanModel>>(
+            future: ref.read(appServiceProvider).getMealPlans(mess.messId),
+            builder: (context, snapshot) {
+              final plans = snapshot.data ?? [];
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'अगले महीने के लिए प्लान चुनें',
+                    style: GoogleFonts.outfit(fontSize: 19, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'नया प्लान अगले महीने की 1 तारीख से अपने आप लागू हो जाएगा।',
+                    style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)),
+                  ),
+                  const SizedBox(height: 16),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: Color(0xFF10B981))))
+                  else if (plans.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text('कोई अन्य प्लान उपलब्ध नहीं है', style: GoogleFonts.inter(color: const Color(0xFF94A3B8))),
+                    )
+                  else
+                    ...plans.map((p) {
+                      final isCurrent = state.student?.assignedPlanId == p.planId;
+                      final isPending = state.student?.pendingPlanId == p.planId;
+                      final hasChoice = p.choiceGroups.isNotEmpty;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isCurrent
+                                ? const Color(0xFF10B981)
+                                : (isPending ? const Color(0xFFF59E0B) : const Color(0xFFE2E8F0)),
+                            width: (isCurrent || isPending) ? 1.5 : 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isCurrent
+                                  ? const Color(0x0C10B981)
+                                  : (isPending ? const Color(0x0CF59E0B) : const Color(0x060F172A)),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (hasChoice)
+                                        Container(
+                                          margin: const EdgeInsets.only(bottom: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '🎯 पसंद का खाना (Choice)',
+                                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF2563EB)),
+                                          ),
+                                        ),
+                                      Text(
+                                        p.name,
+                                        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '₹${p.monthlyFee.toInt()} / महीना • ₹${p.deductionPolicy.flatRate?.toInt() ?? 50} वापसी/छुट्टी',
+                                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isCurrent)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFECFDF5),
+                                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text('वर्तमान प्लान', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF059669))),
+                                  )
+                                else if (isPending)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFBEB),
+                                      border: Border.all(color: const Color(0xFFFDE68A)),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text('अनुरोधित ✓', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFB45309))),
+                                  )
+                                else
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF10B981),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: () async {
+                                      await ref.read(studentProfileProvider.notifier).requestPlanChange(p.planId);
+                                      if (ctx.mounted) Navigator.pop(ctx);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('${p.name} का अनुरोध दर्ज हो गया! अगले माह की 1st से लागू होगा।')),
+                                        );
+                                      }
+                                    },
+                                    child: Text('चुनें', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

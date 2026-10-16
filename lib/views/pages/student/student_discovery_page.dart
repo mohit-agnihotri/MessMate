@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -375,7 +376,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                             isClosed
                                 ? 'CLOSED TILL ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}'
                                 : (item.currentOrNextMealName == 'No meal set'
-                                      ? 'MENU NOT UPDATED'
+                                      ? '🍽️ DAILY FRESH MEALS'
                                       : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}'),
                             style: GoogleFonts.inter(
                               color: isClosed
@@ -417,7 +418,18 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   const SizedBox(width: 8),
                   _buildInfoChip(Icons.people, '${mess.capacity} seats'),
                   const SizedBox(width: 8),
-                  _buildInfoChip(Icons.eco, 'Veg & Non-Veg'), // Static for now
+                  _buildInfoChip(
+                    mess.foodType == 'pure_veg'
+                        ? Icons.eco_rounded
+                        : mess.foodType == 'non_veg'
+                            ? Icons.restaurant_rounded
+                            : Icons.lunch_dining_rounded,
+                    mess.foodType == 'pure_veg'
+                        ? '🌱 Pure Veg'
+                        : mess.foodType == 'non_veg'
+                            ? '🍗 Non-Veg'
+                            : '🍃 Veg & Non-Veg',
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -457,36 +469,43 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
+                    color: const Color(0xFFF0FDF4),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFDCFCE7)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.currentOrNextMealName == 'No meal set'
-                            ? 'No Upcoming Meal Scheduled'
-                            : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.isServingNow ? "Today's" : "Upcoming"} ${item.currentOrNextMealName}',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFC2410C),
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            item.slotType == 'Night' ? Icons.bedtime_outlined : Icons.wb_sunny_outlined,
+                            size: 18,
+                            color: const Color(0xFF16A34A),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            item.currentOrNextMealName == 'No meal set'
+                                ? 'Daily Homestyle Food'
+                                : '${item.isServingNow ? "Now Serving" : "Upcoming"}: ${item.currentOrNextMealName}',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        item.currentOrNextMealDishes,
+                        item.currentOrNextMealDishes.isNotEmpty && item.currentOrNextMealName != 'No meal set'
+                            ? item.currentOrNextMealDishes
+                            : (mess.masterDishNames.isNotEmpty
+                                ? 'Specialties: ${mess.masterDishNames.take(4).join(", ")}'
+                                : 'Fresh, nutritious daily meals cooked with quality ingredients.'),
                         style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Check mess for timings',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF9A3412),
+                          fontSize: 13,
+                          color: const Color(0xFF374151),
                         ),
                       ),
                     ],
@@ -732,6 +751,25 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                  label: Text(
+                    'Request to Join Mess',
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => _handleJoinMessRequest(context, mess),
+                ),
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -949,7 +987,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                       ),
                       child: Text(
                         item.currentOrNextMealName == 'No meal set'
-                            ? 'MENU NOT UPDATED'
+                            ? '🍽️ DAILY FRESH MEALS'
                             : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}',
                         style: GoogleFonts.inter(
                           color: Colors.white,
@@ -1269,7 +1307,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 isClosed
                     ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
                     : (item.currentOrNextMealName == 'No meal set'
-                          ? 'MENU NOT UPDATED'
+                          ? '🍽️ Daily Fresh Homestyle Food'
                           : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'),
                 style: GoogleFonts.inter(
                   color: isClosed ? const Color(0xFFFCA5A5) : Colors.white,
@@ -1334,4 +1372,176 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       ),
     );
   }
+
+  void _handleJoinMessRequest(BuildContext context, MessModel mess) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in first to join a mess')),
+      );
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF10B981)),
+      ),
+    );
+
+    try {
+      final plans = await ref.read(appServiceProvider).getMealPlans(mess.messId);
+      final activePlans = plans.where((p) => p.isActive).toList();
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // hide loading
+
+      String? selectedPlanId;
+      if (activePlans.isNotEmpty) {
+        selectedPlanId = activePlans.first.planId;
+      }
+
+      // If active custom plans exist, prompt student to select one
+      if (activePlans.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (ctx) => StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text(
+                  'Select Meal Plan',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose a plan for ${mess.name}:',
+                      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 16),
+                    ...activePlans.map((p) {
+                      final isSelected = selectedPlanId == p.planId;
+                      return GestureDetector(
+                        onTap: () => setState(() => selectedPlanId = p.planId),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF10B981).withValues(alpha: 0.08) : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                color: isSelected ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.name,
+                                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                                    ),
+                                    Text(
+                                      '₹${p.monthlyFee.toInt()}/mo • ${p.mealsIncludedPerDay} meals daily',
+                                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _executeJoin(context, user.uid, mess, selectedPlanId);
+                    },
+                    child: const Text('Submit Request'),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      } else {
+        // No custom plans, join with default mess plan
+        await _executeJoin(context, user.uid, mess, null);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _executeJoin(BuildContext context, String uid, MessModel mess, String? planId) async {
+    final appService = ref.read(appServiceProvider);
+    final student = await appService.getStudentById(uid);
+
+    if (student != null) {
+      final updated = student.copyWith(
+        messId: mess.messId,
+        status: 'pending',
+        assignedPlanId: planId,
+      );
+      await appService.updateStudent(updated);
+    } else {
+      final newStudent = StudentModel(
+        studentId: uid,
+        name: FirebaseAuth.instance.currentUser?.displayName ?? 'Student',
+        phone: FirebaseAuth.instance.currentUser?.phoneNumber ?? '',
+        status: 'pending',
+        messId: mess.messId,
+        joinDate: DateTime.now(),
+        roomNo: '',
+        college: '',
+        course: '',
+        email: FirebaseAuth.instance.currentUser?.email ?? '',
+        assignedPlanId: planId,
+      );
+      await appService.updateStudent(newStudent);
+    }
+
+    if (context.mounted) {
+      Navigator.pop(context); // close bottom sheet
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Join request sent to ${mess.name}! The owner will activate your membership.'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
 }

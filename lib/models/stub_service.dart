@@ -36,6 +36,9 @@ class StubService implements AppService {
       email: 'rahul@example.com',
       joinDate: DateTime(2024, 10, 12),
       status: 'active',
+      assignedPlanId: 'plan_flex',
+      regularMealPreference: {'cg1': 'noon'},
+      datePreferences: {},
     ),
     StudentModel(
       studentId: 's2',
@@ -247,7 +250,7 @@ class StubService implements AppService {
   Future<List<StudentModel>> getPendingRequests(String messId) async =>
       _students.where((s) => s.status == 'pending').toList();
   @override
-  Future<void> acceptStudent(String messId, String studentId) async {}
+  Future<void> acceptStudent(String messId, String studentId, [String? planId]) async {}
   @override
   Future<void> rejectStudent(String messId, String studentId) async {}
   @override
@@ -380,4 +383,184 @@ class StubService implements AppService {
 
   @override
   Future<void> cleanupOldAnnouncements(String messId) async {}
+
+
+  static final List<MealPlanModel> _plans = [
+    MealPlanModel(
+      planId: 'plan_full',
+      messId: 'mess_001',
+      name: 'तीनों टाइम का खाना (Full Day)',
+      monthlyFee: 3500.0,
+      fixedMeals: ['morning', 'noon', 'night'],
+      choiceGroups: [],
+      deductionPolicy: DeductionPolicyModel(
+        policyType: 'flat',
+        eligibleMeals: ['morning', 'noon', 'night'],
+        flatRate: 50.0,
+      ),
+      isActive: true,
+    ),
+    MealPlanModel(
+      planId: 'plan_2meal',
+      messId: 'mess_001',
+      name: 'दोपहर + रात का खाना (2 Meals Daily)',
+      monthlyFee: 2800.0,
+      fixedMeals: ['noon', 'night'],
+      choiceGroups: [],
+      deductionPolicy: DeductionPolicyModel(
+        policyType: 'flat',
+        eligibleMeals: ['noon', 'night'],
+        flatRate: 50.0,
+      ),
+      isActive: true,
+    ),
+    MealPlanModel(
+      planId: 'plan_flex',
+      messId: 'mess_001',
+      name: 'नाश्ता या दोपहर + पक्का डिनर (2 Meals Flexible)',
+      monthlyFee: 2600.0,
+      fixedMeals: ['night'],
+      choiceGroups: [
+        ChoiceGroupModel(
+          groupId: 'cg1',
+          name: 'नाश्ता या दोपहर (Morning or Noon)',
+          availableMeals: ['morning', 'noon'],
+          minSelectable: 1,
+          maxSelectable: 1,
+        ),
+      ],
+      deductionPolicy: DeductionPolicyModel(
+        policyType: 'flat',
+        eligibleMeals: ['morning', 'noon', 'night'],
+        flatRate: 50.0,
+      ),
+      isActive: true,
+    ),
+    MealPlanModel(
+      planId: 'plan_choice',
+      messId: 'mess_001',
+      name: 'मनपसंद 1 खाना (1-Meal Choice)',
+      monthlyFee: 1800.0,
+      fixedMeals: [],
+      choiceGroups: [
+        ChoiceGroupModel(
+          groupId: 'cg2',
+          name: 'दोपहर या रात (Lunch or Dinner)',
+          availableMeals: ['noon', 'night'],
+          minSelectable: 1,
+          maxSelectable: 1,
+        ),
+      ],
+      deductionPolicy: DeductionPolicyModel(
+        policyType: 'flat',
+        eligibleMeals: ['noon', 'night'],
+        flatRate: 50.0,
+      ),
+      isActive: true,
+    ),
+  ];
+  // PLANS
+  @override
+  Future<List<MealPlanModel>> getMealPlans(String messId) async =>
+      _plans.where((p) => p.messId == messId || messId.isEmpty).toList();
+
+  @override
+  Stream<List<MealPlanModel>> streamMealPlans(String messId) =>
+      Stream.value(_plans.where((p) => p.messId == messId || messId.isEmpty).toList());
+
+  @override
+  Future<void> saveMealPlan(MealPlanModel plan) async {
+    _plans.removeWhere((p) => p.planId == plan.planId);
+    _plans.add(plan);
+  }
+
+  @override
+  Future<void> toggleMealPlanActive(String messId, String planId, bool isActive) async {
+    final idx = _plans.indexWhere((p) => p.planId == planId);
+    if (idx != -1) {
+      final p = _plans[idx];
+      _plans[idx] = MealPlanModel(
+        planId: p.planId,
+        messId: p.messId,
+        name: p.name,
+        monthlyFee: p.monthlyFee,
+        fixedMeals: p.fixedMeals,
+        choiceGroups: p.choiceGroups,
+        deductionPolicy: p.deductionPolicy,
+        extraMealRate: p.extraMealRate,
+        isActive: isActive,
+        createdAt: p.createdAt,
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteMealPlan(String messId, String planId) async {
+    _plans.removeWhere((p) => p.planId == planId);
+  }
+
+  @override
+  Future<MealPlanModel?> getMealPlanById(String messId, String planId) async {
+    try {
+      return _plans.firstWhere((p) => p.planId == planId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> updateStudentMealPreference(
+    String studentId,
+    String messId,
+    String dateIso,
+    String choiceGroupId,
+    String selectedSlot,
+  ) async {
+    final idx = _students.indexWhere((s) => s.studentId == studentId);
+    if (idx != -1) {
+      final st = _students[idx];
+      final currentMap = Map<String, Map<String, String>>.from(st.datePreferences);
+      final dateMap = Map<String, String>.from(currentMap[dateIso] ?? {});
+      dateMap[choiceGroupId] = selectedSlot;
+      currentMap[dateIso] = dateMap;
+      _students[idx] = st.copyWith(datePreferences: currentMap);
+    }
+  }
+
+  @override
+  Future<void> updateStudentRegularPreference(
+    String studentId,
+    String choiceGroupId,
+    String selectedSlot,
+  ) async {
+    final idx = _students.indexWhere((s) => s.studentId == studentId);
+    if (idx != -1) {
+      final st = _students[idx];
+      final regMap = Map<String, String>.from(st.regularMealPreference);
+      regMap[choiceGroupId] = selectedSlot;
+      _students[idx] = st.copyWith(regularMealPreference: regMap);
+    }
+  }
+
+  // EXTRA FEES
+  @override
+  Future<List<ExtraFeeModel>> getExtraFees(String messId, String studentId) async => [];
+  @override
+  Stream<List<ExtraFeeModel>> streamExtraFees(String messId, String studentId) => Stream.value([]);
+  @override
+  Future<void> addExtraFee(ExtraFeeModel fee) async {}
+  @override
+  Future<void> deleteExtraFee(String messId, String feeId) async {}
+
+  // MESS DISHES
+  @override
+  Future<List<DishModel>> getMessDishes(String messId) async => [];
+  @override
+  Stream<List<DishModel>> streamMessDishes(String messId) => Stream.value([]);
+  @override
+  Future<void> addDishToMess(String messId, DishModel dish) async {}
+  @override
+  Future<void> removeDishFromMess(String messId, String dishId) async {}
+  @override
+  Future<void> updateMessDish(String messId, DishModel dish) async {}
 }

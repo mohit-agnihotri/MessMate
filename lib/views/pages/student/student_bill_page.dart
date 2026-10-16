@@ -313,6 +313,14 @@ class StudentBillPage extends ConsumerWidget {
                     '₹${bill.guestAddons.toInt()}',
                   ),
                 ],
+                if (bill.extraFeesAddon > 0) ...[
+                  const SizedBox(height: 16),
+                  _buildCleanRow(
+                    'Other Add-ons / Charges',
+                    'Special feast or maintenance charges',
+                    '₹${bill.extraFeesAddon.toInt()}',
+                  ),
+                ],
                 if (bill.previousDues > 0) ...[
                   const SizedBox(height: 16),
                   _buildCleanRow(
@@ -609,6 +617,12 @@ class StudentBillPage extends ConsumerWidget {
                 _buildBillRow(
                   'Guest Meals',
                   '+₹${bill.guestAddons.toStringAsFixed(0)}',
+                  color: Colors.red,
+                ),
+              if (bill.extraFeesAddon > 0)
+                _buildBillRow(
+                  'Other Add-on Charges',
+                  '+₹${bill.extraFeesAddon.toStringAsFixed(0)}',
                   color: Colors.red,
                 ),
               const Padding(

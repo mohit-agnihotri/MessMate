@@ -1,3 +1,4 @@
+import '../../../viewmodels/cutoff_helper.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -90,6 +91,11 @@ class StudentHomePage extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: _OnLeaveBanner(state: state, ref: ref),
                 ),
+
+              // ── Meal Choices (If student has a flexible plan) ──
+              SliverToBoxAdapter(
+                child: _ChoiceGroupsSection(state: state, ref: ref),
+              ),
 
               // ── Current Meal ──
               SliverToBoxAdapter(
@@ -1586,6 +1592,367 @@ class _RateMealButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+// ─── Choice Groups Section (Balanced 3D Card) ─────────────────────────────────
+class _ChoiceGroupsSection extends ConsumerWidget {
+  final StudentHomeState state;
+  final WidgetRef ref;
+
+  const _ChoiceGroupsSection({required this.state, required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = state.assignedPlan;
+    final mess = state.mess;
+    if (plan == null || mess == null || plan.choiceGroups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF2563EB)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "आज का आपका चुनाव (Today's Choice)",
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...plan.choiceGroups.map((group) {
+            final cutoff = CutoffHelper.getChoiceGroupCutoffTime(DateTime.now(), group, mess);
+            final isCutoffPassed = DateTime.now().isAfter(cutoff);
+            final diff = cutoff.difference(DateTime.now());
+
+            final chosenSlot = state.student?.datePreferences[todayIso]?[group.groupId] ??
+                state.student?.regularMealPreference[group.groupId] ??
+                group.availableMeals.first;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0C0F172A),
+                    blurRadius: 18,
+                    offset: Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: Color(0x040F172A),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Row: Group Title & Cutoff Badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          group.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1D4ED8),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isCutoffPassed ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCutoffPassed ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isCutoffPassed ? Icons.lock_outline_rounded : Icons.timer_outlined,
+                              size: 13,
+                              color: isCutoffPassed ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isCutoffPassed
+                                  ? 'समय समाप्त (Locked)'
+                                  : '${diff.inHours > 0 ? '${diff.inHours}h ' : ''}${diff.inMinutes.remainder(60)}m बाकी',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isCutoffPassed ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'आप आज नाश्ता या दोपहर के खाने में से क्या लेंगे?',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Alternative Choice Interactive Tiles (Balanced 3D)
+                  Row(
+                    children: group.availableMeals.map((slot) {
+                      final isSelected = chosenSlot == slot;
+                      final isOwnerClosed = state.skippedUpcomingMeals.containsKey('${todayIso}_$slot') ||
+                          (state.mess?.temporarilyClosedUntil != null &&
+                              DateTime.now().isBefore(state.mess!.temporarilyClosedUntil!));
+
+                      final Map<String, String> slotHindi = {
+                        'morning': '🌅 सुबह नाश्ता',
+                        'noon': '☀️ दोपहर लंच',
+                        'evening': '☕ शाम नाश्ता',
+                        'night': '🌙 रात डिनर',
+                      };
+                      final slotTitle = slotHindi[slot] ?? '${slot[0].toUpperCase()}${slot.substring(1)}';
+
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: InkWell(
+                            onTap: () async {
+                              if (isCutoffPassed) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('कटऑफ समय समाप्त हो चुका है। अब बदलाव नहीं हो सकता।'),
+                                    backgroundColor: Color(0xFFEF4444),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (isOwnerClosed) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$slotTitle आज मेस द्वारा बंद है। कृपया दूसरा विकल्प चुनें।'),
+                                    backgroundColor: const Color(0xFFEF4444),
+                                  ),
+                                );
+                                return;
+                              }
+                              try {
+                                await ref.read(studentHomeProvider.notifier).selectChoiceMeal(
+                                  group.groupId,
+                                  slot,
+                                  date: DateTime.now(),
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('आज के लिए $slotTitle चुना गया! ✓'),
+                                      backgroundColor: const Color(0xFF10B981),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('चुनाव सुरक्षित नहीं हो सका: $e'),
+                                      backgroundColor: const Color(0xFFEF4444),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF10B981)
+                                    : (isOwnerClosed ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC)),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF059669)
+                                      : (isOwnerClosed ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1)),
+                                  width: isSelected ? 2 : 1.2,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        const BoxShadow(
+                                          color: Color(0x3310B981),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    slotTitle,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isOwnerClosed ? const Color(0xFF94A3B8) : const Color(0xFF1E293B)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (isOwnerClosed)
+                                    Text(
+                                      'आज बंद है',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFEF4444),
+                                      ),
+                                    )
+                                  else if (isSelected)
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'चुना हुआ',
+                                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Text(
+                                      'चुनने के लिए टैप करें',
+                                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  // Fixed Meals Reminder Pill (Pukka Khana)
+                  if (plan.fixedMeals.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_outline_rounded, size: 16, color: Color(0xFF059669)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'पक्का खाना: ${plan.fixedMeals.map((s) => s == 'night' ? 'रात का डिनर (Dinner)' : (s == 'noon' ? 'दोपहर लंच' : 'नाश्ता')).join(', ')} रोज़ाना पक्का मिलेगा।',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF065F46),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 10),
+                  // Set Default Preference Button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () async {
+                          try {
+                            await ref.read(studentHomeProvider.notifier).saveRegularPreference(
+                              group.groupId,
+                              chosenSlot,
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('रोज़ का डिफ़ॉल्ट चुनाव सेट हो गया!'),
+                                  backgroundColor: Color(0xFF10B981),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('डिफ़ॉल्ट सेट करने में त्रुटि: $e'),
+                                  backgroundColor: const Color(0xFFEF4444),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.bookmark_added_rounded, size: 15, color: Color(0xFF2563EB)),
+                        label: Text(
+                          'इसे रोज़ का डिफ़ॉल्ट चुनाव बनाएं',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2563EB),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

@@ -20,7 +20,7 @@ abstract class AppService {
   Future<List<StudentModel>> getStudents(String messId);
   Stream<List<StudentModel>> streamStudents(String messId);
   Future<List<StudentModel>> getPendingRequests(String messId);
-  Future<void> acceptStudent(String messId, String studentId);
+  Future<void> acceptStudent(String messId, String studentId, [String? planId]);
   Future<void> rejectStudent(String messId, String studentId);
   Future<StudentModel?> getStudentById(String studentId);
   Future<void> updateStudent(StudentModel student);
@@ -108,4 +108,37 @@ abstract class AppService {
 
 
   Stream<List<FeedbackModel>> streamFeedbacks(String messId);
+
+  // PLANS
+  Future<List<MealPlanModel>> getMealPlans(String messId);
+  Stream<List<MealPlanModel>> streamMealPlans(String messId);
+  Future<void> saveMealPlan(MealPlanModel plan);
+  Future<void> toggleMealPlanActive(String messId, String planId, bool isActive);
+  Future<void> deleteMealPlan(String messId, String planId);
+  Future<MealPlanModel?> getMealPlanById(String messId, String planId);
+  Future<void> updateStudentMealPreference(
+    String studentId,
+    String messId,
+    String dateIso,
+    String choiceGroupId,
+    String selectedSlot,
+  );
+  Future<void> updateStudentRegularPreference(
+    String studentId,
+    String choiceGroupId,
+    String selectedSlot,
+  );
+
+  // EXTRA FEES
+  Future<List<ExtraFeeModel>> getExtraFees(String messId, String studentId);
+  Stream<List<ExtraFeeModel>> streamExtraFees(String messId, String studentId);
+  Future<void> addExtraFee(ExtraFeeModel fee);
+  Future<void> deleteExtraFee(String messId, String feeId);
+
+  // MESS DISHES (Isolated Mess Subcollection)
+  Future<List<DishModel>> getMessDishes(String messId);
+  Stream<List<DishModel>> streamMessDishes(String messId);
+  Future<void> addDishToMess(String messId, DishModel dish);
+  Future<void> removeDishFromMess(String messId, String dishId);
+  Future<void> updateMessDish(String messId, DishModel dish);
 }

@@ -1,3 +1,4 @@
+import 'owner_plan_builder_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -57,6 +58,12 @@ class OwnerSettingsPage extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
                   child: _buildMessTimingsCard(context, ref, mess),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _buildMealPlansCard(context, ref, mess),
                 ),
               ),
               SliverPadding(
@@ -168,6 +175,14 @@ class OwnerSettingsPage extends ConsumerWidget {
             ],
           ),
           const Divider(height: 24, color: Color(0xFFF3F4F6)),
+          _buildInfoRow(
+            'Food Type',
+            mess?.foodType == 'non_veg'
+                ? '🍗 Non-Veg'
+                : mess?.foodType == 'both'
+                    ? '🍃 Both (Veg & Non-Veg)'
+                    : '🌱 Pure Veg',
+          ),
           _buildInfoRow('Monthly Fee', 'Rs ${mess?.monthlyFee.toInt() ?? 0}'),
           _buildInfoRow(
             'Plan Includes',
@@ -221,6 +236,96 @@ class OwnerSettingsPage extends ConsumerWidget {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealPlansCard(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF10B981), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'खाने के प्लान (Meal Plans)',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'महीने की फीस, चॉइस ग्रुप और प्लान की दरें बदलें',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(
+                'प्लान बिल्डर खोलें (Open Plan Builder)',
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              onPressed: () {
+                if (mess != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const OwnerPlanBuilderPage(),
+                    ),
+                  );
+                }
+              },
             ),
           ),
         ],
@@ -1086,6 +1191,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     final cutoffCtrl = TextEditingController(text: mess.cutoffHours.toString());
 
     int selectedMealsIncluded = mess.mealsIncludedPerDay;
+    String selectedFoodType = mess.foodType;
     Uint8List? selectedImageBytes;
     String? imageExtension;
     bool isUploading = false;
@@ -1281,6 +1387,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                             cutoffHours:
                                 int.tryParse(cutoffCtrl.text) ??
                                 mess.cutoffHours,
+                            foodType: selectedFoodType,
                             mealTimings: mess.mealTimings,
                             ownerNotificationPrefs: mess.ownerNotificationPrefs,
                           );

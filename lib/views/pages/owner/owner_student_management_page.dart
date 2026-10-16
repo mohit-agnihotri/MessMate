@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -415,9 +415,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () => ref
-                            .read(ownerStudentsProvider.notifier)
-                            .accept(student.studentId),
+                        onTap: () => _showAcceptStudentDialog(context, ref, student),
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: const BoxDecoration(
@@ -650,6 +648,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 12),
                                   _buildBillingSummary(innerContext, ref, student, selectedMonthDate),
+                                  const SizedBox(height: 24),
+                                  _buildExtraFeesSection(innerContext, ref, student),
                                 ],
                               ),
                             ),
@@ -1217,7 +1217,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '-${bill.totalDeductions.toStringAsFixed(0)}',
+                              '-${(bill.totalDeductions + bill.proratedDiscount).toStringAsFixed(0)}',
                               style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -1573,6 +1573,12 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                   '+₹${bill.guestAddons.toStringAsFixed(0)}',
                   color: Colors.red,
                 ),
+              if (bill.extraFeesAddon > 0)
+                _buildBillRow(
+                  'Extra Fees / Miscellaneous',
+                  '+₹${bill.extraFeesAddon.toStringAsFixed(0)}',
+                  color: Colors.red,
+                ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Divider(),
@@ -1659,4 +1665,498 @@ class OwnerStudentManagementPage extends ConsumerWidget {
       },
     );
   }
+
+  void _showAcceptStudentDialog(BuildContext context, WidgetRef ref, StudentModel student) async {
+    final mess = ref.read(ownerSettingsProvider).mess;
+    if (mess == null) {
+      ref.read(ownerStudentsProvider.notifier).accept(student.studentId);
+      return;
+    }
+
+    final plans = await ref.read(appServiceProvider).getMealPlans(mess.messId);
+    String? selectedPlanId = student.assignedPlanId;
+    if (selectedPlanId == null && plans.isNotEmpty) {
+      selectedPlanId = plans.first.planId;
+    }
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Approve Member',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  student.name,
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Room: ${student.roomNo}  •  ${student.phone}',
+                  style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                ),
+                if (student.dietaryPreference.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Diet: ${student.dietaryPreference.toUpperCase()}',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF10B981)),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 12),
+                Text(
+                  'Assign Meal Plan:',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 8),
+                if (plans.isEmpty)
+                  Text(
+                    'Default Mess Plan (₹${mess.monthlyFee.toInt()}/mo, ${mess.mealsIncludedPerDay} meals)',
+                    style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String?>(
+                        value: selectedPlanId,
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Default Mess Plan (₹${mess.monthlyFee.toInt()})', style: GoogleFonts.inter(fontSize: 13)),
+                          ),
+                          ...plans.map((p) => DropdownMenuItem<String?>(
+                            value: p.planId,
+                            child: Text('${p.name} (₹${p.monthlyFee.toInt()})', style: GoogleFonts.inter(fontSize: 13)),
+                          )),
+                        ],
+                        onChanged: (val) {
+                          setDialogState(() => selectedPlanId = val);
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(ownerStudentsProvider.notifier).accept(student.studentId, selectedPlanId);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${student.name} approved successfully!')),
+                    );
+                  }
+                },
+                child: const Text('Confirm & Accept'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+
+  // ─── Extra Fees Section & Dialog ──────────────────────────────────────────
+  Widget _buildExtraFeesSection(
+    BuildContext context,
+    WidgetRef ref,
+    StudentModel student,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Extra Fees & Add-ons',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF111827),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showAddExtraFeeDialog(context, ref, student),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(
+                'Add Extra Fee',
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF22C55E),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        StreamBuilder<List<ExtraFeeModel>>(
+          stream: ref.read(appServiceProvider).streamExtraFees(student.messId, student.studentId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()));
+            }
+
+            final fees = snapshot.data ?? [];
+            if (fees.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 20, color: Color(0xFF9CA3AF)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'No extra fees or penalty charges for this student.',
+                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6B7280)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: fees.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final fee = fees[index];
+                final expenseDateStr = '${fee.originalDate.day}/${fee.originalDate.month}/${fee.originalDate.year}';
+                final targetMonthName = _getMonthName(fee.targetBillingMonth);
+
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.receipt_long, color: Color(0xFFD97706), size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fee.note.isNotEmpty ? fee.note : 'Extra Fee',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: const Color(0xFF1F2937),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Date: $expenseDateStr • Target Bill: $targetMonthName ${fee.targetBillingYear}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '+₹${fee.amount.toStringAsFixed(0)}',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: const Color(0xFFDC2626),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFF9CA3AF)),
+                        tooltip: 'Delete Fee',
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Delete Extra Fee?'),
+                              content: Text('Are you sure you want to remove "+₹${fee.amount.toStringAsFixed(0)} (${fee.note})"?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            await ref.read(appServiceProvider).deleteExtraFee(student.messId, fee.feeId);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Extra fee deleted successfully!')),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showAddExtraFeeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    StudentModel student,
+  ) {
+    final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    DateTime expenseDate = DateTime.now();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Add Extra Fee',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Expense Date',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: expenseDate,
+                          firstDate: DateTime(2025),
+                          lastDate: DateTime.now().add(const Duration(days: 60)),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => expenseDate = picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFD1D5DB)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: Color(0xFF6B7280)),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${expenseDate.day}/${expenseDate.month}/${expenseDate.year}',
+                              style: GoogleFonts.inter(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Amount (₹) *',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Enter amount';
+                        final numVal = double.tryParse(val.trim());
+                        if (numVal == null || numVal <= 0) return 'Enter a positive amount (> 0)';
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 150',
+                        prefixText: '₹ ',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Description / Reason *',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: noteCtrl,
+                      validator: (val) => (val == null || val.trim().isEmpty) ? 'Enter a description' : null,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Late snack, Room guest, Crockery damage',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '💡 Accounting Carry-Forward: If the bill for this date has already been paid, this fee will roll over to the next unpaid month.',
+                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF4B5563)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setDialogState(() => isSaving = true);
+
+                        try {
+                          final parsedAmount = double.parse(amountCtrl.text.trim());
+                          final appService = ref.read(appServiceProvider);
+
+                          // Check if expense month's bill is already settled/paid
+                          int targetMonth = expenseDate.month;
+                          int targetYear = expenseDate.year;
+
+                          final bill = await appService.getBill(
+                            student.studentId,
+                            expenseDate.month,
+                            expenseDate.year,
+                          );
+
+                          if (bill != null && bill.isPaid) {
+                            // Already paid -> Carry forward to next billing cycle
+                            targetMonth = expenseDate.month == 12 ? 1 : expenseDate.month + 1;
+                            targetYear = expenseDate.month == 12 ? expenseDate.year + 1 : expenseDate.year;
+                          }
+
+                          final fee = ExtraFeeModel(
+                            feeId: 'fee_${DateTime.now().millisecondsSinceEpoch}',
+                            studentId: student.studentId,
+                            messId: student.messId,
+                            originalDate: expenseDate,
+                            targetBillingMonth: targetMonth,
+                            targetBillingYear: targetYear,
+                            amount: parsedAmount,
+                            note: noteCtrl.text.trim(),
+                          );
+
+                          await appService.addExtraFee(fee);
+
+                          if (context.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Extra fee ₹${parsedAmount.toStringAsFixed(0)} added! Target: ${_getMonthName(targetMonth)} $targetYear'),
+                                backgroundColor: const Color(0xFF22C55E),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSaving = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error adding extra fee: $e'),
+                                backgroundColor: const Color(0xFFEF4444),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF22C55E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('Add Fee'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
 }

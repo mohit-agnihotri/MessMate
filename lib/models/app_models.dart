@@ -1,13 +1,229 @@
-// ============================================================
-// All Data Models for MessMate App
-// ============================================================
 import 'package:cloud_firestore/cloud_firestore.dart';
+// ============================================================
+// All Data Models for MessMate App — Phase 2 Enhanced
+// ============================================================
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PHASE 2: NEW MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Deduction / rebate policy for a plan.
+/// policyType: 'none' | 'dynamic_prorated' | 'flat_fixed_rate'
+class DeductionPolicyModel {
+  final String policyType; // 'none', 'dynamic_prorated', 'flat_fixed_rate'
+  final List<String> eligibleMeals;
+  final double? flatRate;
+  final Map<String, double>? slotRates;
+
+  DeductionPolicyModel({
+    this.policyType = 'dynamic_prorated',
+    this.eligibleMeals = const [],
+    this.flatRate,
+    this.slotRates,
+  });
+
+  factory DeductionPolicyModel.fromMap(Map<String, dynamic> map) {
+    return DeductionPolicyModel(
+      policyType: map['policyType'] ?? 'dynamic_prorated',
+      eligibleMeals: List<String>.from(map['eligibleMeals'] ?? []),
+      flatRate: map['flatRate'] != null ? (map['flatRate'] as num).toDouble() : null,
+      slotRates: map['slotRates'] != null
+          ? Map<String, double>.from(
+              (map['slotRates'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'policyType': policyType,
+        'eligibleMeals': eligibleMeals,
+        if (flatRate != null) 'flatRate': flatRate,
+        if (slotRates != null) 'slotRates': slotRates,
+      };
+}
+
+/// A choice group within a meal plan.
+class ChoiceGroupModel {
+  final String groupId;
+  final String name;
+  final List<String> availableMeals;
+  final int minSelectable;
+  final int maxSelectable;
+
+  ChoiceGroupModel({
+    required this.groupId,
+    required this.name,
+    required this.availableMeals,
+    this.minSelectable = 1,
+    this.maxSelectable = 1,
+  });
+
+  factory ChoiceGroupModel.fromMap(Map<String, dynamic> map) {
+    return ChoiceGroupModel(
+      groupId: map['groupId'] ?? '',
+      name: map['name'] ?? '',
+      availableMeals: List<String>.from(map['availableMeals'] ?? []),
+      minSelectable: (map['minSelectable'] ?? 1) as int,
+      maxSelectable: (map['maxSelectable'] ?? 1) as int,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'groupId': groupId,
+        'name': name,
+        'availableMeals': availableMeals,
+        'minSelectable': minSelectable,
+        'maxSelectable': maxSelectable,
+      };
+}
+
+/// A meal plan offered by a mess.
+class MealPlanModel {
+  final String planId;
+  final String messId;
+  final String name;
+  final double monthlyFee;
+  final List<String> fixedMeals;
+  final List<ChoiceGroupModel> choiceGroups;
+  final DeductionPolicyModel deductionPolicy;
+  final double? extraMealRate;
+  final bool isActive;
+  final DateTime createdAt;
+
+  MealPlanModel({
+    required this.planId,
+    required this.messId,
+    required this.name,
+    required this.monthlyFee,
+    this.fixedMeals = const [],
+    this.choiceGroups = const [],
+    DeductionPolicyModel? deductionPolicy,
+    this.extraMealRate,
+    this.isActive = true,
+    DateTime? createdAt,
+  })  : deductionPolicy = deductionPolicy ?? DeductionPolicyModel(),
+        createdAt = createdAt ?? DateTime.now();
+
+  /// Auto-computed: fixed + max selectables from each group
+  int get mealsIncludedPerDay =>
+      fixedMeals.length +
+      choiceGroups.fold(0, (acc, g) => acc + g.maxSelectable);
+
+  /// Validates that no slot appears more than once (disjoint invariant).
+  bool get isValid {
+    final Set<String> seen = {...fixedMeals};
+    for (final g in choiceGroups) {
+      for (final slot in g.availableMeals) {
+        if (!seen.add(slot)) return false;
+      }
+    }
+    return true;
+  }
+
+  factory MealPlanModel.fromMap(Map<String, dynamic> map) {
+    return MealPlanModel(
+      planId: map['planId'] ?? '',
+      messId: map['messId'] ?? '',
+      name: map['name'] ?? '',
+      monthlyFee: (map['monthlyFee'] ?? 0.0).toDouble(),
+      fixedMeals: List<String>.from(map['fixedMeals'] ?? []),
+      choiceGroups: (map['choiceGroups'] as List<dynamic>? ?? [])
+          .map((g) => ChoiceGroupModel.fromMap(g as Map<String, dynamic>))
+          .toList(),
+      deductionPolicy: map['deductionPolicy'] != null
+          ? DeductionPolicyModel.fromMap(
+              map['deductionPolicy'] as Map<String, dynamic>)
+          : DeductionPolicyModel(),
+      extraMealRate: map['extraMealRate'] != null
+          ? (map['extraMealRate'] as num).toDouble()
+          : null,
+      isActive: map['isActive'] ?? true,
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'planId': planId,
+        'messId': messId,
+        'name': name,
+        'monthlyFee': monthlyFee,
+        'fixedMeals': fixedMeals,
+        'choiceGroups': choiceGroups.map((g) => g.toMap()).toList(),
+        'deductionPolicy': deductionPolicy.toMap(),
+        if (extraMealRate != null) 'extraMealRate': extraMealRate,
+        'isActive': isActive,
+        'createdAt': createdAt.toIso8601String(),
+      };
+}
+
+/// Extra fee charged to a specific student (gas, maintenance, etc.).
+class ExtraFeeModel {
+  final String feeId;
+  final String studentId;
+  final String messId;
+  final DateTime originalDate;
+  final int targetBillingMonth;
+  final int targetBillingYear;
+  final double amount;
+  final String note;
+  final DateTime createdAt;
+
+  ExtraFeeModel({
+    required this.feeId,
+    required this.studentId,
+    required this.messId,
+    required this.originalDate,
+    required this.targetBillingMonth,
+    required this.targetBillingYear,
+    required this.amount,
+    this.note = '',
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  factory ExtraFeeModel.fromMap(Map<String, dynamic> map) {
+    return ExtraFeeModel(
+      feeId: map['feeId'] ?? '',
+      studentId: map['studentId'] ?? '',
+      messId: map['messId'] ?? '',
+      originalDate:
+          DateTime.tryParse(map['originalDate'] ?? '') ?? DateTime.now(),
+      targetBillingMonth:
+          (map['targetBillingMonth'] ?? DateTime.now().month) as int,
+      targetBillingYear:
+          (map['targetBillingYear'] ?? DateTime.now().year) as int,
+      amount: (map['amount'] ?? 0.0).toDouble(),
+      note: map['note'] ?? '',
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'feeId': feeId,
+        'studentId': studentId,
+        'messId': messId,
+        'originalDate': originalDate.toIso8601String(),
+        'targetBillingMonth': targetBillingMonth,
+        'targetBillingYear': targetBillingYear,
+        'amount': amount,
+        'note': note,
+        'createdAt': createdAt.toIso8601String(),
+      };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  EXISTING MODELS (ENHANCED)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class StudentModel {
   final String studentId;
   final String name;
   final String phone;
   final String roomNo;
+  // college & course retained for backward-compat serialisation but hidden from UI
   final String college;
   final String course;
   final String email;
@@ -15,9 +231,16 @@ class StudentModel {
   final DateTime joinDate;
   final String messId;
   final String status; // 'active', 'pending', 'left'
-  final DateTime? subscriptionEndDate; // Added for Type B skip policy (extend)
-  // Notification preferences - controls FCM topic subscriptions
+  final DateTime? subscriptionEndDate;
   final Map<String, bool> notificationPrefs;
+  // Phase 2 additions:
+  final String? assignedPlanId;
+  final Map<String, String> regularMealPreference;
+  final Map<String, Map<String, String>> datePreferences;
+  final String? pendingPlanId;
+  final DateTime? planEffectiveFrom;
+  final String dietaryPreference; // 'veg', 'non_veg', 'eggetarian'
+  final String? emergencyContact;
 
   static const Map<String, bool> _defaultNotifPrefs = {
     'menuPublished': true,
@@ -31,8 +254,8 @@ class StudentModel {
     required this.name,
     required this.phone,
     required this.roomNo,
-    required this.college,
-    required this.course,
+    this.college = '',
+    this.course = '',
     required this.email,
     this.photoUrl,
     required this.joinDate,
@@ -40,6 +263,13 @@ class StudentModel {
     required this.status,
     this.subscriptionEndDate,
     this.notificationPrefs = _defaultNotifPrefs,
+    this.assignedPlanId,
+    this.regularMealPreference = const {},
+    this.datePreferences = const {},
+    this.pendingPlanId,
+    this.planEffectiveFrom,
+    this.dietaryPreference = 'veg',
+    this.emergencyContact,
   });
 
   StudentModel copyWith({
@@ -56,6 +286,13 @@ class StudentModel {
     String? status,
     DateTime? subscriptionEndDate,
     Map<String, bool>? notificationPrefs,
+    String? assignedPlanId,
+    Map<String, String>? regularMealPreference,
+    Map<String, Map<String, String>>? datePreferences,
+    String? pendingPlanId,
+    DateTime? planEffectiveFrom,
+    String? dietaryPreference,
+    String? emergencyContact,
   }) {
     return StudentModel(
       studentId: studentId ?? this.studentId,
@@ -71,11 +308,18 @@ class StudentModel {
       status: status ?? this.status,
       subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate,
       notificationPrefs: notificationPrefs ?? this.notificationPrefs,
+      assignedPlanId: assignedPlanId ?? this.assignedPlanId,
+      regularMealPreference:
+          regularMealPreference ?? this.regularMealPreference,
+      datePreferences: datePreferences ?? this.datePreferences,
+      pendingPlanId: pendingPlanId ?? this.pendingPlanId,
+      planEffectiveFrom: planEffectiveFrom ?? this.planEffectiveFrom,
+      dietaryPreference: dietaryPreference ?? this.dietaryPreference,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
     );
   }
 
   factory StudentModel.fromMap(Map<String, dynamic> map) {
-    // Parse notification prefs with defaults for older records
     final rawPrefs = map['notificationPrefs'] as Map<String, dynamic>?;
     final prefs = <String, bool>{
       'menuPublished': rawPrefs?['menuPublished'] as bool? ?? true,
@@ -83,6 +327,16 @@ class StudentModel {
       'billUpdated': rawPrefs?['billUpdated'] as bool? ?? true,
       'announcements': rawPrefs?['announcements'] as bool? ?? true,
     };
+    Map<String, Map<String, String>> datePrefs = {};
+    final rawDatePrefs = map['datePreferences'];
+    if (rawDatePrefs is Map) {
+      rawDatePrefs.forEach((dateKey, groupMap) {
+        if (groupMap is Map) {
+          datePrefs[dateKey.toString()] = Map<String, String>.from(
+              groupMap.map((k, v) => MapEntry(k.toString(), v.toString())));
+        }
+      });
+    }
     return StudentModel(
       studentId: map['studentId'] ?? '',
       name: map['name'] ?? '',
@@ -95,8 +349,21 @@ class StudentModel {
       joinDate: DateTime.tryParse(map['joinDate'] ?? '') ?? DateTime.now(),
       messId: map['messId'] ?? '',
       status: map['status'] ?? 'pending',
-      subscriptionEndDate: map['subscriptionEndDate'] != null ? DateTime.tryParse(map['subscriptionEndDate']) : null,
+      subscriptionEndDate: map['subscriptionEndDate'] != null
+          ? DateTime.tryParse(map['subscriptionEndDate'])
+          : null,
       notificationPrefs: prefs,
+      assignedPlanId: map['assignedPlanId'],
+      regularMealPreference: map['regularMealPreference'] != null
+          ? Map<String, String>.from(map['regularMealPreference'])
+          : {},
+      datePreferences: datePrefs,
+      pendingPlanId: map['pendingPlanId'],
+      planEffectiveFrom: map['planEffectiveFrom'] != null
+          ? DateTime.tryParse(map['planEffectiveFrom'])
+          : null,
+      dietaryPreference: map['dietaryPreference'] ?? 'veg',
+      emergencyContact: map['emergencyContact'],
     );
   }
 
@@ -113,8 +380,18 @@ class StudentModel {
       'joinDate': joinDate.toIso8601String(),
       'messId': messId,
       'status': status,
-      if (subscriptionEndDate != null) 'subscriptionEndDate': subscriptionEndDate!.toIso8601String(),
+      if (subscriptionEndDate != null)
+        'subscriptionEndDate': subscriptionEndDate!.toIso8601String(),
       'notificationPrefs': notificationPrefs,
+      if (assignedPlanId != null) 'assignedPlanId': assignedPlanId,
+      if (regularMealPreference.isNotEmpty)
+        'regularMealPreference': regularMealPreference,
+      if (datePreferences.isNotEmpty) 'datePreferences': datePreferences,
+      if (pendingPlanId != null) 'pendingPlanId': pendingPlanId,
+      if (planEffectiveFrom != null)
+        'planEffectiveFrom': planEffectiveFrom!.toIso8601String(),
+      'dietaryPreference': dietaryPreference,
+      if (emergencyContact != null) 'emergencyContact': emergencyContact,
     };
   }
 }
@@ -140,19 +417,18 @@ class MessModel {
   final bool isListedOnMap;
   final bool showMenuToOutsiders;
   final bool showMenuToStudents;
-  final String language; // 'en' or 'hi'
+  final String language;
   final String? ownerPhotoUrl;
-  final List<String>
-  messPhotos; // Up to 4 Supabase photo URLs for the mess gallery
-  final int
-  mealsIncludedPerDay; // e.g., 1, 2, or 3 meals included in the monthly plan
+  final List<String> messPhotos;
+  final int mealsIncludedPerDay;
   final Map<String, Map<String, String>> mealTimings;
   final DateTime? temporarilyClosedUntil;
-  final bool allowMealSkipping; // Toggle for skip meal functionality
-  // Owner notification preferences - controls FCM topic subscriptions
+  final bool allowMealSkipping;
   final Map<String, bool> ownerNotificationPrefs;
-  // Rich text content in Quill Delta JSON format describing the mess in detail
   final String? aboutContent;
+  // Phase 2 additions:
+  final String foodType; // 'pure_veg' | 'non_veg' | 'both'
+  final List<String> masterDishNames;
 
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
     'skipAlert': true,
@@ -189,6 +465,8 @@ class MessModel {
     this.allowMealSkipping = true,
     this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
     this.aboutContent,
+    this.foodType = 'pure_veg',
+    this.masterDishNames = const [],
   });
 
   MessModel copyWith({
@@ -216,6 +494,8 @@ class MessModel {
     bool? allowMealSkipping,
     Map<String, bool>? ownerNotificationPrefs,
     Object? aboutContent = const _Sentinel(),
+    String? foodType,
+    List<String>? masterDishNames,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -243,135 +523,171 @@ class MessModel {
       allowMealSkipping: allowMealSkipping ?? this.allowMealSkipping,
       ownerNotificationPrefs:
           ownerNotificationPrefs ?? this.ownerNotificationPrefs,
-      aboutContent:
-          aboutContent is _Sentinel ? this.aboutContent : aboutContent as String?,
+      aboutContent: aboutContent is _Sentinel
+          ? this.aboutContent
+          : aboutContent as String?,
+      foodType: foodType ?? this.foodType,
+      masterDishNames: masterDishNames ?? this.masterDishNames,
     );
   }
 
   factory MessModel.fromMap(Map<String, dynamic> map) {
+    Map<String, Map<String, String>> timings = {
+      'morning': {'start': '08:00', 'end': '10:00', 'enabled': 'true'},
+      'noon': {'start': '12:30', 'end': '14:30', 'enabled': 'true'},
+      'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
+      'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
+    };
+    if (map['mealTimings'] != null) {
+      final raw = map['mealTimings'] as Map;
+      raw.forEach((slot, val) {
+        if (val is Map) {
+          timings[slot] = Map<String, String>.from(
+              val.map((k, v) => MapEntry(k.toString(), v.toString())));
+        }
+      });
+    }
+    final rawOwnerPrefs =
+        map['ownerNotificationPrefs'] as Map?;
+    final ownerPrefs = <String, bool>{
+      'skipAlert': rawOwnerPrefs?['skipAlert'] as bool? ?? true,
+      'joinRequest': rawOwnerPrefs?['joinRequest'] as bool? ?? true,
+    };
+    DateTime? closedUntil;
+    final rawClosed = map['temporarilyClosedUntil'];
+    if (rawClosed != null) {
+      if (rawClosed is String) {
+        closedUntil = DateTime.tryParse(rawClosed);
+      } else {
+        try {
+          closedUntil = (rawClosed as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
     return MessModel(
       messId: map['messId'] ?? '',
       name: map['name'] ?? '',
       ownerId: map['ownerId'] ?? '',
       ownerName: map['ownerName'] ?? '',
       ownerPhone: map['ownerPhone'] ?? '',
-      ownerPhotoUrl: map['ownerPhotoUrl'],
-      messPhotos: List<String>.from(map['messPhotos'] ?? []),
       gpsLat: (map['gpsLat'] ?? 0.0).toDouble(),
       gpsLng: (map['gpsLng'] ?? 0.0).toDouble(),
-      capacity: map['capacity'] ?? 0,
+      capacity: (map['capacity'] ?? 0) as int,
       monthlyFee: (map['monthlyFee'] ?? 0.0).toDouble(),
       perMealRate: (map['perMealRate'] ?? 0.0).toDouble(),
-      cutoffHours: map['cutoffHours'] ?? 3,
+      cutoffHours: (map['cutoffHours'] ?? 2) as int,
       messCode: map['messCode'] ?? '',
       isListedOnMap: map['isListedOnMap'] ?? true,
       showMenuToOutsiders: map['showMenuToOutsiders'] ?? true,
       showMenuToStudents: map['showMenuToStudents'] ?? true,
       language: map['language'] ?? 'en',
-      mealsIncludedPerDay: map['mealsIncludedPerDay'] ?? 3,
-      mealTimings: map['mealTimings'] != null
-          ? (map['mealTimings'] as Map).map((k, v) {
-              final val = Map<String, String>.from(v as Map);
-              // Ensure 'enabled' exists for backward compatibility
-              if (!val.containsKey('enabled')) val['enabled'] = 'true';
-              return MapEntry(k.toString(), val);
-            })
-          : const {
-              'morning': {'start': '08:00', 'end': '10:00', 'enabled': 'true'},
-              'noon': {'start': '12:30', 'end': '14:30', 'enabled': 'true'},
-              'evening': {'start': '17:00', 'end': '18:30', 'enabled': 'false'},
-              'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
-            },
-      temporarilyClosedUntil: map['temporarilyClosedUntil'] != null
-          ? DateTime.tryParse(map['temporarilyClosedUntil'])
-          : null,
+      ownerPhotoUrl: map['ownerPhotoUrl'],
+      messPhotos: List<String>.from(map['messPhotos'] ?? []),
+      mealsIncludedPerDay: (map['mealsIncludedPerDay'] ?? 3) as int,
+      mealTimings: timings,
+      temporarilyClosedUntil: closedUntil,
       allowMealSkipping: map['allowMealSkipping'] ?? true,
-      ownerNotificationPrefs: (() {
-        final raw = map['ownerNotificationPrefs'] as Map<String, dynamic>?;
-        return <String, bool>{
-          'skipAlert': raw?['skipAlert'] as bool? ?? true,
-          'joinRequest': raw?['joinRequest'] as bool? ?? true,
-        };
-      })(),
-      aboutContent: map['aboutContent'] as String?,
+      ownerNotificationPrefs: ownerPrefs,
+      aboutContent: map['aboutContent'],
+      foodType: map['foodType'] ?? 'pure_veg',
+      masterDishNames: List<String>.from(map['masterDishNames'] ?? []),
     );
   }
 
-  Map<String, dynamic> toMap() => {
-    'messId': messId,
-    'name': name,
-    'ownerId': ownerId,
-    'ownerName': ownerName,
-    'ownerPhone': ownerPhone,
-    'gpsLat': gpsLat,
-    'gpsLng': gpsLng,
-    'capacity': capacity,
-    'monthlyFee': monthlyFee,
-    'perMealRate': perMealRate,
-    'cutoffHours': cutoffHours,
-    'messCode': messCode,
-    'isListedOnMap': isListedOnMap,
-    'showMenuToOutsiders': showMenuToOutsiders,
-    'showMenuToStudents': showMenuToStudents,
-    'language': language,
-    'ownerPhotoUrl': ownerPhotoUrl,
-    'messPhotos': messPhotos,
-    'mealsIncludedPerDay': mealsIncludedPerDay,
-    'mealTimings': mealTimings,
-    'temporarilyClosedUntil': temporarilyClosedUntil?.toIso8601String(),
-    'allowMealSkipping': allowMealSkipping,
-    'ownerNotificationPrefs': ownerNotificationPrefs,
-    if (aboutContent != null) 'aboutContent': aboutContent,
-  };
+  Map<String, dynamic> toMap() {
+    return {
+      'messId': messId,
+      'name': name,
+      'ownerId': ownerId,
+      'ownerName': ownerName,
+      'ownerPhone': ownerPhone,
+      'gpsLat': gpsLat,
+      'gpsLng': gpsLng,
+      'capacity': capacity,
+      'monthlyFee': monthlyFee,
+      'perMealRate': perMealRate,
+      'cutoffHours': cutoffHours,
+      'messCode': messCode,
+      'isListedOnMap': isListedOnMap,
+      'showMenuToOutsiders': showMenuToOutsiders,
+      'showMenuToStudents': showMenuToStudents,
+      'language': language,
+      'ownerPhotoUrl': ownerPhotoUrl,
+      'messPhotos': messPhotos,
+      'mealsIncludedPerDay': mealsIncludedPerDay,
+      'mealTimings': mealTimings,
+      if (temporarilyClosedUntil != null)
+        'temporarilyClosedUntil': temporarilyClosedUntil!.toIso8601String(),
+      'allowMealSkipping': allowMealSkipping,
+      'ownerNotificationPrefs': ownerNotificationPrefs,
+      if (aboutContent != null) 'aboutContent': aboutContent,
+      'foodType': foodType,
+      'masterDishNames': masterDishNames,
+    };
+  }
 }
 
 class DishModel {
   final String dishId;
   final String name;
-  final String category; // 'veg', 'nonveg', 'dal', 'roti', 'sweet'
-  final String? imageUrl;
+  final String imageUrl;
+  final String category; // 'dal','roti','rice','sabzi','sweet','snack','curry'
+  final String dishFoodType; // 'veg' | 'nonveg'
+  final bool isCustom;
+  final String? originalGlobalId;
 
   DishModel({
     required this.dishId,
     required this.name,
-    required this.category,
-    this.imageUrl,
+    this.imageUrl = '',
+    this.category = 'sabzi',
+    this.dishFoodType = 'veg',
+    this.isCustom = false,
+    this.originalGlobalId,
   });
 
   factory DishModel.fromMap(Map<String, dynamic> map) {
     return DishModel(
       dishId: map['dishId'] ?? '',
       name: map['name'] ?? '',
-      category: map['category'] ?? 'veg',
-      imageUrl: map['imageUrl'],
+      imageUrl: map['imageUrl'] ?? '',
+      category: map['category'] ?? 'sabzi',
+      dishFoodType: map['dishFoodType'] ?? map['foodType'] ?? 'veg',
+      isCustom: map['isCustom'] ?? false,
+      originalGlobalId: map['originalGlobalId'],
     );
   }
 
-  /// Deserialize from a Firestore DocumentSnapshot (global_dishes collection).
-  /// The Flutter app uses this to read cached imageUrl from Firestore only.
   factory DishModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = (doc.data() as Map<String, dynamic>?) ?? {};
     return DishModel(
       dishId: doc.id,
       name: data['name'] ?? '',
-      category: data['category'] ?? 'veg',
-      imageUrl: data['imageUrl'],
+      imageUrl: data['imageUrl'] ?? '',
+      category: data['category'] ?? 'sabzi',
+      dishFoodType: data['dishFoodType'] ?? data['foodType'] ?? 'veg',
+      isCustom: data['isCustom'] ?? false,
+      originalGlobalId: data['originalGlobalId'],
     );
   }
 
   Map<String, dynamic> toMap() => {
-    'dishId': dishId,
-    'name': name,
-    'category': category,
-    'imageUrl': imageUrl,
-  };
+        'dishId': dishId,
+        'name': name,
+        'imageUrl': imageUrl,
+        'category': category,
+        'dishFoodType': dishFoodType,
+        'isCustom': isCustom,
+        if (originalGlobalId != null) 'originalGlobalId': originalGlobalId,
+      };
 }
+
 
 class MenuModel {
   final String menuId;
   final String messId;
   final DateTime date;
-  final String mealSlot; // 'morning', 'noon', 'night'
+  final String mealSlot; // 'morning', 'noon', 'night', 'evening'
   final List<DishModel> dishes;
   final bool isFullDayEquivalent;
   final bool isPublished;
@@ -401,15 +717,15 @@ class MenuModel {
   }
 
   Map<String, dynamic> toMap() => {
-    'menuId': menuId,
-    'messId': messId,
-    'date': date.toIso8601String(),
-    'dateStr': date.toIso8601String().substring(0, 10),
-    'mealSlot': mealSlot,
-    'dishes': dishes.map((d) => d.toMap()).toList(),
-    'isFullDayEquivalent': isFullDayEquivalent,
-    'isPublished': isPublished,
-  };
+        'menuId': menuId,
+        'messId': messId,
+        'date': date.toIso8601String(),
+        'dateStr': date.toIso8601String().substring(0, 10),
+        'mealSlot': mealSlot,
+        'dishes': dishes.map((d) => d.toMap()).toList(),
+        'isFullDayEquivalent': isFullDayEquivalent,
+        'isPublished': isPublished,
+      };
 }
 
 class LeaveModel {
@@ -420,7 +736,7 @@ class LeaveModel {
   final DateTime endDate;
   final String status; // 'active', 'cancelled'
   final DateTime? cancelledAt;
-  final String? startSlot; // 'morning', 'noon', 'evening', 'night'
+  final String? startSlot;
   final String? endSlot;
 
   LeaveModel({
@@ -472,8 +788,8 @@ class MealRecordModel {
   final String studentId;
   final String messId;
   final DateTime date;
-  final String mealSlot; // 'morning', 'noon', 'night', 'evening'
-  final String status; // 'present', 'absent_self', 'absent_owner', 'guest'
+  final String mealSlot;
+  final String status; // 'present','absent_self','absent_owner','guest','extra_meal'
   final double? cost;
   final DateTime? cancelledAt;
 
@@ -504,15 +820,15 @@ class MealRecordModel {
   }
 
   Map<String, dynamic> toMap() => {
-    'recordId': recordId,
-    'studentId': studentId,
-    'messId': messId,
-    'date': date.toIso8601String().substring(0, 10),
-    'mealSlot': mealSlot,
-    'status': status,
-    if (cost != null) 'cost': cost,
-    'cancelledAt': cancelledAt?.toIso8601String(),
-  };
+        'recordId': recordId,
+        'studentId': studentId,
+        'messId': messId,
+        'date': date.toIso8601String().substring(0, 10),
+        'mealSlot': mealSlot,
+        'status': status,
+        if (cost != null) 'cost': cost,
+        'cancelledAt': cancelledAt?.toIso8601String(),
+      };
 }
 
 class BillModel {
@@ -526,11 +842,16 @@ class BillModel {
   final double totalDeductions;
   final double extraMealsAddon;
   final double guestAddons;
+  final double extraFeesAddon;
   final double finalPayable;
+  final double excessCreditGenerated;
   final double previousDues;
   final bool isPaid;
+  final bool autoSettled;
   final int validSkipsRewarded;
   final int daysToExtend;
+  final String? planId;
+  final String? planName;
   final List<DeductionItem> deductions;
 
   BillModel({
@@ -543,12 +864,17 @@ class BillModel {
     this.proratedDiscount = 0.0,
     required this.totalDeductions,
     this.extraMealsAddon = 0.0,
-    required this.guestAddons,
+    this.guestAddons = 0.0,
+    this.extraFeesAddon = 0.0,
     required this.finalPayable,
+    this.excessCreditGenerated = 0.0,
     this.previousDues = 0,
     required this.isPaid,
+    this.autoSettled = false,
     this.validSkipsRewarded = 0,
     this.daysToExtend = 0,
+    this.planId,
+    this.planName,
     required this.deductions,
   });
 
@@ -564,9 +890,16 @@ class BillModel {
       totalDeductions: (map['totalDeductions'] ?? 0.0).toDouble(),
       extraMealsAddon: (map['extraMealsAddon'] ?? 0.0).toDouble(),
       guestAddons: (map['guestAddons'] ?? 0.0).toDouble(),
+      extraFeesAddon: (map['extraFeesAddon'] ?? 0.0).toDouble(),
       finalPayable: (map['finalPayable'] ?? 0.0).toDouble(),
+      excessCreditGenerated: (map['excessCreditGenerated'] ?? 0.0).toDouble(),
       previousDues: (map['previousDues'] ?? 0.0).toDouble(),
       isPaid: map['isPaid'] ?? false,
+      autoSettled: map['autoSettled'] ?? false,
+      validSkipsRewarded: (map['validSkipsRewarded'] ?? 0) as int,
+      daysToExtend: (map['daysToExtend'] ?? 0) as int,
+      planId: map['planId'],
+      planName: map['planName'],
       deductions: (map['deductions'] as List<dynamic>? ?? [])
           .map((d) => DeductionItem.fromMap(d as Map<String, dynamic>))
           .toList(),
@@ -574,27 +907,34 @@ class BillModel {
   }
 
   Map<String, dynamic> toMap() => {
-    'billId': billId,
-    'studentId': studentId,
-    'messId': messId,
-    'month': month,
-    'year': year,
-    'baseFee': baseFee,
-    'proratedDiscount': proratedDiscount,
-    'totalDeductions': totalDeductions,
-    'extraMealsAddon': extraMealsAddon,
-    'guestAddons': guestAddons,
-    'finalPayable': finalPayable,
-    'previousDues': previousDues,
-    'isPaid': isPaid,
-    'deductions': deductions.map((d) => d.toMap()).toList(),
-  };
+        'billId': billId,
+        'studentId': studentId,
+        'messId': messId,
+        'month': month,
+        'year': year,
+        'baseFee': baseFee,
+        'proratedDiscount': proratedDiscount,
+        'totalDeductions': totalDeductions,
+        'extraMealsAddon': extraMealsAddon,
+        'guestAddons': guestAddons,
+        'extraFeesAddon': extraFeesAddon,
+        'finalPayable': finalPayable,
+        'excessCreditGenerated': excessCreditGenerated,
+        'previousDues': previousDues,
+        'isPaid': isPaid,
+        'autoSettled': autoSettled,
+        'validSkipsRewarded': validSkipsRewarded,
+        'daysToExtend': daysToExtend,
+        if (planId != null) 'planId': planId,
+        if (planName != null) 'planName': planName,
+        'deductions': deductions.map((d) => d.toMap()).toList(),
+      };
 }
 
 class DeductionItem {
   final DateTime date;
   final String mealSlot;
-  final String type; // 'self_cancelled', 'owner_off', 'guest'
+  final String type; // 'self_cancelled','owner_off','guest','extra_meal','extra_fee','prorated_discount'
   final double amount;
 
   DeductionItem({
@@ -614,11 +954,11 @@ class DeductionItem {
   }
 
   Map<String, dynamic> toMap() => {
-    'date': date.toIso8601String(),
-    'mealSlot': mealSlot,
-    'type': type,
-    'amount': amount,
-  };
+        'date': date.toIso8601String(),
+        'mealSlot': mealSlot,
+        'type': type,
+        'amount': amount,
+      };
 }
 
 class AnnouncementModel {
@@ -639,9 +979,11 @@ class AnnouncementModel {
     final rawTs = map['timestamp'];
     if (rawTs is DateTime) {
       ts = rawTs;
-    } else if (rawTs != null && rawTs.runtimeType.toString().contains('Timestamp')) {
-      // Firestore Timestamp -> toDate()
-      try { ts = (rawTs as dynamic).toDate() as DateTime; } catch (_) {}
+    } else if (rawTs != null &&
+        rawTs.runtimeType.toString().contains('Timestamp')) {
+      try {
+        ts = (rawTs as dynamic).toDate() as DateTime;
+      } catch (_) {}
     } else if (rawTs is String) {
       ts = DateTime.tryParse(rawTs) ?? DateTime.now();
     }
@@ -654,11 +996,11 @@ class AnnouncementModel {
   }
 
   Map<String, dynamic> toMap() => {
-    'announcementId': announcementId,
-    'messId': messId,
-    'message': message,
-    'timestamp': timestamp.toIso8601String(),
-  };
+        'announcementId': announcementId,
+        'messId': messId,
+        'message': message,
+        'timestamp': timestamp.toIso8601String(),
+      };
 }
 
 class FeedbackModel {
@@ -696,13 +1038,13 @@ class FeedbackModel {
   }
 
   Map<String, dynamic> toMap() => {
-    'feedbackId': feedbackId,
-    'messId': messId,
-    'studentId': studentId,
-    'date': date.toIso8601String(),
-    'mealSlot': mealSlot,
-    'rating': rating,
-    'comment': comment,
-    'dishes': dishes,
-  };
+        'feedbackId': feedbackId,
+        'messId': messId,
+        'studentId': studentId,
+        'date': date.toIso8601String(),
+        'mealSlot': mealSlot,
+        'rating': rating,
+        'comment': comment,
+        'dishes': dishes,
+      };
 }

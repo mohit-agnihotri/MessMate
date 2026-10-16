@@ -14,7 +14,17 @@ service cloud.firestore {
       allow update: if request.auth != null && (request.auth.uid == resource.data.ownerId || !("ownerId" in resource.data));
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
 
-      match /dishes/{dishId} {
+            match /meal_plans/{planId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+
+      match /extra_fees/{feeId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+
+match /dishes/{dishId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
       }

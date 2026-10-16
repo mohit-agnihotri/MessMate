@@ -564,6 +564,35 @@ class _GlobalSearchBottomSheetState
             ),
           ),
 
+          // Custom Dish Action Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  _showCreateCustomDishDialog(context, ref);
+                },
+                icon: const Icon(Icons.add, size: 18, color: Color(0xFF10B981)),
+                label: Text(
+                  '+ Create Custom Dish for My Mess',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: const Color(0xFF10B981),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -682,4 +711,232 @@ class _GlobalSearchBottomSheetState
       ),
     );
   }
+}
+
+
+// ─── Create Custom Dish Dialog ────────────────────────────────────────────────
+void _showCreateCustomDishDialog(BuildContext context, WidgetRef ref) {
+  final nameCtrl = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final state = ref.read(ownerMenuProvider);
+  final mess = state.mess;
+  final foodType = mess?.foodType ?? 'both';
+
+  String selectedCategory = 'sabzi';
+  String selectedDishFoodType = foodType == 'pure_veg'
+      ? 'veg'
+      : (foodType == 'non_veg' ? 'nonveg' : 'veg');
+
+  const defaultCategoryImages = {
+    'dal': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop',
+    'roti': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop',
+    'rice': 'https://images.unsplash.com/photo-1516684732162-798a0062be99?q=80&w=800&auto=format&fit=crop',
+    'sabzi': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=800&auto=format&fit=crop',
+    'sweet': 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=800&auto=format&fit=crop',
+    'snack': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=800&auto=format&fit=crop',
+    'curry': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?q=80&w=800&auto=format&fit=crop',
+  };
+
+  bool isSaving = false;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Create Custom Dish',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dish Name *',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: nameCtrl,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter dish name' : null,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Shahi Paneer, Dal Makhani...',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Category',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    items: ['dal', 'roti', 'rice', 'sabzi', 'sweet', 'snack', 'curry']
+                        .map((cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(cat[0].toUpperCase() + cat.substring(1)),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedCategory = val);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Food Type',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  if (foodType == 'pure_veg')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🌱 Pure Veg (Locked by Mess Setting)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF16A34A),
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else if (foodType == 'non_veg')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🍗 Non-Veg (Locked by Mess Setting)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFDC2626),
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('🌱 Veg'),
+                          selected: selectedDishFoodType == 'veg',
+                          selectedColor: const Color(0xFFDCFCE7),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedDishFoodType = 'veg');
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        ChoiceChip(
+                          label: const Text('🍗 Non-Veg'),
+                          selected: selectedDishFoodType == 'nonveg',
+                          selectedColor: const Color(0xFFFEE2E2),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedDishFoodType = 'nonveg');
+                          },
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => isSaving = true);
+
+                      try {
+                        final dishId = 'dish_${DateTime.now().millisecondsSinceEpoch}';
+                        final newDish = DishModel(
+                          dishId: dishId,
+                          name: nameCtrl.text.trim(),
+                          category: selectedCategory,
+                          imageUrl: defaultCategoryImages[selectedCategory] ?? 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800',
+                          dishFoodType: selectedDishFoodType,
+                        );
+
+                        final appService = ref.read(appServiceProvider);
+                        final messId = state.messId;
+
+                        // 1. Add to mess subcollection /messes/{messId}/dishes/{dishId}
+                        await appService.addDishToMess(messId, newDish);
+
+                        // 2. Update masterDishNames cache on MessModel
+                        if (mess != null) {
+                          final names = List<String>.from(mess.masterDishNames);
+                          if (!names.contains(newDish.name)) {
+                            names.add(newDish.name);
+                            final updatedMess = mess.copyWith(masterDishNames: names);
+                            await appService.updateMess(updatedMess);
+                          }
+                        }
+
+                        // 3. Add to current day's selected template
+                        ref.read(ownerMenuProvider.notifier).addDish(newDish);
+
+                        if (context.mounted) {
+                          Navigator.pop(ctx); // Close dialog
+                          Navigator.pop(context); // Close search sheet
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('"${newDish.name}" created and added!'),
+                              backgroundColor: const Color(0xFF10B981),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error saving dish: $e'),
+                              backgroundColor: const Color(0xFFEF4444),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Save & Add'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }

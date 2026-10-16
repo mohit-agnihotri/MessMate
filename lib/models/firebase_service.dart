@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_models.dart';
 import 'app_service.dart';
+import '../viewmodels/cutoff_helper.dart';
 
 class FirebaseService implements AppService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -129,10 +130,14 @@ class FirebaseService implements AppService {
   }
 
   @override
-  Future<void> acceptStudent(String messId, String studentId) async {
-    await _db.collection('students').doc(studentId).update({
+  Future<void> acceptStudent(String messId, String studentId, [String? planId]) async {
+    final Map<String, dynamic> updateData = {
       'status': 'active',
-    });
+    };
+    if (planId != null && planId.isNotEmpty) {
+      updateData['assignedPlanId'] = planId;
+    }
+    await _db.collection('students').doc(studentId).update(updateData);
   }
 
   @override
@@ -287,12 +292,36 @@ class FirebaseService implements AppService {
   // MEAL RECORDS
   @override
   Future<void> skipMeal(MealRecordModel record) async {
+    final messDoc = await _db.collection('messes').doc(record.messId).get();
+    if (messDoc.exists) {
+      final mess = MessModel.fromMap(messDoc.data()!);
+      if (CutoffHelper.isSlotCutoffPassed(record.date, record.mealSlot, mess)) {
+        throw Exception('Cutoff time has passed for this meal slot.');
+      }
+    }
     final recordRef = _db.collection('meal_records').doc(record.recordId);
     await recordRef.set(record.toMap());
   }
 
   @override
   Future<void> undoSkipMeal(String recordId) async {
+    final recordDoc = await _db.collection('meal_records').doc(recordId).get();
+    if (recordDoc.exists) {
+      final data = recordDoc.data()!;
+      final messId = data['messId'] as String?;
+      final slot = data['mealSlot'] as String?;
+      final dateStr = data['date'] as String?;
+      if (messId != null && slot != null && dateStr != null) {
+        final messDoc = await _db.collection('messes').doc(messId).get();
+        if (messDoc.exists) {
+          final mess = MessModel.fromMap(messDoc.data()!);
+          final date = DateTime.parse(dateStr.contains('T') ? dateStr : '${dateStr}T00:00:00.000');
+          if (CutoffHelper.isSlotCutoffPassed(date, slot, mess)) {
+            throw Exception('Cutoff time has passed. Cannot undo skip.');
+          }
+        }
+      }
+    }
     await _db.collection('meal_records').doc(recordId).delete();
   }
 
@@ -521,6 +550,14 @@ class FirebaseService implements AppService {
     if (!studentDoc.exists) return;
     final messId = studentDoc.data()?['messId'];
     if (messId == null) return;
+
+    final messDoc = await _db.collection('messes').doc(messId).get();
+    if (messDoc.exists) {
+      final mess = MessModel.fromMap(messDoc.data()!);
+      if (CutoffHelper.isSlotCutoffPassed(date, mealSlot, mess)) {
+        throw Exception('Cutoff time has passed for adding guest meals.');
+      }
+    }
 
     final batch = _db.batch();
     for (int i = 0; i < count; i++) {
@@ -812,5 +849,243 @@ class FirebaseService implements AppService {
           (snap) =>
               snap.docs.map((d) => FeedbackModel.fromMap(d.data())).toList(),
         );
+  }
+
+  // PLANS
+  @override
+  Future<List<MealPlanModel>> getMealPlans(String messId) async {
+    final snap = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('meal_plans')
+        .get();
+    return snap.docs.map((d) => MealPlanModel.fromMap(d.data())).toList();
+  }
+
+  @override
+  Stream<List<MealPlanModel>> streamMealPlans(String messId) {
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('meal_plans')
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => MealPlanModel.fromMap(d.data())).toList());
+  }
+
+  @override
+  Future<void> saveMealPlan(MealPlanModel plan) async {
+    await _db
+        .collection('messes')
+        .doc(plan.messId)
+        .collection('meal_plans')
+        .doc(plan.planId)
+        .set(plan.toMap(), SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> toggleMealPlanActive(
+      String messId, String planId, bool isActive) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('meal_plans')
+        .doc(planId)
+        .update({'isActive': isActive});
+  }
+
+  @override
+  Future<void> deleteMealPlan(String messId, String planId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('meal_plans')
+        .doc(planId)
+        .delete();
+  }
+
+  @override
+  Future<MealPlanModel?> getMealPlanById(String messId, String planId) async {
+    final doc = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('meal_plans')
+        .doc(planId)
+        .get();
+    if (!doc.exists || doc.data() == null) return null;
+    return MealPlanModel.fromMap(doc.data()!);
+  }
+
+  @override
+  Future<void> updateStudentMealPreference(
+    String studentId,
+    String messId,
+    String dateIso,
+    String choiceGroupId,
+    String selectedSlot,
+  ) async {
+    final messDoc = await _db.collection('messes').doc(messId).get();
+    final studentDoc = await _db.collection('students').doc(studentId).get();
+    if (messDoc.exists && studentDoc.exists) {
+      final mess = MessModel.fromMap(messDoc.data()!);
+      final planId = studentDoc.data()?['assignedPlanId'] as String?;
+      if (planId != null) {
+        final plan = await getMealPlanById(messId, planId);
+        if (plan != null) {
+          final group = plan.choiceGroups.where((g) => g.groupId == choiceGroupId).firstOrNull;
+          if (group != null) {
+            final date = DateTime.parse('${dateIso}T00:00:00.000');
+            if (CutoffHelper.isChoiceGroupCutoffPassed(date, group, mess)) {
+              throw Exception('Cutoff time has passed for this choice group.');
+            }
+          }
+        }
+      }
+    }
+
+    final studentRef = _db.collection('students').doc(studentId);
+    await _db.runTransaction((transaction) async {
+      final snap = await transaction.get(studentRef);
+      if (!snap.exists) return;
+      final data = snap.data() ?? {};
+      final rawDatePrefs = data['datePreferences'];
+      Map<String, dynamic> datePrefs =
+          rawDatePrefs is Map ? Map<String, dynamic>.from(rawDatePrefs) : {};
+      Map<String, dynamic> dayPref =
+          datePrefs[dateIso] is Map ? Map<String, dynamic>.from(datePrefs[dateIso]) : {};
+      dayPref[choiceGroupId] = selectedSlot;
+      datePrefs[dateIso] = dayPref;
+      transaction.update(studentRef, {'datePreferences': datePrefs});
+    });
+  }
+
+  @override
+  Future<void> updateStudentRegularPreference(
+    String studentId,
+    String choiceGroupId,
+    String selectedSlot,
+  ) async {
+    await _db.collection('students').doc(studentId).update({
+      'regularMealPreference.$choiceGroupId': selectedSlot,
+    });
+  }
+
+  // EXTRA FEES
+  @override
+  Future<List<ExtraFeeModel>> getExtraFees(
+      String messId, String studentId) async {
+    final snap = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('extra_fees')
+        .where('studentId', isEqualTo: studentId)
+        .get();
+    return snap.docs.map((d) => ExtraFeeModel.fromMap(d.data())).toList();
+  }
+
+  @override
+  Stream<List<ExtraFeeModel>> streamExtraFees(
+      String messId, String studentId) {
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('extra_fees')
+        .where('studentId', isEqualTo: studentId)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => ExtraFeeModel.fromMap(d.data())).toList());
+  }
+
+  @override
+  Future<void> addExtraFee(ExtraFeeModel fee) async {
+    await _db
+        .collection('messes')
+        .doc(fee.messId)
+        .collection('extra_fees')
+        .doc(fee.feeId)
+        .set(fee.toMap());
+  }
+
+  @override
+  Future<void> deleteExtraFee(String messId, String feeId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('extra_fees')
+        .doc(feeId)
+        .delete();
+  }
+
+  // MESS DISHES (Isolated Mess Subcollection)
+  @override
+  Future<List<DishModel>> getMessDishes(String messId) async {
+    final snap = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .get();
+    return snap.docs.map((d) => DishModel.fromMap(d.data())).toList();
+  }
+
+  @override
+  Stream<List<DishModel>> streamMessDishes(String messId) {
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => DishModel.fromMap(d.data())).toList());
+  }
+
+  @override
+  Future<void> addDishToMess(String messId, DishModel dish) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .doc(dish.dishId)
+        .set(dish.toMap(), SetOptions(merge: true));
+
+    await _db.collection('messes').doc(messId).update({
+      'masterDishNames': FieldValue.arrayUnion([dish.name]),
+    });
+  }
+
+  @override
+  Future<void> removeDishFromMess(String messId, String dishId) async {
+    final doc = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .doc(dishId)
+        .get();
+    String? dishName;
+    if (doc.exists && doc.data() != null) {
+      dishName = doc.data()!['name'] as String?;
+    }
+
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .doc(dishId)
+        .delete();
+
+    if (dishName != null) {
+      await _db.collection('messes').doc(messId).update({
+        'masterDishNames': FieldValue.arrayRemove([dishName]),
+      });
+    }
+  }
+
+  @override
+  Future<void> updateMessDish(String messId, DishModel dish) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dishes')
+        .doc(dish.dishId)
+        .set(dish.toMap(), SetOptions(merge: true));
   }
 }
