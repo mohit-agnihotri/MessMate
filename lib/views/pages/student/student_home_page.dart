@@ -1779,8 +1779,13 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                               if (isCutoffPassed) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(ref.read(localizationProvider) == 'hi' ? 'कटऑफ समय समाप्त हो चुका है। अब बदलाव नहीं हो सकता।' : 'Cutoff time has passed. Choices are locked.'),
+                                    content: Text(
+                                      ref.read(localizationProvider) == 'hi'
+                                          ? 'आज का समय समाप्त हो चुका है। आगे के दिनों का डिफ़ॉल्ट बदलने के लिए नीचे "डिफ़ॉल्ट बदलें" पर टैप करें।'
+                                          : "Today's cutoff has passed. Tap 'Change default' below to update upcoming days.",
+                                    ),
                                     backgroundColor: const Color(0xFFEF4444),
+                                    duration: const Duration(seconds: 3),
                                   ),
                                 );
                                 return;
@@ -1936,42 +1941,59 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                   ],
 
                   const SizedBox(height: 10),
-                  // Set Default Preference Button
+                  // Current Default Display & Change Button
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton.icon(
-                        onPressed: () async {
-                          try {
-                            await ref.read(studentHomeProvider.notifier).saveRegularPreference(
-                              group.groupId,
-                              chosenSlot,
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(ref.watch(localizationProvider) == 'hi' ? 'रोज़ का डिफ़ॉल्ट चुनाव सेट हो गया!' : 'Default daily choice set successfully!'),
-                                  backgroundColor: Color(0xFF10B981),
+                      Builder(
+                        builder: (context) {
+                          final studentState = ref.watch(studentHomeProvider);
+                          final currentDef = studentState.student?.regularMealPreference[group.groupId] ??
+                              group.availableMeals.first;
+                          final isHi = ref.watch(localizationProvider) == 'hi';
+                          final defName = isHi
+                              ? (currentDef == 'morning'
+                                  ? 'नाश्ता'
+                                  : (currentDef == 'noon'
+                                      ? 'लंच'
+                                      : (currentDef == 'evening' ? 'शाम नाश्ता' : 'डिनर')))
+                              : (currentDef == 'morning'
+                                  ? 'Breakfast'
+                                  : (currentDef == 'noon'
+                                      ? 'Lunch'
+                                      : (currentDef == 'evening' ? 'Snacks' : 'Dinner')));
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.bookmark_added_rounded, size: 13, color: Color(0xFF475569)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isHi ? 'डिफ़ॉल्ट: $defName' : 'Default: $defName',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF475569),
+                                  ),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(ref.watch(localizationProvider) == 'hi' ? 'डिफ़ॉल्ट सेट करने में त्रुटि: $e' : 'Error setting default choice: $e'),
-                                  backgroundColor: const Color(0xFFEF4444),
-                                ),
-                              );
-                            }
-                          }
+                              ],
+                            ),
+                          );
                         },
-                        icon: const Icon(Icons.bookmark_added_rounded, size: 15, color: Color(0xFF2563EB)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showDefaultPreferenceModal(context, ref, group),
+                        icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF2563EB)),
                         label: Text(
-                          ref.watch(localizationProvider) == 'hi' ? 'इसे रोज़ का डिफ़ॉल्ट बनाएं' : 'Set as daily default',
+                          ref.watch(localizationProvider) == 'hi' ? 'डिफ़ॉल्ट बदलें' : 'Change default',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: const Color(0xFF2563EB),
                           ),
                         ),
@@ -1984,6 +2006,253 @@ class _ChoiceGroupsSection extends ConsumerWidget {
           }),
         ],
       ),
+    );
+  }
+
+  void _showDefaultPreferenceModal(
+    BuildContext context,
+    WidgetRef ref,
+    ChoiceGroupModel group,
+  ) {
+    final studentState = ref.read(studentHomeProvider);
+    final currentDefault = studentState.student?.regularMealPreference[group.groupId] ??
+        group.availableMeals.first;
+    String selectedSlot = currentDefault;
+    final isHi = ref.read(localizationProvider) == 'hi';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.bookmark_added_rounded,
+                            color: Color(0xFF2563EB),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHi ? 'रोज़ का डिफ़ॉल्ट भोजन' : 'Set Daily Default Meal',
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                              ),
+                              Text(
+                                isHi
+                                    ? 'आगे के सभी दिनों के लिए अपने आप यही भोजन चुना जाएगा'
+                                    : 'Automatically selected for you for upcoming days',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    ...group.availableMeals.map((slot) {
+                      final isSelected = selectedSlot == slot;
+                      final isCurrentlySaved = currentDefault == slot;
+                      final slotLabel = isHi
+                          ? (slot == 'morning'
+                              ? '🌅 सुबह का नाश्ता (Breakfast)'
+                              : (slot == 'noon'
+                                  ? '☀️ दोपहर का खाना (Lunch)'
+                                  : (slot == 'evening'
+                                      ? '☕ शाम का नाश्ता (Snacks)'
+                                      : '🌙 रात का खाना (Dinner)')))
+                          : (slot == 'morning'
+                              ? '🌅 Breakfast'
+                              : (slot == 'noon'
+                                  ? '☀️ Lunch'
+                                  : (slot == 'evening'
+                                      ? '☕ Evening Snacks'
+                                      : '🌙 Dinner')));
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+                            width: isSelected ? 1.8 : 1,
+                          ),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            setModalState(() {
+                              selectedSlot = slot;
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isSelected
+                                      ? Icons.radio_button_checked_rounded
+                                      : Icons.radio_button_off_rounded,
+                                  color: isSelected
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFF94A3B8),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        slotLabel,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight:
+                                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                                          color: isSelected
+                                              ? const Color(0xFF0F172A)
+                                              : const Color(0xFF334155),
+                                        ),
+                                      ),
+                                      if (isCurrentlySaved)
+                                        Text(
+                                          isHi
+                                              ? '✓ वर्तमान में डिफ़ॉल्ट है'
+                                              : '✓ Currently your default',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF059669),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () async {
+                          try {
+                            await ref
+                                .read(studentHomeProvider.notifier)
+                                .saveRegularPreference(group.groupId, selectedSlot);
+                            Navigator.pop(ctx);
+                            if (context.mounted) {
+                              final chosenName = isHi
+                                  ? (selectedSlot == 'morning'
+                                      ? 'सुबह का नाश्ता'
+                                      : (selectedSlot == 'noon'
+                                          ? 'दोपहर का लंच'
+                                          : (selectedSlot == 'evening'
+                                              ? 'शाम का नाश्ता'
+                                              : 'रात का डिनर')))
+                                  : (selectedSlot == 'morning'
+                                      ? 'Breakfast'
+                                      : (selectedSlot == 'noon'
+                                          ? 'Lunch'
+                                          : (selectedSlot == 'evening'
+                                              ? 'Snacks'
+                                              : 'Dinner')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isHi
+                                        ? 'कल से आगे के लिए रोज़ का डिफ़ॉल्ट $chosenName सेट हो गया! ✓'
+                                        : '$chosenName set as your daily default from tomorrow! ✓',
+                                  ),
+                                  backgroundColor: const Color(0xFF10B981),
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isHi
+                                        ? 'डिफ़ॉल्ट सेट करने में त्रुटि: $e'
+                                        : 'Failed to set default: $e',
+                                  ),
+                                  backgroundColor: const Color(0xFFEF4444),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(
+                          isHi ? 'डिफ़ॉल्ट के रूप में सेट करें' : 'Save as Daily Default',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
