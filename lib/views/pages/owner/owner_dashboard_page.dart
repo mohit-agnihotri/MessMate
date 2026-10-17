@@ -59,7 +59,7 @@ class OwnerDashboardPage extends ConsumerWidget {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       sliver: SliverToBoxAdapter(
-                        child: _buildCurrentMealCard(state),
+                        child: _buildCurrentMealCard(context, state),
                       ),
                     ),
                     SliverPadding(
@@ -565,7 +565,7 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCurrentMealCard(OwnerDashboardState state) {
+  Widget _buildCurrentMealCard(BuildContext context, OwnerDashboardState state) {
     if (state.currentSlot == 'closed') {
       return Container(
         padding: const EdgeInsets.all(16),
