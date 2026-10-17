@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import 'widgets/post_today_meal_sheet.dart';
 
 class OwnerMenuPlannerV2Page extends ConsumerStatefulWidget {
   const OwnerMenuPlannerV2Page({super.key});
@@ -181,6 +182,86 @@ class _OwnerMenuPlannerV2PageState
                         ),
                       ),
                     ],
+                  ),
+                ),
+
+                // ── Quick Action: Post Today's Menu ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: InkWell(
+                    onTap: () {
+                      if (state.mess != null) {
+                        PostTodayMealSheet.show(
+                          context,
+                          mess: state.mess!,
+                          initialSlot: activeSlot,
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFF59E0B).withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD97706),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.campaign_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Post Today's Meal (आज का खाना)",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF92400E),
+                                  ),
+                                ),
+                                Text(
+                                  "Choose Regular or Special for ${_slotShortLabel(activeSlot)}",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: const Color(0xFFB45309),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: Color(0xFF92400E),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 

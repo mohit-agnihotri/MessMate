@@ -937,6 +937,34 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
     // Refresh state
     await load();
   }
+
+  Future<void> publishTodayMenu({
+    required String slot,
+    required String menuType, // 'regular' or 'special'
+    required List<DishModel> dishes,
+  }) async {
+    final now = DateTime.now();
+    final dateStr = now.toIso8601String().substring(0, 10);
+    final menu = MenuModel(
+      menuId: '${dateStr}_$slot',
+      messId: state.messId,
+      date: now,
+      mealSlot: slot,
+      dishes: dishes,
+      menuType: menuType,
+      isPublished: true,
+    );
+    await _service.publishDailyMenu(menu);
+    await load();
+  }
+
+  Future<void> removeTodayMenu(String slot) async {
+    final now = DateTime.now();
+    final dateStr = now.toIso8601String().substring(0, 10);
+    final menuId = '${dateStr}_$slot';
+    await _service.deleteDailyMenu(state.messId, menuId);
+    await load();
+  }
 }
 
 final ownerMenuProvider =

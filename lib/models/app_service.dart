@@ -35,6 +35,8 @@ abstract class AppService {
   Future<List<MenuModel>> getDailyMenus(String messId, DateTime date);
   Future<void> saveMenu(MenuModel menu);
   Future<void> publishMenu(String menuId);
+  Future<void> publishDailyMenu(MenuModel menu);
+  Future<void> deleteDailyMenu(String messId, String menuId);
 
   // GLOBAL DISHES
   Future<List<DishModel>> searchGlobalDishes(String query);

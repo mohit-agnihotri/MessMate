@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
+import 'widgets/view_mess_menu_sheet.dart';
 
 // ─── Background images per slot ─────────────────────────────────────────────
 const _bgImages = {
@@ -118,6 +119,15 @@ class StudentHomePage extends ConsumerWidget {
                   child: _buildCurrentMealCard(context, ref, state),
                 ),
               ),
+
+              // ── My Mess Menu Button Card ──
+              if (state.mess != null)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _buildMessMenuButtonCard(context, state),
+                  ),
+                ),
 
               // ── Upcoming Meals ──
               SliverToBoxAdapter(
@@ -268,9 +278,34 @@ class StudentHomePage extends ConsumerWidget {
           dishes: [],
         );
 
-    final dishesStr = effectiveMenu.dishes.isNotEmpty
-        ? effectiveMenu.dishes.map((d) => d.name).join(', ')
-        : 'Regular Mess Meal';
+    final isExplicitlyPosted = menu != null &&
+        menu.isPublished &&
+        (menu.menuType == 'special' || menu.menuType == 'regular') &&
+        menu.dishes.isNotEmpty;
+    final isSpecial = isExplicitlyPosted && menu.menuType == 'special';
+    final isRegularToday = isExplicitlyPosted && menu.menuType == 'regular';
+
+    final slotDisplayName = slot == 'morning'
+        ? 'Morning'
+        : slot == 'noon'
+            ? 'Noon'
+            : slot == 'evening'
+                ? 'Evening'
+                : 'Night';
+
+    String headerTitle;
+    String headerDishes;
+    if (isSpecial) {
+      headerTitle = '✨ SPECIAL ${slotDisplayName.toUpperCase()}';
+      headerDishes = menu.dishes.map((d) => d.name).join(', ');
+    } else if (isRegularToday) {
+      headerTitle = 'TODAY\'S ${slotDisplayName.toUpperCase()} MEAL';
+      headerDishes = menu.dishes.map((d) => d.name).join(', ');
+    } else {
+      headerTitle = slot.toUpperCase();
+      headerDishes = 'Homestyle Mess Meal';
+    }
+
     final cutoff = state.timeLeftToCutoff ?? Duration.zero;
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
@@ -301,32 +336,78 @@ class StudentHomePage extends ConsumerWidget {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(
-                    color: Colors.black.withOpacity(0.35),
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    color: isSpecial
+                        ? const Color(0xFFB45309).withOpacity(0.55)
+                        : Colors.black.withOpacity(0.4),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     child: Row(
                       children: [
                         Text('$icon ', style: const TextStyle(fontSize: 18)),
                         Text(
-                          slot.toUpperCase(),
+                          headerTitle,
                           style: GoogleFonts.inter(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
+                            color: isSpecial
+                                ? const Color(0xFFFDE68A)
+                                : Colors.white,
+                            letterSpacing: 1.1,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            dishesStr,
+                            headerDishes,
                             style: GoogleFonts.inter(
                               fontSize: 13,
-                              color: Colors.white70,
+                              color: Colors.white.withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
                         ),
+                        if (!isExplicitlyPosted && state.mess != null) ...[
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () {
+                              ViewMessMenuSheet.show(
+                                context,
+                                mess: state.mess!,
+                                initialMenus: state.todayMenus.values.toList(),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white30),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Menu',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -436,6 +517,101 @@ class StudentHomePage extends ConsumerWidget {
     );
   }
 
+  // ── My Mess Menu Button Card ─────────────────────────────────────────────
+  Widget _buildMessMenuButtonCard(BuildContext context, StudentHomeState state) {
+    final mess = state.mess;
+    if (mess == null) return const SizedBox.shrink();
+
+    return InkWell(
+      onTap: () {
+        ViewMessMenuSheet.show(
+          context,
+          mess: mess,
+          initialMenus: state.todayMenus.values.toList(),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text('📋', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Mess Menu (मेन्यू देखें)',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Standard breakfast, lunch & dinner offerings',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'View',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF16A34A),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: Color(0xFF16A34A),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Announcement dialog ──────────────────────────────────────────────────
   void _showAnnouncementDialog(BuildContext context, StudentHomeState state) {
     final anns = state.announcements;
@@ -537,6 +713,11 @@ class StudentHomePage extends ConsumerWidget {
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
 
+    final isExplicitlyPosted = menu != null &&
+        menu.isPublished &&
+        (menu.menuType == 'special' || menu.menuType == 'regular') &&
+        menu.dishes.isNotEmpty;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -601,13 +782,32 @@ class StudentHomePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 14),
-            if (menu != null && menu.dishes.isNotEmpty) ...[
+            if (isExplicitlyPosted) ...[
+              if (menu.menuType == 'special')
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Text(
+                    '✨ SPECIAL MEAL',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFD97706),
+                    ),
+                  ),
+                ),
               Text(
                 menu.dishes.map((d) => d.name).join(', '),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: const Color(0xFF374151),
                   height: 1.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ] else ...[
@@ -619,6 +819,26 @@ class StudentHomePage extends ConsumerWidget {
                   fontStyle: FontStyle.italic,
                 ),
               ),
+              const SizedBox(height: 6),
+              if (state.mess != null)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ViewMessMenuSheet.show(
+                      context,
+                      mess: state.mess!,
+                      initialMenus: state.todayMenus.values.toList(),
+                    );
+                  },
+                  child: Text(
+                    'View regular offerings in Mess Menu ➔',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF16A34A),
+                    ),
+                  ),
+                ),
             ],
             const SizedBox(height: 20),
             // Timer
@@ -1093,8 +1313,16 @@ class _UpcomingMealCard extends StatelessWidget {
         ? '${timings['start']} - ${timings['end']}'
         : '';
     final icon = _slotIcons[slot] ?? '🍽';
-    final dishesStr = (menu != null && menu!.dishes.isNotEmpty)
-        ? menu!.dishes.map((d) => d.name).join(', ')
+
+    final isExplicitlyPosted = menu != null &&
+        menu!.isPublished &&
+        (menu!.menuType == 'special' || menu!.menuType == 'regular') &&
+        menu!.dishes.isNotEmpty;
+    final isSpecial = isExplicitlyPosted && menu!.menuType == 'special';
+    final dishesStr = isExplicitlyPosted
+        ? (isSpecial
+            ? '✨ Special: ${menu!.dishes.map((d) => d.name).join(", ")}'
+            : 'Today: ${menu!.dishes.map((d) => d.name).join(", ")}')
         : 'Regular Mess Meal';
 
     return GestureDetector(
@@ -1106,6 +1334,9 @@ class _UpcomingMealCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
+          border: isSpecial
+              ? Border.all(color: const Color(0xFFFDE68A), width: 1.5)
+              : null,
           boxShadow: const [
             BoxShadow(
               color: Color(0x0F000000),
@@ -1185,9 +1416,13 @@ class _UpcomingMealCard extends StatelessWidget {
               dishesStr,
               style: GoogleFonts.inter(
                 fontSize: 12,
-                color: menu != null
-                    ? const Color(0xFF374151)
-                    : const Color(0xFF9CA3AF),
+                fontWeight: isExplicitlyPosted ? FontWeight.w600 : FontWeight.normal,
+                color: isSpecial
+                    ? const Color(0xFFD97706)
+                    : (isExplicitlyPosted
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFF6B7280)),
+                fontStyle: isExplicitlyPosted ? FontStyle.normal : FontStyle.italic,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

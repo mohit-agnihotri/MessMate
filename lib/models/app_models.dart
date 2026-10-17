@@ -695,6 +695,7 @@ class MenuModel {
   final List<DishModel> dishes;
   final bool isFullDayEquivalent;
   final bool isPublished;
+  final String menuType; // 'regular', 'special', 'template'
 
   MenuModel({
     required this.menuId,
@@ -704,7 +705,30 @@ class MenuModel {
     required this.dishes,
     this.isFullDayEquivalent = false,
     this.isPublished = false,
+    this.menuType = 'regular',
   });
+
+  MenuModel copyWith({
+    String? menuId,
+    String? messId,
+    DateTime? date,
+    String? mealSlot,
+    List<DishModel>? dishes,
+    bool? isFullDayEquivalent,
+    bool? isPublished,
+    String? menuType,
+  }) {
+    return MenuModel(
+      menuId: menuId ?? this.menuId,
+      messId: messId ?? this.messId,
+      date: date ?? this.date,
+      mealSlot: mealSlot ?? this.mealSlot,
+      dishes: dishes ?? this.dishes,
+      isFullDayEquivalent: isFullDayEquivalent ?? this.isFullDayEquivalent,
+      isPublished: isPublished ?? this.isPublished,
+      menuType: menuType ?? this.menuType,
+    );
+  }
 
   factory MenuModel.fromMap(Map<String, dynamic> map) {
     return MenuModel(
@@ -717,6 +741,7 @@ class MenuModel {
           .toList(),
       isFullDayEquivalent: map['isFullDayEquivalent'] ?? false,
       isPublished: map['isPublished'] ?? false,
+      menuType: map['menuType'] ?? 'regular',
     );
   }
 
@@ -729,6 +754,7 @@ class MenuModel {
         'dishes': dishes.map((d) => d.toMap()).toList(),
         'isFullDayEquivalent': isFullDayEquivalent,
         'isPublished': isPublished,
+        'menuType': menuType,
       };
 }
 

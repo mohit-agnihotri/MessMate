@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
+import 'widgets/view_mess_menu_sheet.dart';
 
 class _MessItem {
   final MessModel mess;
@@ -21,6 +21,8 @@ class _MessItem {
   final bool isServingNow;
   final String? timeUntilNext;
   final String slotType; // 'Morning', 'Noon', 'Night'
+  final MenuModel? activePostedMenu;
+  final List<MenuModel> allMenus;
 
   _MessItem({
     required this.mess,
@@ -30,6 +32,8 @@ class _MessItem {
     required this.isServingNow,
     this.timeUntilNext,
     required this.slotType,
+    this.activePostedMenu,
+    this.allMenus = const [],
   });
 }
 
@@ -103,9 +107,10 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
 
         bool isServingNow = false;
         String mealName = 'No meal set';
-        String dishes = 'Menu not updated';
+        String dishes = '';
         String? timeUntilNext;
         String slotType = 'Noon';
+        MenuModel? activePosted;
 
         final now = DateTime.now();
         final currentMinutes = now.hour * 60 + now.minute;
@@ -142,10 +147,22 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                     ? 'Snacks'
                     : 'Dinner';
 
-                if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
+                final isPosted = matchingMenu != null &&
+                    matchingMenu.isPublished &&
+                    (matchingMenu.menuType == 'special' ||
+                        matchingMenu.menuType == 'regular') &&
+                    matchingMenu.dishes.isNotEmpty;
+
+                if (isPosted) {
+                  activePosted = matchingMenu;
                   dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                  if (matchingMenu.menuType == 'special') {
+                    mealName = '✨ Special $mealName';
+                  } else {
+                    mealName = "Today's $mealName";
+                  }
                 } else {
-                  dishes = 'Menu not updated';
+                  dishes = '';
                 }
 
                 if (currentMinutes >= startMin && currentMinutes <= endMin) {
@@ -171,15 +188,8 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                     : slot == 'evening'
                     ? 'Evening'
                     : 'Night';
-                mealName = 'Tomorrow ${slotType}';
-                final matchingMenu = menus
-                    .where((menu) => menu.mealSlot.toLowerCase() == slot)
-                    .firstOrNull;
-                if (matchingMenu != null && matchingMenu.dishes.isNotEmpty) {
-                  dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                } else {
-                  dishes = 'Menu not updated';
-                }
+                mealName = 'Tomorrow $slotType';
+                dishes = '';
                 isServingNow = false;
                 break;
               }
@@ -195,6 +205,8 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
           isServingNow: isServingNow,
           timeUntilNext: timeUntilNext,
           slotType: slotType,
+          activePostedMenu: activePosted,
+          allMenus: menus,
         );
       }),
     );
@@ -465,50 +477,136 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   ),
                 )
               else
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFDCFCE7)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            item.slotType == 'Night' ? Icons.bedtime_outlined : Icons.wb_sunny_outlined,
-                            size: 18,
-                            color: const Color(0xFF16A34A),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item.currentOrNextMealName == 'No meal set'
-                                ? 'Daily Homestyle Food'
-                                : '${item.isServingNow ? "Now Serving" : "Upcoming"}: ${item.currentOrNextMealName}',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF15803D),
+                InkWell(
+                  onTap: () {
+                    ViewMessMenuSheet.show(
+                      context,
+                      mess: item.mess,
+                      initialMenus: item.allMenus,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x06000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (item.activePostedMenu != null &&
+                            item.currentOrNextMealDishes.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: item.activePostedMenu!.menuType == 'special'
+                                  ? const Color(0xFFFEF3C7)
+                                  : const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: item.activePostedMenu!.menuType ==
+                                        'special'
+                                    ? const Color(0xFFFDE68A)
+                                    : const Color(0xFF86EFAC),
+                              ),
+                            ),
+                            child: Text(
+                              item.activePostedMenu!.menuType == 'special'
+                                  ? '✨ Special Today: ${item.currentOrNextMealDishes}'
+                                  : 'Today\'s Meal: ${item.currentOrNextMealDishes}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: item.activePostedMenu!.menuType ==
+                                        'special'
+                                    ? const Color(0xFFD97706)
+                                    : const Color(0xFF15803D),
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        item.currentOrNextMealDishes.isNotEmpty && item.currentOrNextMealName != 'No meal set'
-                            ? item.currentOrNextMealDishes
-                            : (mess.masterDishNames.isNotEmpty
-                                ? 'Specialties: ${mess.masterDishNames.take(4).join(", ")}'
-                                : 'Fresh, nutritious daily meals cooked with quality ingredients.'),
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: const Color(0xFF374151),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text('📋',
+                                  style: TextStyle(fontSize: 20)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Mess Menu (मेन्यू देखें)',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF111827),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF22C55E),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'ALL SLOTS',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Tap to view standard breakfast, lunch & dinner offerings',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: const Color(0xFF4B5563),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Color(0xFF16A34A),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               const SizedBox(height: 24),
@@ -1297,7 +1395,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
               decoration: BoxDecoration(
                 color: isClosed
                     ? const Color(0x33EF4444)
-                    : const Color(0xFFD97706),
+                    : (item.activePostedMenu?.menuType == 'special'
+                        ? const Color(0xFFD97706)
+                        : const Color(0xFF16A34A)),
                 border: isClosed
                     ? Border.all(color: const Color(0xFFEF4444))
                     : null,
@@ -1306,9 +1406,14 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
               child: Text(
                 isClosed
                     ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
-                    : (item.currentOrNextMealName == 'No meal set'
-                          ? '🍽️ Daily Fresh Homestyle Food'
-                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'),
+                    : (item.activePostedMenu != null &&
+                            item.currentOrNextMealDishes.isNotEmpty
+                        ? '${item.slotType == 'Night' ? '🌙' : '☀️'} ${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'
+                        : (item.isServingNow
+                            ? '${item.slotType == 'Night' ? '🌙' : '☀️'} Serving ${item.currentOrNextMealName}'
+                            : (item.currentOrNextMealName != 'No meal set'
+                                ? '${item.slotType == 'Night' ? '🌙' : '☀️'} Next: ${item.currentOrNextMealName}'
+                                : '🍽️ Daily Fresh Homestyle Food'))),
                 style: GoogleFonts.inter(
                   color: isClosed ? const Color(0xFFFCA5A5) : Colors.white,
                   fontSize: 12,

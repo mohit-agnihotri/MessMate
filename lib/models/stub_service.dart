@@ -274,6 +274,10 @@ class StubService implements AppService {
   @override
   Future<void> publishMenu(String menuId) async {}
   @override
+  Future<void> publishDailyMenu(MenuModel menu) async {}
+  @override
+  Future<void> deleteDailyMenu(String messId, String menuId) async {}
+  @override
   Future<List<MenuModel>> getWeeklyTemplate(String messId) async => [];
   @override
   Future<void> saveWeeklyTemplate(MenuModel menu, String dayOfWeek) async {}

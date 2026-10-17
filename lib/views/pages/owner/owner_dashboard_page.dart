@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +7,7 @@ import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
 import 'owner_absentee_tracker_page.dart';
+import 'widgets/post_today_meal_sheet.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
   const OwnerDashboardPage({super.key});
@@ -766,7 +767,40 @@ class OwnerDashboardPage extends ConsumerWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (state.mess != null) {
+                    PostTodayMealSheet.show(
+                      context,
+                      mess: state.mess!,
+                      initialSlot: state.currentSlot,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.campaign_rounded, size: 18),
+                label: Text(
+                  "Post Today's Meal (Regular / Special)",
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

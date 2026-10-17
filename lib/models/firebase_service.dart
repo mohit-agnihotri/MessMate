@@ -187,10 +187,8 @@ class FirebaseService implements AppService {
   Stream<List<MenuModel>> streamDailyMenus(String messId, DateTime date) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayStr = days[date.weekday - 1];
+    final dateStr = date.toIso8601String().substring(0, 10);
 
-    // Auto-repeating regular menu logic:
-    // First populates from standard slot menu (e.g. 'morning', 'noon', 'night');
-    // Day-specific template (e.g. 'Sat_night') takes precedence if explicitly configured.
     return _db
         .collection('messes')
         .doc(messId)
@@ -200,16 +198,38 @@ class FirebaseService implements AppService {
           final allMenus = snap.docs.map((d) => MenuModel.fromMap(d.data())).toList();
           final Map<String, MenuModel> slotMenus = {};
 
+          // 1. Base regular templates: marked as 'template' (unposted for today)
           for (final m in allMenus) {
             if (m.menuId == m.mealSlot || !m.menuId.contains('_')) {
-              slotMenus[m.mealSlot] = m;
+              slotMenus[m.mealSlot] = m.copyWith(
+                menuType: 'template',
+                isPublished: false,
+                date: date,
+                menuId: '${dateStr}_${m.mealSlot}',
+              );
             }
           }
           for (final m in allMenus) {
             if (m.menuId.startsWith('${dayStr}_')) {
-              slotMenus[m.mealSlot] = m;
+              slotMenus[m.mealSlot] = m.copyWith(
+                menuType: 'template',
+                isPublished: false,
+                date: date,
+                menuId: '${dateStr}_${m.mealSlot}',
+              );
             }
           }
+
+          // 2. Specific date post (e.g. "${dateStr}_night") overrides template
+          for (final m in allMenus) {
+            if (m.menuId.startsWith('${dateStr}_') || m.menuId == '${dateStr}_${m.mealSlot}') {
+              slotMenus[m.mealSlot] = m.copyWith(
+                isPublished: true,
+                date: date,
+              );
+            }
+          }
+
           return slotMenus.values.toList();
         });
   }
@@ -218,6 +238,7 @@ class FirebaseService implements AppService {
   Future<List<MenuModel>> getDailyMenus(String messId, DateTime date) async {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayStr = days[date.weekday - 1];
+    final dateStr = date.toIso8601String().substring(0, 10);
 
     final snap = await _db
         .collection('messes')
@@ -228,16 +249,38 @@ class FirebaseService implements AppService {
     final allMenus = snap.docs.map((d) => MenuModel.fromMap(d.data())).toList();
     final Map<String, MenuModel> slotMenus = {};
 
+    // 1. Base regular templates: marked as 'template'
     for (final m in allMenus) {
       if (m.menuId == m.mealSlot || !m.menuId.contains('_')) {
-        slotMenus[m.mealSlot] = m;
+        slotMenus[m.mealSlot] = m.copyWith(
+          menuType: 'template',
+          isPublished: false,
+          date: date,
+          menuId: '${dateStr}_${m.mealSlot}',
+        );
       }
     }
     for (final m in allMenus) {
       if (m.menuId.startsWith('${dayStr}_')) {
-        slotMenus[m.mealSlot] = m;
+        slotMenus[m.mealSlot] = m.copyWith(
+          menuType: 'template',
+          isPublished: false,
+          date: date,
+          menuId: '${dateStr}_${m.mealSlot}',
+        );
       }
     }
+
+    // 2. Specific date post overrides template
+    for (final m in allMenus) {
+      if (m.menuId.startsWith('${dateStr}_') || m.menuId == '${dateStr}_${m.mealSlot}') {
+        slotMenus[m.mealSlot] = m.copyWith(
+          isPublished: true,
+          date: date,
+        );
+      }
+    }
+
     return slotMenus.values.toList();
   }
 
@@ -249,6 +292,32 @@ class FirebaseService implements AppService {
   @override
   Future<void> publishMenu(String menuId) async {
     await _db.collection('menus').doc(menuId).update({'isPublished': true});
+  }
+
+  @override
+  Future<void> publishDailyMenu(MenuModel menu) async {
+    final dateStr = menu.date.toIso8601String().substring(0, 10);
+    final docId = '${dateStr}_${menu.mealSlot}';
+    final toSave = menu.copyWith(
+      menuId: docId,
+      isPublished: true,
+    );
+    await _db
+        .collection('messes')
+        .doc(menu.messId)
+        .collection('weekly_templates')
+        .doc(docId)
+        .set(toSave.toMap());
+  }
+
+  @override
+  Future<void> deleteDailyMenu(String messId, String menuId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('weekly_templates')
+        .doc(menuId)
+        .delete();
   }
 
   // MENU (Weekly Templates)
