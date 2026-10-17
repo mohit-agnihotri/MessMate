@@ -1,3 +1,4 @@
+import '../../../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -177,7 +178,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '🎯 पसंद का खाना (Choice)',
+                              ref.watch(localizationProvider) == 'hi' ? '🎯 पसंद का खाना' : '🎯 Meal Choice (Flexi)',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -193,7 +194,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '${plan.mealsIncludedPerDay} टाइम खाना',
+                              ref.watch(localizationProvider) == 'hi' ? '${plan.mealsIncludedPerDay} टाइम खाना' : '${plan.mealsIncludedPerDay} meals/day',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -214,7 +215,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '₹${plan.monthlyFee.toInt()} / महीना  •  ${plan.mealsIncludedPerDay} भोजन प्रतिदिन',
+                      ref.watch(localizationProvider) == 'hi' ? '₹${plan.monthlyFee.toInt()} / महीना  •  ${plan.mealsIncludedPerDay} भोजन प्रतिदिन' : '₹${plan.monthlyFee.toInt()} / month  •  ${plan.mealsIncludedPerDay} meals/day',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -251,7 +252,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'पक्का खाना: ',
+                        ref.watch(localizationProvider) == 'hi' ? 'पक्का खाना: ' : 'Fixed Meal: ',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -260,7 +261,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                       ),
                       Expanded(
                         child: Text(
-                          plan.fixedMeals.map(_slotDisplayName).join(', '),
+                          plan.fixedMeals.map((m) => _slotDisplayName(m, ref.watch(localizationProvider) == 'hi')).join(', '),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -274,12 +275,13 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                 if (hasChoice) ...[
                   if (plan.fixedMeals.isNotEmpty) const SizedBox(height: 8),
                   ...plan.choiceGroups.map((g) {
-                    final choices = g.availableMeals.map(_slotDisplayName).join(' या ');
+                    final isHi = ref.watch(localizationProvider) == 'hi';
+                    final choices = g.availableMeals.map((m) => _slotDisplayName(m, isHi)).join(isHi ? ' या ' : ' or ');
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'पसंद का विकल्प: ',
+                          ref.watch(localizationProvider) == 'hi' ? 'पसंद का विकल्प: ' : 'Choice Option: ',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -288,7 +290,7 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                         ),
                         Expanded(
                           child: Text(
-                            '$choices (छात्र 1 चुनेगा)',
+                            ref.watch(localizationProvider) == 'hi' ? '$choices (छात्र 1 चुनेगा)' : '$choices (Student picks 1)',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -317,9 +319,9 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
                 ),
                 child: Text(
                   plan.deductionPolicy.policyType == 'none'
-                      ? 'छुट्टी पर कोई कटौती नहीं'
+                      ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी पर कोई कटौती नहीं' : 'No skip rebate')
                       : plan.deductionPolicy.policyType == 'flat_fixed_rate'
-                          ? 'छुट्टी वापसी: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / मील'
+                          ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी वापसी: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / मील' : 'Skip refund: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / meal')
                           : 'Dynamic Prorated Rebate',
                   style: GoogleFonts.inter(
                     fontSize: 11,
@@ -383,16 +385,30 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
     );
   }
 
-  String _slotDisplayName(String slot) {
+  String _slotDisplayName(String slot, [bool isHi = false]) {
+    if (isHi) {
+      switch (slot) {
+        case 'morning':
+          return 'नाश्ता';
+        case 'noon':
+          return 'दोपहर खाना';
+        case 'evening':
+          return 'शाम नाश्ता';
+        case 'night':
+          return 'रात खाना';
+        default:
+          return slot;
+      }
+    }
     switch (slot) {
       case 'morning':
-        return 'Morning';
+        return 'Breakfast';
       case 'noon':
-        return 'Noon';
+        return 'Lunch';
       case 'evening':
-        return 'Evening';
+        return 'Evening Snacks';
       case 'night':
-        return 'Night';
+        return 'Dinner';
       default:
         return slot;
     }

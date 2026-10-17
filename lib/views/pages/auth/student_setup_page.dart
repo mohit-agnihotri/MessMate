@@ -74,14 +74,16 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'अकाउंट टकराव (Role Conflict)',
+                    isHindi ? 'खाता टकराव' : 'Role Conflict',
                     style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18),
                   ),
                 ),
               ],
             ),
             content: Text(
-              'यह ईमेल (${user.email ?? ""}) पहले से ही एक मेस मालिक (${existingMess.name}) के रूप में दर्ज है।\n\nछात्र (Student) के रूप में जुड़ने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।',
+              isHindi
+                  ? 'यह ईमेल (${user.email ?? ""}) पहले से ही एक मेस संचालक (${existingMess.name}) के रूप में दर्ज है।\n\nछात्र के रूप में जुड़ने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।'
+                  : 'This email (${user.email ?? ""}) is already registered as a mess owner (${existingMess.name}).\n\nPlease log in with a different email to join as a student.',
               style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)),
             ),
             actions: [
@@ -98,7 +100,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   }
                 },
                 child: Text(
-                  'दूसरा अकाउंट चुनें (Switch Account)',
+                  isHindi ? 'दूसरा खाता चुनें' : 'Switch Account',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
                 ),
               ),
@@ -119,18 +121,33 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     super.dispose();
   }
 
-  String _slotNameHindi(String slotKey) {
-    switch (slotKey.toLowerCase()) {
-      case 'morning':
-        return 'सुबह का नाश्ता';
-      case 'noon':
-        return 'दोपहर का खाना';
-      case 'evening':
-        return 'शाम का नाश्ता';
-      case 'night':
-        return 'रात का खाना';
-      default:
-        return slotKey;
+  String _slotDisplayName(String slotKey) {
+    if (isHindi) {
+      switch (slotKey.toLowerCase()) {
+        case 'morning':
+          return 'नाश्ता';
+        case 'noon':
+          return 'दोपहर खाना';
+        case 'evening':
+          return 'शाम नाश्ता';
+        case 'night':
+          return 'रात खाना';
+        default:
+          return slotKey;
+      }
+    } else {
+      switch (slotKey.toLowerCase()) {
+        case 'morning':
+          return 'Breakfast';
+        case 'noon':
+          return 'Lunch';
+        case 'evening':
+          return 'Evening Snacks';
+        case 'night':
+          return 'Dinner';
+        default:
+          return slotKey;
+      }
     }
   }
 
@@ -154,8 +171,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     final code = _codeCtrl.text.trim();
     if (code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया 6 अंकों का मान्य मेस कोड दर्ज करें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया 6 अंकों का मान्य मेस कोड दर्ज करें।' : 'Please enter a valid 6-digit mess code.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -180,7 +197,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       if (mess == null) {
         setState(() {
           _isSearchingMess = false;
-          _searchError = 'कोड "$code" से कोई मेस नहीं मिली। कृपया अपने मेस संचालक से सही कोड पूछें।';
+          _searchError = isHindi ? 'कोड "$code" से कोई मेस नहीं मिली। कृपया अपने मेस संचालक से सही कोड पूछें।' : 'No mess found with code "$code". Please verify the code with your mess owner.';
         });
         return;
       }
@@ -200,7 +217,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     } catch (e) {
       setState(() {
         _isSearchingMess = false;
-        _searchError = 'मेस खोजने में त्रुटि हुई: $e';
+        _searchError = isHindi ? 'मेस खोजने में त्रुटि हुई: $e' : 'Error searching mess: $e';
       });
     }
   }
@@ -344,8 +361,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
 
     if (name.isEmpty || phone.isEmpty || room.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया सभी अनिवार्य फ़ील्ड्स (नाम, फ़ोन, रूम नंबर) भरें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया सभी अनिवार्य फ़ील्ड्स (नाम, फ़ोन, रूम नंबर) भरें।' : 'Please fill all required fields (Name, Phone, Room No.).'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -355,8 +372,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -367,8 +384,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     if (emergency.isNotEmpty) {
       if (!phoneRegex.hasMatch(emergency)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।'),
+          SnackBar(
+            content: Text(isHindi ? 'कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।' : 'Please enter a valid 10-digit emergency phone number.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -376,8 +393,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       }
       if (emergency == phone) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।'),
+          SnackBar(
+            content: Text(isHindi ? 'आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।' : 'Emergency phone must be different from primary phone.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -387,8 +404,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
 
     if (_foundMess == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया पहले 6-अंकीय कोड डालकर "खोजें" पर क्लिक करें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया पहले 6-अंकीय कोड डालकर खोजें।' : 'Please enter 6-digit code and find mess first.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -398,8 +415,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया पहले लॉग इन करें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया पहले लॉग इन करें।' : 'Please log in first.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -410,7 +427,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     try {
       final appService = ref.read(appServiceProvider);
 
-      String planName = 'डिफ़ॉल्ट मेस प्लान';
+      String planName = isHindi ? 'डिफ़ॉल्ट मेस प्लान' : 'Standard Mess Plan';
       if (_selectedPlanId != null && _availablePlans.isNotEmpty) {
         final matched = _availablePlans.where((p) => p.planId == _selectedPlanId);
         if (matched.isNotEmpty) {
@@ -459,7 +476,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('अनुरोध भेजने में त्रुटि: $e'),
+            content: Text(isHindi ? 'अनुरोध भेजने में त्रुटि: $e' : 'Error sending request: $e'),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -539,7 +556,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
               const Icon(Icons.person_outline_rounded, size: 15, color: Color(0xFF64748B)),
               const SizedBox(width: 4),
               Text(
-                'संचालक: ${mess.ownerName}',
+                isHindi ? 'संचालक: ${mess.ownerName}' : 'Owner: ${mess.ownerName}',
                 style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569), fontWeight: FontWeight.w500),
               ),
               if (mess.ownerPhone.isNotEmpty) ...[
@@ -556,7 +573,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             const Divider(height: 1, color: Color(0xFFF1F5F9)),
             const SizedBox(height: 10),
             Text(
-              'भोजन का समय (Meal Timings):',
+              isHindi ? 'भोजन का समय:' : 'Meal Timings:',
               style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
             ),
             const SizedBox(height: 6),
@@ -575,7 +592,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Text(
-                    '${_slotNameHindi(slotKey)}: $start - $end',
+                    '${_slotDisplayName(slotKey)}: $start - $end',
                     style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
                   ),
                 );
@@ -595,7 +612,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             const Icon(Icons.restaurant_menu_rounded, size: 18, color: Color(0xFF10B981)),
             const SizedBox(width: 8),
             Text(
-              'अपना मील प्लान चुनें (Choose Meal Plan) *',
+              isHindi ? 'अपना मील प्लान चुनें *' : 'Choose Meal Plan *',
               style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -606,7 +623,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
         ),
         const SizedBox(height: 4),
         Text(
-          'इस मेस में उपलब्ध प्लान्स में से अपना मनपसंद प्लान चुनें। ओनर इसी प्लान को अप्रूव करेंगे:',
+          isHindi ? 'इस मेस में उपलब्ध प्लान्स में से अपना मनपसंद प्लान चुनें:' : 'Choose your desired meal plan from available options:',
           style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
         ),
         const SizedBox(height: 12),
@@ -637,12 +654,12 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'डिफ़ॉल्ट मेस प्लान (Standard Mess Plan)',
+                          isHindi ? 'डिफ़ॉल्ट मेस प्लान' : 'Standard Mess Plan',
                           style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '₹${_foundMess!.monthlyFee.toInt()} / महीना • छुट्टी पर ₹${_foundMess!.perMealRate.toInt()} रिफंड',
+                          isHindi ? '₹${_foundMess!.monthlyFee.toInt()} / महीना • छुट्टी पर ₹${_foundMess!.perMealRate.toInt()} रिफंड' : '₹${_foundMess!.monthlyFee.toInt()} / month • ₹${_foundMess!.perMealRate.toInt()} refund on skip',
                           style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF059669)),
                         ),
                       ],
@@ -713,7 +730,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                               Row(
                                 children: [
                                   Text(
-                                    '₹$fee / माह',
+                                    isHindi ? '₹$fee / महीना' : '₹$fee / month',
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
@@ -722,7 +739,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                                   ),
                                   const Text('  •  ', style: TextStyle(color: Color(0xFFCBD5E1))),
                                   Text(
-                                    'छुट्टी रिफंड: ₹${refund == refund.roundToDouble() ? refund.toInt() : refund}/मील',
+                                    isHindi ? 'छुट्टी रिफंड: ₹${refund == refund.roundToDouble() ? refund.toInt() : refund}/मील' : 'Skip refund: ₹${refund == refund.roundToDouble() ? refund.toInt() : refund}/meal',
                                     style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B), fontWeight: FontWeight.w600),
                                   ),
                                 ],
@@ -747,7 +764,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  '✓ ${_slotNameHindi(slot)}',
+                                  '✓ ${_slotDisplayName(slot)}',
                                   style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
                                 ),
                               )),
@@ -759,7 +776,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                                   border: Border.all(color: const Color(0xFFBFDBFE)),
                                 ),
                                 child: Text(
-                                  '⇄ विकल्प: ${cg.availableMeals.map((m) => _slotNameHindi(m)).join(' या ')} (कोई 1)',
+                                  isHindi ? '⇄ विकल्प: ${cg.availableMeals.map((m) => _slotDisplayName(m)).join(' या ')} (कोई 1)' : '⇄ Choice: ${cg.availableMeals.map((m) => _slotDisplayName(m)).join(' or ')} (Pick 1)',
                                   style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF2563EB)),
                                 ),
                               )),
@@ -803,7 +820,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'अनुरोध भेजा गया! (Request Sent)',
+                    isHindi ? 'अनुरोध भेजा गया!' : 'Request Sent!',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 22,
@@ -813,7 +830,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'आपका मेस में जुड़ने का अनुरोध सफलता पूर्वक दर्ज हो चुका है।',
+                    isHindi ? 'आपका मेस में जुड़ने का अनुरोध सफलतापूर्वक दर्ज हो चुका है।' : 'Your request to join the mess has been sent successfully.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
@@ -858,7 +875,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('चुना हुआ प्लान:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+                            Text(isHindi ? 'चुना हुआ प्लान:' : 'Selected Plan:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
                             Flexible(
                               child: Text(
                                 _joinedPlanName,
@@ -872,7 +889,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('स्थिति (Status):', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+                            Text(isHindi ? 'स्थिति:' : 'Status:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
@@ -880,7 +897,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                'स्वीकृति प्रतीक्षित (Pending Approval)',
+                                isHindi ? 'स्वीकृति प्रतीक्षित' : 'Pending Approval',
                                 style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFB45309)),
                               ),
                             ),
@@ -903,7 +920,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'जैसे ही मेस संचालक आपके अनुरोध को स्वीकार करेंगे, आपका चुना हुआ प्लान तुरंत सक्रिय हो जाएगा।',
+                            isHindi ? 'जैसे ही मेस संचालक आपके अनुरोध को स्वीकार करेंगे, आपका चुना हुआ प्लान तुरंत सक्रिय हो जाएगा।' : 'Once the mess owner approves your request, your chosen plan will be activated immediately.',
                             style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1E40AF), height: 1.4),
                           ),
                         ),
@@ -927,7 +944,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                         );
                       },
                       child: Text(
-                        'अन्य मेस देखें (Browse Other Messes)',
+                        isHindi ? 'अन्य मेस देखें' : 'Browse Other Messes',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -948,7 +965,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
-          'छात्र प्रोफाइल सेटअप (Student Setup)',
+          isHindi ? 'छात्र प्रोफाइल सेटअप' : 'Student Profile Setup',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -968,7 +985,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'व्यक्तिगत विवरण (Personal Details)',
+              isHindi ? 'व्यक्तिगत विवरण' : 'Personal Details',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -977,7 +994,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              'मेस हाजिरी और बिलिंग के लिए आवश्यक जानकारी।',
+              isHindi ? 'मेस हाजिरी और बिलिंग के लिए आवश्यक जानकारी।' : 'Required information for mess attendance and billing.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: const Color(0xFF64748B),
@@ -985,16 +1002,16 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             ),
             const SizedBox(height: 20),
 
-            _buildInput('पूरा नाम (Full Name) *', _nameCtrl, hint: 'जैसे: राहुल शर्मा'),
-            _buildInput('मोबाइल / WhatsApp नंबर *', _phoneCtrl,
-                hint: 'जैसे: 9876543210', keyboardType: TextInputType.phone),
-            _buildInput('कमरा / हॉस्टल नंबर (Room / Hostel No.) *', _roomCtrl,
-                hint: 'जैसे: रूम 204, ब्लॉक B'),
+            _buildInput(isHindi ? 'पूरा नाम *' : 'Full Name *', _nameCtrl, hint: isHindi ? 'जैसे: राहुल शर्मा' : 'e.g. Rahul Sharma'),
+            _buildInput(isHindi ? 'मोबाइल / WhatsApp नंबर *' : 'Mobile / WhatsApp Number *', _phoneCtrl,
+                hint: '9876543210', keyboardType: TextInputType.phone),
+            _buildInput(isHindi ? 'कमरा / हॉस्टल नंबर *' : 'Room / Hostel No. *', _roomCtrl,
+                hint: isHindi ? 'जैसे: रूम 204, ब्लॉक B' : 'e.g. Room 204, Block B'),
             _buildDietaryPreferenceSelector(),
             _buildInput(
               isHindi ? 'आपातकालीन / रूममेट फोन' : 'Emergency / Roommate Phone',
               _emergencyCtrl,
-              hint: 'जैसे: 9876500000',
+              hint: '9876500000',
               keyboardType: TextInputType.phone,
               isOptional: true,
             ),
@@ -1002,7 +1019,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             const Divider(height: 32, color: Color(0xFFE2E8F0)),
 
             Text(
-              'मेस से जुड़ें (Connect with Your Mess)',
+              isHindi ? 'मेस से जुड़ें' : 'Connect with Your Mess',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -1011,7 +1028,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              'अपने मेस संचालक से 6-अंकीय कोड मांगें, या आस-पास की मेस एक्सप्लोर करें।',
+              isHindi ? 'अपने मेस संचालक से 6-अंकीय कोड मांगें, या आस-पास की मेस एक्सप्लोर करें।' : 'Ask your mess owner for the 6-digit code, or explore nearby messes.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: const Color(0xFF64748B),
@@ -1032,7 +1049,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   ),
                   icon: const Icon(Icons.qr_code_rounded, size: 20),
                   label: Text(
-                    '6-अंकीय मेस कोड दर्ज करें (Enter Code)',
+                    isHindi ? '6-अंकीय मेस कोड दर्ज करें' : 'Enter 6-Digit Mess Code',
                     style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   onPressed: () => setState(() => _showMessEntry = true),
@@ -1050,7 +1067,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   ),
                   icon: const Icon(Icons.explore_rounded, color: Color(0xFF3B82F6), size: 20),
                   label: Text(
-                    'आस-पास की मेस देखें (Explore Nearby)',
+                    isHindi ? 'आस-पास की मेस देखें' : 'Explore Nearby Messes',
                     style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   onPressed: () {
@@ -1059,8 +1076,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                     final room = _roomCtrl.text.trim();
                     if (name.isEmpty || phone.isEmpty || room.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया सभी अनिवार्य फ़ील्ड्स (नाम, फ़ोन, रूम नंबर) भरें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया सभी अनिवार्य फ़ील्ड्स (नाम, फ़ोन, रूम नंबर) भरें।' : 'Please fill all required fields (Name, Phone, Room No.).'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -1070,8 +1087,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -1082,8 +1099,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
     if (emergency.isNotEmpty) {
       if (!phoneRegex.hasMatch(emergency)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।'),
+          SnackBar(
+            content: Text(isHindi ? 'कृपया आपातकालीन फोन नंबर भी 10 अंकों का मान्य नंबर दर्ज करें।' : 'Please enter a valid 10-digit emergency phone number.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -1091,8 +1108,8 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       }
       if (emergency == phone) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।'),
+          SnackBar(
+            content: Text(isHindi ? 'आपातकालीन नंबर आपके प्राथमिक मोबाइल नंबर से अलग होना चाहिए।' : 'Emergency phone must be different from primary phone.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -1126,7 +1143,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
               ),
             ] else ...[
               Text(
-                'मेस कोड (6 Digits Mess Code) *',
+                isHindi ? 'मेस कोड (6 अंक) *' : 'Mess Code (6 Digits) *',
                 style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
               ),
               const SizedBox(height: 8),
@@ -1197,7 +1214,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                             )
                           : const Icon(Icons.search_rounded, size: 20),
                       label: Text(
-                        _isSearchingMess ? 'खोज रहे...' : 'खोजें (Find)',
+                        _isSearchingMess ? (isHindi ? 'खोज रहे...' : 'Searching...') : (isHindi ? 'खोजें' : 'Find'),
                         style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -1255,7 +1272,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'अनुरोध भेजें (Send Join Request)',
+                                isHindi ? 'अनुरोध भेजें' : 'Send Join Request',
                                 style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(width: 8),
@@ -1278,7 +1295,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                   }),
                   icon: const Icon(Icons.close_rounded, size: 16),
                   label: Text(
-                    'रद्द करें (Cancel Code Entry)',
+                    isHindi ? 'रद्द करें' : 'Cancel',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

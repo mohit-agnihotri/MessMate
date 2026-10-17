@@ -1686,15 +1686,28 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(
-                            group.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1D4ED8),
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              final isHi = ref.watch(localizationProvider) == 'hi';
+                              final mealsList = group.availableMeals.map((s) {
+                                if (isHi) {
+                                  return s == 'morning' ? 'नाश्ता' : (s == 'noon' ? 'दोपहर खाना' : (s == 'evening' ? 'शाम नाश्ता' : 'रात खाना'));
+                                } else {
+                                  return s == 'morning' ? 'Breakfast' : (s == 'noon' ? 'Lunch' : (s == 'evening' ? 'Snacks' : 'Dinner'));
+                                }
+                              }).join(isHi ? ' या ' : ' or ');
+                              final label = isHi ? '$mealsList (कोई 1)' : 'Choose 1: $mealsList';
+                              return Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1D4ED8),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -1753,13 +1766,10 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                           (state.mess?.temporarilyClosedUntil != null &&
                               DateTime.now().isBefore(state.mess!.temporarilyClosedUntil!));
 
-                      final Map<String, String> slotHindi = {
-                        'morning': '🌅 सुबह नाश्ता',
-                        'noon': '☀️ दोपहर लंच',
-                        'evening': '☕ शाम नाश्ता',
-                        'night': '🌙 रात डिनर',
-                      };
-                      final slotTitle = slotHindi[slot] ?? '${slot[0].toUpperCase()}${slot.substring(1)}';
+                      final isHi = ref.watch(localizationProvider) == 'hi';
+                      final slotTitle = isHi
+                          ? (slot == 'morning' ? '🌅 सुबह नाश्ता' : (slot == 'noon' ? '☀️ दोपहर लंच' : (slot == 'evening' ? '☕ शाम नाश्ता' : '🌙 रात डिनर')))
+                          : (slot == 'morning' ? '🌅 Breakfast' : (slot == 'noon' ? '☀️ Lunch' : (slot == 'evening' ? '☕ Snacks' : '🌙 Dinner')));
 
                       return Expanded(
                         child: Padding(
@@ -1768,9 +1778,9 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                             onTap: () async {
                               if (isCutoffPassed) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('कटऑफ समय समाप्त हो चुका है। अब बदलाव नहीं हो सकता।'),
-                                    backgroundColor: Color(0xFFEF4444),
+                                  SnackBar(
+                                    content: Text(ref.read(localizationProvider) == 'hi' ? 'कटऑफ समय समाप्त हो चुका है। अब बदलाव नहीं हो सकता।' : 'Cutoff time has passed. Choices are locked.'),
+                                    backgroundColor: const Color(0xFFEF4444),
                                   ),
                                 );
                                 return;
@@ -1778,7 +1788,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                               if (isOwnerClosed) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('$slotTitle आज मेस द्वारा बंद है। कृपया दूसरा विकल्प चुनें।'),
+                                    content: Text(ref.watch(localizationProvider) == 'hi' ? '$slotTitle आज मेस द्वारा बंद है। कृपया दूसरा विकल्प चुनें।' : '$slotTitle is closed by mess today. Please pick another option.'),
                                     backgroundColor: const Color(0xFFEF4444),
                                   ),
                                 );
@@ -1793,7 +1803,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('आज के लिए $slotTitle चुना गया! ✓'),
+                                      content: Text(ref.watch(localizationProvider) == 'hi' ? 'आज के लिए $slotTitle चुना गया! ✓' : '$slotTitle selected for today! ✓'),
                                       backgroundColor: const Color(0xFF10B981),
                                     ),
                                   );
@@ -1802,7 +1812,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('चुनाव सुरक्षित नहीं हो सका: $e'),
+                                      content: Text(ref.watch(localizationProvider) == 'hi' ? 'चुनाव सुरक्षित नहीं हो सका: $e' : 'Failed to save choice: $e'),
                                       backgroundColor: const Color(0xFFEF4444),
                                     ),
                                   );
@@ -1850,7 +1860,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                                   const SizedBox(height: 4),
                                   if (isOwnerClosed)
                                     Text(
-                                      'आज बंद है',
+                                      isHi ? 'आज बंद है' : 'Closed today',
                                       style: GoogleFonts.inter(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -1864,14 +1874,14 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                                         const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'चुना हुआ',
+                                          isHi ? 'चुना हुआ' : 'Selected',
                                           style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
                                         ),
                                       ],
                                     )
                                   else
                                     Text(
-                                      'चुनने के लिए टैप करें',
+                                      isHi ? 'चुनने के लिए टैप करें' : 'Tap to select',
                                       style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8)),
                                     ),
                                 ],
@@ -1939,8 +1949,8 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                             );
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('रोज़ का डिफ़ॉल्ट चुनाव सेट हो गया!'),
+                                SnackBar(
+                                  content: Text(ref.watch(localizationProvider) == 'hi' ? 'रोज़ का डिफ़ॉल्ट चुनाव सेट हो गया!' : 'Default daily choice set successfully!'),
                                   backgroundColor: Color(0xFF10B981),
                                 ),
                               );
@@ -1949,7 +1959,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('डिफ़ॉल्ट सेट करने में त्रुटि: $e'),
+                                  content: Text(ref.watch(localizationProvider) == 'hi' ? 'डिफ़ॉल्ट सेट करने में त्रुटि: $e' : 'Error setting default choice: $e'),
                                   backgroundColor: const Color(0xFFEF4444),
                                 ),
                               );

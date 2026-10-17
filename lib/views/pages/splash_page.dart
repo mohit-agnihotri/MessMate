@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
+import '../../../services/localization_service.dart';
 import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
@@ -68,7 +69,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
               context,
               MaterialPageRoute(
                 builder: (_) => StudentPendingApprovalPage(
-                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
+                  initialMessName: student.messId.isNotEmpty ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess') : null,
                 ),
               ),
             );

@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import '../../../services/localization_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,7 +14,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ownerStudentsProvider);
-    final allStudents = [...state.students, ...state.pending];
+    final isHi = ref.watch(localizationProvider) == 'hi';
+    // Strictly separate enrolled (active) students from pending join requests
+    final activeStudents = state.students.where((s) => s.status == 'active' || s.status == 'approved').toList();
     final pendingStudents = state.pending;
 
     return DefaultTabController(
@@ -33,8 +36,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                   fontSize: 14,
                 ),
                 tabs: [
-                  Tab(text: 'All Students (${allStudents.length})'),
-                  Tab(text: 'Pending Requests (${pendingStudents.length})'),
+                  Tab(text: isHi ? 'सक्रिय छात्र (${activeStudents.length})' : 'Active Students (${activeStudents.length})'),
+                  Tab(text: isHi ? 'अनुरोध (${pendingStudents.length})' : 'Pending Requests (${pendingStudents.length})'),
                 ],
               ),
               Expanded(
@@ -46,8 +49,8 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                       )
                     : TabBarView(
                         children: [
-                          allStudents.isEmpty
-                              ? _buildEmpty()
+                          activeStudents.isEmpty
+                              ? _buildEmpty(isHi)
                               : ListView.separated(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -55,13 +58,13 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                     16,
                                     80,
                                   ),
-                                  itemCount: allStudents.length,
+                                  itemCount: activeStudents.length,
                                   separatorBuilder: (_, __) =>
                                       const SizedBox(height: 8),
                                   itemBuilder: (_, i) => _buildStudentRow(
                                     context,
                                     ref,
-                                    allStudents[i],
+                                    activeStudents[i],
                                   ),
                                 ),
                           pendingStudents.isEmpty
@@ -104,6 +107,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     WidgetRef ref,
     OwnerStudentsState state,
   ) {
+    final isHi = ref.watch(localizationProvider) == 'hi';
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -120,7 +124,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               ],
               Expanded(
                 child: Text(
-                  'All Students',
+                  isHi ? 'विद्यार्थी प्रबंधन' : 'Students Management',
                   style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -470,7 +474,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(isHi) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

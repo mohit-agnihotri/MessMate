@@ -281,7 +281,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'खाने के प्लान (Meal Plans)',
+                      ref.watch(localizationProvider) == 'hi' ? 'खाने के प्लान' : 'Meal Plans',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -290,7 +290,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'महीने की फीस, चॉइस ग्रुप और प्लान की दरें बदलें',
+                      ref.watch(localizationProvider) == 'hi' ? 'महीने की फीस, चॉइस ग्रुप और प्लान की दरें बदलें' : 'Manage fees, choice groups and meal plans pricing',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: const Color(0xFF6B7280),
@@ -314,7 +314,7 @@ class OwnerSettingsPage extends ConsumerWidget {
               ),
               icon: const Icon(Icons.tune_rounded, size: 18),
               label: Text(
-                'प्लान बिल्डर खोलें (Open Plan Builder)',
+                ref.watch(localizationProvider) == 'hi' ? 'प्लान बिल्डर खोलें' : 'Open Plan Builder',
                 style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               onPressed: () {

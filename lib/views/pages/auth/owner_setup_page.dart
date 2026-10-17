@@ -38,7 +38,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'enabled': true,
       'start': '08:00',
       'end': '10:00',
-      'time': 'सुबह 8:00 AM से 10:00 AM',
+      'time': '8:00 AM - 10:00 AM',
       'icon': '☀️',
       'color': const Color(0xFFF59E0B),
     },
@@ -48,7 +48,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'enabled': true,
       'start': '12:30',
       'end': '14:30',
-      'time': 'दोपहर 12:30 PM से 2:30 PM',
+      'time': '12:30 PM - 2:30 PM',
       'icon': '🍲',
       'color': const Color(0xFFEF4444),
     },
@@ -58,7 +58,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'enabled': false,
       'start': '17:00',
       'end': '18:30',
-      'time': 'शाम 5:00 PM से 6:30 PM',
+      'time': '5:00 PM - 6:30 PM',
       'icon': '☕',
       'color': const Color(0xFFD97706),
     },
@@ -68,7 +68,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       'enabled': true,
       'start': '19:30',
       'end': '22:00',
-      'time': 'रात 7:30 PM से 10:00 PM',
+      'time': '7:30 PM - 10:00 PM',
       'icon': '🌙',
       'color': const Color(0xFF6366F1),
     },
@@ -80,8 +80,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   String _lastActiveSlotsKey = '';
 
   // STEP 2: Mess Profile
-  final _messNameCtrl = TextEditingController(text: 'श्री अन्नपूर्णा मेस');
-  final _ownerNameCtrl = TextEditingController(text: 'रोहित शर्मा');
+  final _messNameCtrl = TextEditingController();
+  final _ownerNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController(text: '9876543210');
   final _capacityCtrl = TextEditingController(text: '50');
   String _foodType = 'pure_veg'; // pure_veg, both
@@ -112,14 +112,16 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'अकाउंट टकराव (Role Conflict)',
+                    isHindi ? 'खाता टकराव' : 'Role Conflict',
                     style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18),
                   ),
                 ),
               ],
             ),
             content: Text(
-              'यह ईमेल (${user.email ?? ""}) पहले से ही एक छात्र (${existingStudent.name}) के रूप में पंजीकृत है।\n\nमेस मालिक (Owner) बनने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।',
+              isHindi
+                  ? 'यह ईमेल (${user.email ?? ""}) पहले से ही एक छात्र (${existingStudent.name}) के रूप में पंजीकृत है।\n\nमेस संचालक बनने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।'
+                  : 'This email (${user.email ?? ""}) is already registered as a student (${existingStudent.name}).\n\nPlease log in with a different email to create a mess as owner.',
               style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)),
             ),
             actions: [
@@ -136,7 +138,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   }
                 },
                 child: Text(
-                  'दूसरा अकाउंट चुनें (Switch Account)',
+                  isHindi ? 'दूसरा खाता चुनें' : 'Switch Account',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
                 ),
               ),
@@ -324,7 +326,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'घंटा चुनें (Select Hour)',
+                      isHindi ? 'घंटा चुनें' : 'Select Hour',
                       style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
                     ),
                   ),
@@ -366,7 +368,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'मिनट चुनें (Select Minutes)',
+                      isHindi ? 'मिनट चुनें' : 'Select Minutes',
                       style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
                     ),
                   ),
@@ -424,7 +426,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                           const Icon(Icons.check_rounded, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'समय तय करें ($displayTime)',
+                            isHindi ? 'समय तय करें ($displayTime)' : 'Confirm Time ($displayTime)',
                             style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -444,8 +446,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     final slot = _timings[slotKey];
     if (slot == null) return;
     final currentStr = (slot[isStart ? 'start' : 'end'] as String?) ?? '08:00';
-    final slotName = (slot['slotName'] as String?) ?? 'भोजन';
-    final title = '$slotName ${isStart ? 'शुरू होने का समय' : 'समाप्त होने का समय'}';
+    final slotName = isHindi ? ((slot['slotName'] as String?) ?? 'भोजन') : ((slot['slotNameEn'] as String?) ?? 'Meal');
+    final title = isHindi ? '$slotName ${isStart ? 'शुरू होने का समय' : 'समाप्त होने का समय'}' : '$slotName ${isStart ? 'Start Time' : 'End Time'}';
 
     final picked24 = await _showAlarmClockTimePicker(
       context: context,
@@ -458,7 +460,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         slot[isStart ? 'start' : 'end'] = picked24;
         final s = _formatTime12(slot['start'] as String);
         final e = _formatTime12(slot['end'] as String);
-        slot['time'] = '$s से $e';
+        slot['time'] = isHindi ? '$s से $e' : '$s to $e';
       });
     }
   }
@@ -496,9 +498,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     if (activeSlots.length == 4) {
       newConfigs.add({
         'id': 'full_4',
-        'name': 'चारों वक्त का पूरा खाना (4-Meal Full Plan)',
-        'badge': 'सर्वोत्तम व पूर्ण आहार',
-        'desc': 'नाश्ता + दोपहर खाना + शाम नाश्ता + रात का खाना',
+        'name': 'Full 4-Meal Plan',
+        'nameHi': 'चारों वक्त का पूरा खाना',
+        'badge': 'Complete Diet',
+        'badgeHi': 'सर्वोत्तम व पूर्ण आहार',
+        'desc': 'Breakfast + Lunch + Evening Snacks + Dinner',
+        'descHi': 'नाश्ता + दोपहर खाना + शाम नाश्ता + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'evening', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -511,9 +516,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'regular_3',
-        'name': 'तीनों वक्त का खाना (3-Meal Regular)',
-        'badge': 'सबसे लोकप्रिय',
-        'desc': 'नाश्ता + दोपहर का खाना + रात का खाना',
+        'name': '3-Meal Regular Plan',
+        'nameHi': 'तीनों वक्त का खाना',
+        'badge': 'Most Popular',
+        'badgeHi': 'सबसे लोकप्रिय',
+        'desc': 'Breakfast + Lunch + Dinner',
+        'descHi': 'नाश्ता + दोपहर का खाना + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -544,13 +552,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'choice_flex',
-        'name': 'फ्लेक्सिबल प्लान (नाश्ता या शाम नाश्ता + दोपहर व रात)',
-        'badge': 'सुपर फ्लेक्सिबल',
-        'desc': 'दोपहर व रात अनिवार्य, सुबह का नाश्ता या शाम का नाश्ता में से कोई 1',
+        'name': 'Flexi 3-Meal Plan (Breakfast/Snacks)',
+        'nameHi': 'फ्लेक्सिबल प्लान (नाश्ता या शाम नाश्ता)',
+        'badge': 'Super Flexible',
+        'badgeHi': 'सुपर फ्लेक्सिबल',
+        'desc': 'Lunch & Dinner + Choice between Breakfast or Snacks',
+        'descHi': 'दोपहर व रात अनिवार्य, सुबह का नाश्ता या शाम का नाश्ता में से कोई 1',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': true,
         'choiceSlots': ['morning', 'evening'],
-        'choiceDesc': 'नाश्ता या शाम नाश्ता में से कोई 1',
+        'choiceDesc': 'Choice between Breakfast or Evening Snacks',
+        'choiceDescHi': 'नाश्ता या शाम नाश्ता में से कोई 1',
         'monthlyFee': 2800.0,
         'skipRefund': 40.0,
         'maxSkip': 6,
@@ -559,13 +571,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'single_choice',
-        'name': 'सिंगल मील प्लान (दोपहर या रात में से कोई 1)',
-        'badge': 'किफायती प्लान',
-        'desc': 'छात्र केवल दोपहर या रात का भोजन चुन सकते हैं',
+        'name': 'Single Meal Choice Plan',
+        'nameHi': 'सिंगल मील प्लान (दोपहर या रात)',
+        'badge': 'Budget Friendly',
+        'badgeHi': 'किफायती प्लान',
+        'desc': 'Single meal (Lunch or Dinner)',
+        'descHi': 'छात्र केवल दोपहर या रात का भोजन चुन सकते हैं',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': ['noon', 'night'],
-        'choiceDesc': 'दोपहर या रात में से कोई 1',
+        'choiceDesc': 'Choice between Lunch or Dinner',
+        'choiceDescHi': 'दोपहर या रात में से कोई 1',
         'monthlyFee': 1500.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
@@ -619,7 +635,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'fixedMeals': ['night'],
         'hasChoice': true,
         'choiceSlots': ['morning', 'noon'],
-        'choiceDesc': 'सुबह का नाश्ता या दोपहर खाना में से कोई 1',
+        'choiceDesc': 'Choice between Breakfast or Lunch',
+        'choiceDescHi': 'सुबह का नाश्ता या दोपहर खाना में से कोई 1',
         'monthlyFee': 2200.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -628,13 +645,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'single_choice',
-        'name': 'सिंगल मील प्लान (दोपहर या रात में से कोई 1)',
-        'badge': 'बजट फ्रेंडली',
-        'desc': 'केवल एक वक्त का खाना (दोपहर या रात)',
+        'name': 'Single Meal Choice Plan',
+        'nameHi': 'सिंगल मील प्लान (दोपहर या रात)',
+        'badge': 'Budget Friendly',
+        'badgeHi': 'बजट फ्रेंडली',
+        'desc': 'Single meal (Lunch or Dinner)',
+        'descHi': 'केवल एक वक्त का खाना (दोपहर या रात)',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': ['noon', 'night'],
-        'choiceDesc': 'दोपहर या रात में से कोई 1',
+        'choiceDesc': 'Choice between Lunch or Dinner',
+        'choiceDescHi': 'दोपहर या रात में से कोई 1',
         'monthlyFee': 1500.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
@@ -643,9 +664,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     } else if (activeSlots.length == 3) {
       newConfigs.add({
         'id': 'full_active_3',
-        'name': 'तीनों वक्त का खाना (Full Plan)',
-        'badge': 'फुल प्लान',
-        'desc': activeSlots.map((s) => _timings[s]!['slotName']).join(' + '),
+        'name': 'Full 3-Meal Plan',
+        'nameHi': 'तीनों वक्त का खाना',
+        'badge': 'Full Plan',
+        'badgeHi': 'फुल प्लान',
+        'desc': activeSlots.map((s) => _timings[s]!['slotNameEn']).join(' + '),
+        'descHi': activeSlots.map((s) => _timings[s]!['slotName']).join(' + '),
         'fixedMeals': List<String>.from(activeSlots),
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -658,9 +682,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'core_2_custom',
-        'name': 'दो वक्त का खाना (2-Meal Plan)',
-        'badge': 'पॉपुलर प्लान',
-        'desc': '${_timings[activeSlots[1]]!['slotName']} + ${_timings[activeSlots[2]]!['slotName']}',
+        'name': '2-Meal Core Plan',
+        'nameHi': 'दो वक्त का खाना',
+        'badge': 'Popular Plan',
+        'badgeHi': 'पॉपुलर प्लान',
+        'desc': '${_timings[activeSlots[1]]!['slotNameEn']} + ${_timings[activeSlots[2]]!['slotNameEn']}',
+        'descHi': '${_timings[activeSlots[1]]!['slotName']} + ${_timings[activeSlots[2]]!['slotName']}',
         'fixedMeals': [activeSlots[1], activeSlots[2]],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -673,13 +700,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'choice_custom',
-        'name': 'फ्लेक्सी चॉइस प्लान',
-        'badge': 'फ्लेक्सिबल',
-        'desc': '${_timings[activeSlots.last]!['slotName']} + विकल्प',
+        'name': 'Flexi Choice Plan',
+        'nameHi': 'फ्लेक्सी चॉइस प्लान',
+        'badge': 'Flexible',
+        'badgeHi': 'फ्लेक्सिबल',
+        'desc': '${_timings[activeSlots.last]!['slotNameEn']} + Choice',
+        'descHi': '${_timings[activeSlots.last]!['slotName']} + विकल्प',
         'fixedMeals': [activeSlots.last],
         'hasChoice': true,
         'choiceSlots': [activeSlots[0], activeSlots[1]],
-        'choiceDesc': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
+        'choiceDesc': '${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
+        'choiceDescHi': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
         'monthlyFee': 2200.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -688,9 +719,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     } else if (activeSlots.length == 2) {
       newConfigs.add({
         'id': 'full_2',
-        'name': '${_timings[activeSlots[0]]!['slotName']} + ${_timings[activeSlots[1]]!['slotName']} (2-Meal Full)',
-        'badge': 'फुल प्लान',
-        'desc': 'दोनों वक्त का नियमित खाना',
+        'name': '${_timings[activeSlots[0]]!['slotNameEn']} + ${_timings[activeSlots[1]]!['slotNameEn']} Plan',
+        'nameHi': '${_timings[activeSlots[0]]!['slotName']} + ${_timings[activeSlots[1]]!['slotName']} प्लान',
+        'badge': 'Full Plan',
+        'badgeHi': 'फुल प्लान',
+        'desc': 'Both meals daily',
+        'descHi': 'दोनों वक्त का नियमित खाना',
         'fixedMeals': List<String>.from(activeSlots),
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -703,13 +737,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'single_choice_2',
-        'name': 'सिंगल मील प्लान (${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']})',
-        'badge': 'सिंगल मील',
-        'desc': 'केवल एक वक्त का भोजन',
+        'name': 'Single Meal Choice Plan',
+        'nameHi': 'सिंगल मील प्लान',
+        'badge': 'Single Meal',
+        'badgeHi': 'सिंगल मील',
+        'desc': 'Single meal daily',
+        'descHi': 'केवल एक वक्त का भोजन',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': List<String>.from(activeSlots),
-        'choiceDesc': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
+        'choiceDesc': '${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
+        'choiceDescHi': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
         'monthlyFee': 1500.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
@@ -719,9 +757,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       final slotKey = activeSlots.first;
       newConfigs.add({
         'id': 'single_only',
-        'name': 'केवल ${_timings[slotKey]!['slotName']} (Single Meal Plan)',
-        'badge': 'सिंगल मील',
-        'desc': 'प्रतिदिन ${_timings[slotKey]!['slotName']}',
+        'name': 'Daily ${_timings[slotKey]!['slotNameEn']} Plan',
+        'nameHi': 'केवल ${_timings[slotKey]!['slotName']} प्लान',
+        'badge': 'Single Meal',
+        'badgeHi': 'सिंगल मील',
+        'desc': 'Daily ${_timings[slotKey]!['slotNameEn']}',
+        'descHi': 'प्रतिदिन ${_timings[slotKey]!['slotName']}',
         'fixedMeals': [slotKey],
         'hasChoice': false,
         'choiceSlots': <String>[],
@@ -749,8 +790,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       final activeSlots = _timings.entries.where((e) => e.value['enabled'] == true).toList();
       if (activeSlots.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('कृपया कम से कम एक मील स्लॉट (नाश्ता, दोपहर या रात) चालू रखें।'),
+          SnackBar(
+            content: Text(isHindi ? 'कृपया कम से कम एक मील स्लॉट चालू रखें।' : 'Please keep at least one meal slot enabled.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -761,8 +802,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       final enabledPlans = _planConfigs.where((p) => p['enabled'] as bool).toList();
       if (enabledPlans.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('कृपया कम से कम एक मील प्लान ऑन रखें।'),
+          SnackBar(
+            content: Text(isHindi ? 'कृपया कम से कम एक मील प्लान ऑन रखें।' : 'Please enable at least one meal plan.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -795,8 +836,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     final messName = _messNameCtrl.text.trim();
     if (messName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया मेस का नाम दर्ज करें।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया मेस का नाम दर्ज करें।' : 'Please enter mess name.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -807,8 +848,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'),
+        SnackBar(
+          content: Text(isHindi ? 'कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -872,7 +913,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           choiceGroups.add(
             ChoiceGroupModel(
               groupId: 'cg_${planConfig['id']}',
-              name: planConfig['choiceDesc'] as String,
+              name: isHindi ? (planConfig['choiceDescHi'] as String? ?? planConfig['choiceDesc'] as String) : (planConfig['choiceDesc'] as String),
               availableMeals: choiceSlots,
               minSelectable: 1,
               maxSelectable: 1,
@@ -886,7 +927,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         final mealPlan = MealPlanModel(
           planId: planId,
           messId: messId,
-          name: planConfig['name'] as String,
+          name: isHindi ? (planConfig['nameHi'] as String? ?? planConfig['name'] as String) : (planConfig['name'] as String),
           monthlyFee: fee,
           extraMealRate: refund,
           fixedMeals: List<String>.from(planConfig['fixedMeals'] as List),
@@ -913,7 +954,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('मेस सेटअप करने में त्रुटि: $e'),
+            content: Text(isHindi ? 'मेस सेटअप करने में त्रुटि: $e' : 'Error setting up mess: $e'),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -1287,7 +1328,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           ),
 
           const SizedBox(height: 28),
-          _buildNextBtn(label: isHindi ? 'आगे बढ़ें (प्लान्स सेट करें)' : 'Next: Meal Plans', onTap: _nextPage),
+          _buildNextBtn(label: isHindi ? 'आगे बढ़ें: प्लान्स' : 'Next: Meal Plans', onTap: _nextPage),
         ],
       ),
     );
@@ -1348,7 +1389,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      plan['name'] as String,
+                                      isHindi ? (plan['nameHi'] as String? ?? plan['name'] as String) : (plan['name'] as String),
                                       style: GoogleFonts.outfit(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
@@ -1364,7 +1405,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      plan['badge'] as String,
+                                      isHindi ? (plan['badgeHi'] as String? ?? plan['badge'] as String) : (plan['badge'] as String),
                                       style: GoogleFonts.inter(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
@@ -1642,7 +1683,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 8),
                                       child: Text(
-                                        '${plan['maxSkip']} मील',
+                                        '${plan['maxSkip']} ${isHindi ? 'मील' : 'meals'}',
                                         style: GoogleFonts.inter(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w800,
@@ -1690,7 +1731,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           }),
 
           const SizedBox(height: 20),
-          _buildNextBtn(label: isHindi ? 'आगे बढ़ें (प्रोफाइल सेट करें)' : 'Next: Mess Profile', onTap: _nextPage),
+          _buildNextBtn(label: isHindi ? 'आगे बढ़ें: मेस प्रोफाइल' : 'Next: Mess Profile', onTap: _nextPage),
           const SizedBox(height: 12),
           Center(
             child: TextButton.icon(
@@ -1729,7 +1770,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               children: [
                 _buildInputField(
                   label: isHindi ? 'मेस का नाम *' : 'Mess Name *',
-                  hint: 'जैसे: श्री अन्नपूर्णा मेस',
+                  hint: isHindi ? 'जैसे: श्री अन्नपूर्णा मेस' : 'e.g. Annapurna Mess',
                   ctrl: _messNameCtrl,
                   prefixIcon: Icons.storefront_rounded,
                 ),
@@ -1737,7 +1778,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
                 _buildInputField(
                   label: isHindi ? 'मालिक का नाम *' : 'Owner Name *',
-                  hint: 'जैसे: रोहित शर्मा',
+                  hint: isHindi ? 'जैसे: रोहित शर्मा' : 'e.g. Rohit Sharma',
                   ctrl: _ownerNameCtrl,
                   prefixIcon: Icons.person_rounded,
                 ),
@@ -1745,7 +1786,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
                 _buildInputField(
                   label: isHindi ? 'मोबाइल नंबर *' : 'Phone Number *',
-                  hint: '10 अंकों का मोबाइल नंबर',
+                  hint: isHindi ? '10 अंकों का मोबाइल नंबर' : '10-digit mobile number',
                   ctrl: _phoneCtrl,
                   keyboardType: TextInputType.phone,
                   prefixIcon: Icons.phone_rounded,
@@ -1754,7 +1795,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
                 _buildInputField(
                   label: isHindi ? 'बैठने की क्षमता' : 'Seating Capacity',
-                  hint: 'जैसे: 50',
+                  hint: isHindi ? 'जैसे: 50' : 'e.g. 50',
                   ctrl: _capacityCtrl,
                   keyboardType: TextInputType.number,
                   prefixIcon: Icons.event_seat_rounded,

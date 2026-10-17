@@ -128,7 +128,7 @@ class _StudentPendingApprovalPageState
             ),
             const SizedBox(height: 16),
             Text(
-              'बधाई हो! अनुरोध स्वीकृत हुआ',
+              isHindi ? 'बधाई हो! अनुरोध स्वीकृत हुआ' : 'Congratulations! Request Approved',
               style: GoogleFonts.outfit(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -138,7 +138,9 @@ class _StudentPendingApprovalPageState
             ),
             const SizedBox(height: 8),
             Text(
-              'मेस संचालक ने आपका अनुरोध स्वीकार कर लिया है। अब आप मेस की सभी सेवाओं का उपयोग कर सकते हैं।',
+              isHindi
+                  ? 'मेस संचालक ने आपका अनुरोध स्वीकार कर लिया है। अब आप मेस की सभी सेवाओं का उपयोग कर सकते हैं।'
+                  : 'The mess owner has approved your request. You can now access all mess services.',
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: const Color(0xFF64748B),
@@ -194,11 +196,12 @@ class _StudentPendingApprovalPageState
           _onApproved();
           return;
         } else if (mounted) {
+          final isHi = ref.read(localizationProvider) == 'hi';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(status == 'rejected'
-                  ? 'मेस संचालक ने अनुरोध अस्वीकार कर दिया है।'
-                  : 'अभी भी समीक्षाधीन है। मेस संचालक द्वारा अप्रूवल मिलते ही स्क्रीन खुल जाएगी।'),
+                  ? (isHi ? 'मेस संचालक ने अनुरोध अस्वीकार कर दिया है।' : 'Mess owner has rejected the request.')
+                  : (isHi ? 'अभी भी समीक्षाधीन है। मेस संचालक द्वारा अप्रूवल मिलते ही स्क्रीन खुल जाएगी।' : 'Still pending review. The screen will open once approved by mess owner.')),
               backgroundColor: status == 'rejected'
                   ? const Color(0xFFEF4444)
                   : const Color(0xFF3B82F6),
@@ -208,9 +211,10 @@ class _StudentPendingApprovalPageState
       }
     } catch (e) {
       if (mounted) {
+        final isHi = ref.read(localizationProvider) == 'hi';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('जांचने में त्रुटि: '),
+            content: Text(isHi ? 'जांचने में त्रुटि: $e' : 'Error checking status: $e'),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -221,17 +225,20 @@ class _StudentPendingApprovalPageState
   }
 
   Future<void> _cancelAndReapply() async {
+    final isHiDialog = ref.read(localizationProvider) == 'hi';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('अनुरोध रद्द करें?',
+        title: Text(isHiDialog ? 'अनुरोध रद्द करें?' : 'Cancel Request?',
             style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        content: const Text(
-            'क्या आप वास्तव में इस मेस से जुड़ने का अनुरोध रद्द करना चाहते हैं? आप किसी अन्य मेस से जुड़ सकेंगे।'),
+        content: Text(
+            isHiDialog
+                ? 'क्या आप वास्तव में इस मेस से जुड़ने का अनुरोध रद्द करना चाहते हैं? आप किसी अन्य मेस से जुड़ सकेंगे।'
+                : 'Are you sure you want to cancel your request to join this mess? You will be able to join another mess.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('रद्द न करें'),
+            child: Text(isHiDialog ? 'रद्द न करें' : 'Keep Request'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -239,7 +246,7 @@ class _StudentPendingApprovalPageState
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('हाँ, रद्द करें'),
+            child: Text(isHiDialog ? 'हाँ, रद्द करें' : 'Yes, Cancel'),
           ),
         ],
       ),
@@ -265,9 +272,10 @@ class _StudentPendingApprovalPageState
       }
     } catch (e) {
       if (mounted) {
+        final isHi = ref.read(localizationProvider) == 'hi';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('रद्द करने में त्रुटि: '),
+            content: Text(isHi ? 'रद्द करने में त्रुटि: $e' : 'Error cancelling request: $e'),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -289,8 +297,8 @@ class _StudentPendingApprovalPageState
   @override
   Widget build(BuildContext context) {
         final isRejected = _student?.status == 'rejected';
-    final messName = _mess?.name ?? widget.initialMessName ?? 'मेस';
-    final planName = _plan?.name ?? widget.initialPlanName ?? 'चयनित प्लान';
+    final messName = _mess?.name ?? widget.initialMessName ?? (isHindi ? 'मेस' : 'Mess');
+    final planName = _plan?.name ?? widget.initialPlanName ?? (isHindi ? 'चयनित प्लान' : 'Selected Plan');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -451,7 +459,7 @@ class _StudentPendingApprovalPageState
                                   if (_mess?.messCode != null &&
                                       _mess!.messCode.isNotEmpty)
                                     Text(
-                                      'मेस कोड: ${_mess!.messCode}',
+                                      '${isHindi ? 'मेस कोड' : 'Mess Code'}: ${_mess!.messCode}',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -528,7 +536,7 @@ class _StudentPendingApprovalPageState
                                 ),
                               ),
                               Text(
-                                '₹${_plan!.monthlyFee.toStringAsFixed(0)} / माह',
+                                isHindi ? '₹${_plan!.monthlyFee.toStringAsFixed(0)} / महीना' : '₹${_plan!.monthlyFee.toStringAsFixed(0)} / mo',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -593,8 +601,8 @@ class _StudentPendingApprovalPageState
                             : const Icon(Icons.refresh_rounded, size: 20),
                         label: Text(
                           _isChecking
-                              ? 'जांच रहे हैं...'
-                              : isHindi ? 'स्थिति रिफ्रेश करें' : 'Check Status Now',
+                              ? (isHindi ? 'जांच रहे हैं...' : 'Checking...')
+                              : (isHindi ? 'स्थिति रिफ्रेश करें' : 'Check Status Now'),
                           style: GoogleFonts.outfit(
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),

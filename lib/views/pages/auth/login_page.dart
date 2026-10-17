@@ -59,7 +59,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => StudentPendingApprovalPage(
-                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
+                  initialMessName: student.messId.isNotEmpty ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess') : null,
                 ),
               ),
             );

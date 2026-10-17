@@ -645,11 +645,14 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
         state = state.copyWith(isLoading: false);
         return;
       }
-      final students = await _service.getStudents(mess.messId);
-      final pending = await _service.getPendingRequests(mess.messId);
+      final rawStudents = await _service.getStudents(mess.messId);
+      final rawPending = await _service.getPendingRequests(mess.messId);
+      // Deduplicate by studentId to guarantee zero duplicacy
+      final uniquePending = {for (var s in rawPending) s.studentId: s}.values.toList();
+      final uniqueActive = {for (var s in rawStudents.where((s) => s.status == 'active' || s.status == 'approved')) s.studentId: s}.values.toList();
       state = state.copyWith(
-        students: students,
-        pending: pending,
+        students: uniqueActive,
+        pending: uniquePending,
         messCode: mess.messCode,
         isLoading: false,
       );

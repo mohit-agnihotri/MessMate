@@ -203,7 +203,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                 TextButton(
                   onPressed: () => setState(() => _currentStep = 1),
                   child: Text(
-                    isHindi ? 'छोड़ें (Skip)' : 'Skip',
+                    isHindi ? 'छोड़ें' : 'Skip',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -501,8 +501,8 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                       children: [
                         Text(
                           _carouselIndex == slides.length - 1
-                              ? (isHindi ? 'आगे बढ़ें (Get Started)' : "Let's Get Started!")
-                              : (isHindi ? 'अगला (Next)' : 'Next'),
+                              ? (isHindi ? 'शुरू करें' : "Let's Get Started!")
+                              : (isHindi ? 'अगला' : 'Next'),
                           style: GoogleFonts.outfit(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
@@ -720,7 +720,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isHindi ? 'आगे बढ़ें (Continue)' : 'Continue',
+                      isHindi ? 'आगे बढ़ें' : 'Continue',
                       style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
                     const SizedBox(width: 8),
@@ -1131,7 +1131,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => StudentPendingApprovalPage(
-                  initialMessName: student.messId.isNotEmpty ? 'मेस' : null,
+                  initialMessName: student.messId.isNotEmpty ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess') : null,
                 ),
               ),
             );

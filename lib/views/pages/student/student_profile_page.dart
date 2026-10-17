@@ -384,7 +384,7 @@ class StudentProfilePage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'सक्रिय मील प्लान (Active Plan)',
+                      ref.watch(localizationProvider) == 'hi' ? 'सक्रिय मील प्लान' : 'Active Meal Plan',
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF047857)),
                     ),
                   ],
@@ -410,7 +410,7 @@ class StudentProfilePage extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            'अगले माह से लागू: ${_formatPlanName(state.student!.pendingPlanId)}',
+                            ref.watch(localizationProvider) == 'hi' ? 'अगले माह से लागू: ${_formatPlanName(state.student!.pendingPlanId)}' : 'Effective next month: ${_formatPlanName(state.student!.pendingPlanId)}',
                             style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFB45309)),
                           ),
                         ),
@@ -434,7 +434,7 @@ class StudentProfilePage extends ConsumerWidget {
               onPressed: () => _showChangePlanSheet(context, ref, state),
               icon: const Icon(Icons.swap_horiz_rounded, size: 18),
               label: Text(
-                'अगले महीने का प्लान बदलें (Change Next Plan)',
+                ref.watch(localizationProvider) == 'hi' ? 'अगले महीने का प्लान बदलें' : 'Change Next Month Plan',
                 style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
@@ -662,12 +662,12 @@ class StudentProfilePage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'अगले महीने के लिए प्लान चुनें',
+                    ref.watch(localizationProvider) == 'hi' ? 'अगले महीने के लिए प्लान चुनें' : 'Choose Plan for Next Month',
                     style: GoogleFonts.outfit(fontSize: 19, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'नया प्लान अगले महीने की 1 तारीख से अपने आप लागू हो जाएगा।',
+                    ref.watch(localizationProvider) == 'hi' ? 'नया प्लान अगले महीने की 1 तारीख से अपने आप लागू हो जाएगा।' : 'The new plan will take effect automatically on the 1st of next month.',
                     style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)),
                   ),
                   const SizedBox(height: 16),
@@ -676,7 +676,7 @@ class StudentProfilePage extends ConsumerWidget {
                   else if (plans.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text('कोई अन्य प्लान उपलब्ध नहीं है', style: GoogleFonts.inter(color: const Color(0xFF94A3B8))),
+                      child: Text(ref.watch(localizationProvider) == 'hi' ? 'कोई अन्य प्लान उपलब्ध नहीं है' : 'No other plans available', style: GoogleFonts.inter(color: const Color(0xFF94A3B8))),
                     )
                   else
                     ...plans.map((p) {
@@ -725,7 +725,7 @@ class StudentProfilePage extends ConsumerWidget {
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Text(
-                                            '🎯 पसंद का खाना (Choice)',
+                                            ref.watch(localizationProvider) == 'hi' ? '🎯 पसंद का खाना' : '🎯 Meal Choice',
                                             style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF2563EB)),
                                           ),
                                         ),
@@ -735,7 +735,7 @@ class StudentProfilePage extends ConsumerWidget {
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
-                                        '₹${p.monthlyFee.toInt()} / महीना • ₹${p.deductionPolicy.flatRate?.toInt() ?? 50} वापसी/छुट्टी',
+                                        ref.watch(localizationProvider) == 'hi' ? '₹${p.monthlyFee.toInt()} / महीना • ₹${p.deductionPolicy.flatRate?.toInt() ?? 50} वापसी/छुट्टी' : '₹${p.monthlyFee.toInt()} / month • ₹${p.deductionPolicy.flatRate?.toInt() ?? 50} rebate per skip',
                                         style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
                                       ),
                                     ],
@@ -749,7 +749,7 @@ class StudentProfilePage extends ConsumerWidget {
                                       border: Border.all(color: const Color(0xFFA7F3D0)),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: Text('वर्तमान प्लान', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF059669))),
+                                    child: Text(ref.watch(localizationProvider) == 'hi' ? 'वर्तमान प्लान' : 'Current Plan', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF059669))),
                                   )
                                 else if (isPending)
                                   Container(
@@ -759,7 +759,7 @@ class StudentProfilePage extends ConsumerWidget {
                                       border: Border.all(color: const Color(0xFFFDE68A)),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: Text('अनुरोधित ✓', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFB45309))),
+                                    child: Text(ref.watch(localizationProvider) == 'hi' ? 'अनुरोधित ✓' : 'Requested ✓', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFB45309))),
                                   )
                                 else
                                   ElevatedButton(
@@ -775,11 +775,11 @@ class StudentProfilePage extends ConsumerWidget {
                                       if (ctx.mounted) Navigator.pop(ctx);
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('${p.name} का अनुरोध दर्ज हो गया! अगले माह की 1st से लागू होगा।')),
+                                          SnackBar(content: Text(ref.read(localizationProvider) == 'hi' ? 'अनुरोध दर्ज हो गया! अगले माह की 1 तारीख से लागू होगा।' : 'Plan change requested! Takes effect on 1st of next month.')),
                                         );
                                       }
                                     },
-                                    child: Text('चुनें', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+                                    child: Text(ref.watch(localizationProvider) == 'hi' ? 'चुनें' : 'Select', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
                                   ),
                               ],
                             ),
