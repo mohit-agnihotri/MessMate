@@ -188,17 +188,29 @@ class FirebaseService implements AppService {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayStr = days[date.weekday - 1];
 
-    // Auto-repeating weekly menu logic: fetch templates for the corresponding day of the week
+    // Auto-repeating regular menu logic:
+    // First populates from standard slot menu (e.g. 'morning', 'noon', 'night');
+    // Day-specific template (e.g. 'Sat_night') takes precedence if explicitly configured.
     return _db
         .collection('messes')
         .doc(messId)
         .collection('weekly_templates')
         .snapshots()
         .map((snap) {
-          return snap.docs
-              .map((d) => MenuModel.fromMap(d.data()))
-              .where((m) => m.menuId.startsWith(dayStr + '_'))
-              .toList();
+          final allMenus = snap.docs.map((d) => MenuModel.fromMap(d.data())).toList();
+          final Map<String, MenuModel> slotMenus = {};
+
+          for (final m in allMenus) {
+            if (m.menuId == m.mealSlot || !m.menuId.contains('_')) {
+              slotMenus[m.mealSlot] = m;
+            }
+          }
+          for (final m in allMenus) {
+            if (m.menuId.startsWith('${dayStr}_')) {
+              slotMenus[m.mealSlot] = m;
+            }
+          }
+          return slotMenus.values.toList();
         });
   }
 
@@ -213,10 +225,20 @@ class FirebaseService implements AppService {
         .collection('weekly_templates')
         .get();
 
-    return snap.docs
-        .map((d) => MenuModel.fromMap(d.data()))
-        .where((m) => m.menuId.startsWith(dayStr + '_'))
-        .toList();
+    final allMenus = snap.docs.map((d) => MenuModel.fromMap(d.data())).toList();
+    final Map<String, MenuModel> slotMenus = {};
+
+    for (final m in allMenus) {
+      if (m.menuId == m.mealSlot || !m.menuId.contains('_')) {
+        slotMenus[m.mealSlot] = m;
+      }
+    }
+    for (final m in allMenus) {
+      if (m.menuId.startsWith('${dayStr}_')) {
+        slotMenus[m.mealSlot] = m;
+      }
+    }
+    return slotMenus.values.toList();
   }
 
   @override

@@ -256,15 +256,26 @@ class StudentHomePage extends ConsumerWidget {
 
     if (state.currentSlot == 'closed') return _ClosedCard();
 
+    final slot = state.currentSlot;
     final menu = state.currentMeal;
-    if (menu == null) return _NoMenuCard(state: state);
+    final messId = state.mess?.messId ?? state.student?.messId ?? '';
+    final effectiveMenu = menu ??
+        MenuModel(
+          menuId: '${messId}_$slot',
+          messId: messId,
+          date: DateTime.now(),
+          mealSlot: slot,
+          dishes: [],
+        );
 
-    final dishesStr = menu.dishes.map((d) => d.name).join(', ');
+    final dishesStr = effectiveMenu.dishes.isNotEmpty
+        ? effectiveMenu.dishes.map((d) => d.name).join(', ')
+        : 'Regular Mess Meal';
     final cutoff = state.timeLeftToCutoff ?? Duration.zero;
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
-    final bgUrl = _bgImages[menu.mealSlot] ?? _bgImages['noon']!;
-    final icon = _slotIcons[menu.mealSlot] ?? '🍽';
+    final bgUrl = _bgImages[slot] ?? _bgImages['noon']!;
+    final icon = _slotIcons[slot] ?? '🍽';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -296,7 +307,7 @@ class StudentHomePage extends ConsumerWidget {
                       children: [
                         Text('$icon ', style: const TextStyle(fontSize: 18)),
                         Text(
-                          menu.mealSlot.toUpperCase(),
+                          slot.toUpperCase(),
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -307,7 +318,7 @@ class StudentHomePage extends ConsumerWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            dishesStr.isNotEmpty ? dishesStr : 'No dishes set',
+                            dishesStr,
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: Colors.white70,
@@ -384,7 +395,7 @@ class StudentHomePage extends ConsumerWidget {
                         context: context,
                         ref: ref,
                         state: state,
-                        menu: menu,
+                        menu: effectiveMenu,
                       )
                     else if (state.hasSelfSkipped)
                       _UndoButton(ref: ref)
@@ -396,7 +407,7 @@ class StudentHomePage extends ConsumerWidget {
                               flex: 3,
                               child: _SkipButton(
                                 ref: ref,
-                                mealSlot: menu.mealSlot,
+                                mealSlot: slot,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -408,7 +419,7 @@ class StudentHomePage extends ConsumerWidget {
                                 context,
                                 ref,
                                 state,
-                                menu.mealSlot,
+                                slot,
                                 DateTime.now(),
                               ),
                             ),
@@ -590,7 +601,7 @@ class StudentHomePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 14),
-            if (menu != null) ...[
+            if (menu != null && menu.dishes.isNotEmpty) ...[
               Text(
                 menu.dishes.map((d) => d.name).join(', '),
                 style: GoogleFonts.inter(
@@ -601,10 +612,11 @@ class StudentHomePage extends ConsumerWidget {
               ),
             ] else ...[
               Text(
-                'Menu not set yet.',
+                'Regular Mess Meal',
                 style: GoogleFonts.inter(
                   fontSize: 14,
-                  color: const Color(0xFF9CA3AF),
+                  color: const Color(0xFF6B7280),
+                  fontStyle: FontStyle.italic,
                 ),
               ),
             ],
@@ -1081,8 +1093,9 @@ class _UpcomingMealCard extends StatelessWidget {
         ? '${timings['start']} - ${timings['end']}'
         : '';
     final icon = _slotIcons[slot] ?? '🍽';
-    final dishesStr =
-        menu?.dishes.map((d) => d.name).join(', ') ?? 'Menu not set';
+    final dishesStr = (menu != null && menu!.dishes.isNotEmpty)
+        ? menu!.dishes.map((d) => d.name).join(', ')
+        : 'Regular Mess Meal';
 
     return GestureDetector(
       onTap: onTap,
@@ -1230,54 +1243,6 @@ class _ClosedCard extends StatelessWidget {
   }
 }
 
-// ─── No Menu Card ─────────────────────────────────────────────────────────────
-class _NoMenuCard extends StatelessWidget {
-  final StudentHomeState state;
-  const _NoMenuCard({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF22C55E), width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Text('🍽', style: TextStyle(fontSize: 48)),
-          const SizedBox(height: 12),
-          Text(
-            'Menu Not Set',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Owner has not set the menu for ${state.currentSlot} yet.',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF6B7280),
-              fontSize: 13,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── On Leave Banner ──────────────────────────────────────────────────────────
 class _OnLeaveBanner extends StatelessWidget {

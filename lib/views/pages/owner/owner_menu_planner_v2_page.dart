@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
@@ -16,12 +15,68 @@ class OwnerMenuPlannerV2Page extends ConsumerStatefulWidget {
 
 class _OwnerMenuPlannerV2PageState
     extends ConsumerState<OwnerMenuPlannerV2Page> {
-  final List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  String _slotLabel(String slot) {
+    switch (slot) {
+      case 'morning':
+        return 'Morning (Breakfast)';
+      case 'noon':
+        return 'Noon (Lunch)';
+      case 'evening':
+        return 'Evening (Snacks)';
+      case 'night':
+        return 'Night (Dinner)';
+      default:
+        return slot[0].toUpperCase() + slot.substring(1);
+    }
+  }
+
+  String _slotShortLabel(String slot) {
+    switch (slot) {
+      case 'morning':
+        return 'Breakfast';
+      case 'noon':
+        return 'Lunch';
+      case 'evening':
+        return 'Snacks';
+      case 'night':
+        return 'Dinner';
+      default:
+        return slot[0].toUpperCase() + slot.substring(1);
+    }
+  }
+
+  IconData _slotIcon(String slot) {
+    switch (slot) {
+      case 'morning':
+        return Icons.wb_twilight_rounded;
+      case 'noon':
+        return Icons.wb_sunny_rounded;
+      case 'evening':
+        return Icons.coffee_rounded;
+      case 'night':
+        return Icons.nightlight_round;
+      default:
+        return Icons.restaurant_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ownerMenuProvider);
     final viewModel = ref.read(ownerMenuProvider.notifier);
+
+    final enabledSlots = (state.mess != null
+            ? ['morning', 'noon', 'evening', 'night']
+                .where(
+                  (s) => state.mess!.mealTimings[s]?['enabled'] == 'true',
+                )
+                .toList()
+            : ['morning', 'noon', 'night']);
+
+    final activeSlot = enabledSlots.contains(state.selectedSlot)
+        ? state.selectedSlot
+        : (enabledSlots.isNotEmpty ? enabledSlots.first : 'noon');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -29,7 +84,7 @@ class _OwnerMenuPlannerV2PageState
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'Weekly Planner',
+          'Regular Mess Menu',
           style: GoogleFonts.inter(
             color: const Color(0xFF111827),
             fontSize: 20,
@@ -43,304 +98,315 @@ class _OwnerMenuPlannerV2PageState
             decoration: BoxDecoration(
               color: const Color(0xFFECFDF5),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
             ),
             alignment: Alignment.center,
-            child: Text(
-              'Auto-repeats',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF059669),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.all_inclusive_rounded,
+                  size: 15,
+                  color: Color(0xFF059669),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Auto-repeats',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF059669),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
       body: state.isLoading && state.weeklyTemplates.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : Builder(
-              builder: (context) {
-                final now = DateTime.now();
-                final currentWeekday = now.weekday; // 1=Mon, 7=Sun
-                final startOfWeek = now.subtract(
-                  Duration(days: currentWeekday - 1),
-                );
-                const months = [
-                  'January',
-                  'February',
-                  'March',
-                  'April',
-                  'May',
-                  'June',
-                  'July',
-                  'August',
-                  'September',
-                  'October',
-                  'November',
-                  'December',
-                ];
-                final monthName = months[startOfWeek.month - 1];
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Info Banner ──
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome,
+                          color: Color(0xFF059669),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Standard Daily Mess Menu',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF065F46),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Set standard dishes once for each meal. They repeat every day so students always see their menu!',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF047857),
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                return Column(
-                  children: [
-                    // Days of the week selector
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.only(top: 16, bottom: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                // ── Meal Slot Tabs (Derived Dynamically from Enabled Timings) ──
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: enabledSlots.map((slot) {
+                        final isSelected = slot == activeSlot;
+                        final timings = state.mess?.mealTimings[slot];
+                        final timeStr = (timings != null &&
+                                timings['start'] != null &&
+                                timings['end'] != null)
+                            ? '${timings['start']} - ${timings['end']}'
+                            : '';
+
+                        return GestureDetector(
+                          onTap: () => viewModel.selectSlot(slot),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(right: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF10B981)
+                                            .withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  "$monthName ${startOfWeek.year}",
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF6B7280),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Icon(
+                                  _slotIcon(slot),
+                                  size: 18,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF6B7280),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "THIS WEEK",
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF1F2937),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _slotShortLabel(slot),
+                                      style: GoogleFonts.inter(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF1F2937),
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    if (timeStr.isNotEmpty)
+                                      Text(
+                                        timeStr,
+                                        style: GoogleFonts.inter(
+                                          color: isSelected
+                                              ? Colors.white.withOpacity(0.85)
+                                              : const Color(0xFF9CA3AF),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
                               ],
                             ),
                           ),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: _days.map((day) {
-                                final isSelected = day == state.selectedDay;
-                                final isToday =
-                                    day == _days[DateTime.now().weekday - 1];
-                                final dayIndex = _days.indexOf(day);
-                                final currentDayDate = startOfWeek.add(
-                                  Duration(days: dayIndex),
-                                );
-                                final dateStr = currentDayDate.day
-                                    .toString()
-                                    .padLeft(2, '0');
-
-                                return GestureDetector(
-                                  onTap: () => viewModel.selectDay(day),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    margin: const EdgeInsets.only(right: 12),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? const Color(0xFF10B981)
-                                          : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(24),
-                                      boxShadow: isSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: const Color(0xFF10B981)
-                                                    .withOpacity(0.3),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ]
-                                          : [],
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          day,
-                                          style: GoogleFonts.inter(
-                                            color: isSelected
-                                                ? Colors.white
-                                                : const Color(0xFF4B5563),
-                                            fontWeight: isSelected
-                                                ? FontWeight.w600
-                                                : FontWeight.w500,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          dateStr,
-                                          style: GoogleFonts.inter(
-                                            color: isSelected
-                                                ? Colors.white.withOpacity(0.9)
-                                                : const Color(0xFF6B7280),
-                                            fontWeight: isSelected
-                                                ? FontWeight.w500
-                                                : FontWeight.w400,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          width: 4,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: isToday
-                                                ? (isSelected
-                                                      ? Colors.white
-                                                      : const Color(0xFFF59E0B))
-                                                : Colors.transparent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      }).toList(),
                     ),
+                  ),
+                ),
 
-                    // Meal Slot Tabs
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children:
-                            (state.mess != null
-                                    ? ['morning', 'noon', 'evening', 'night']
-                                          .where(
-                                            (s) =>
-                                                state
-                                                    .mess!
-                                                    .mealTimings[s]?['enabled'] ==
-                                                'true',
-                                          )
-                                          .toList()
-                                    : ['morning', 'noon', 'night'])
-                                .map((slot) {
-                                  final isSelected = slot == state.selectedSlot;
-                                  final label =
-                                      slot[0].toUpperCase() + slot.substring(1);
-                                  return GestureDetector(
-                                    onTap: () => viewModel.selectSlot(slot),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 24,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: isSelected
-                                                ? const Color(0xFF10B981)
-                                                : Colors.transparent,
-                                            width: 3,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        label,
-                                        style: GoogleFonts.inter(
-                                          color: isSelected
-                                              ? const Color(0xFF10B981)
-                                              : const Color(0xFF9CA3AF),
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w500,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                })
-                                .toList(),
-                      ),
+                const SizedBox(height: 12),
+
+                // ── Dishes List ──
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // Dishes List
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Text(
-                              '${state.selectedDay} ${state.selectedSlot[0].toUpperCase()}${state.selectedSlot.substring(1)} Menu',
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${_slotLabel(activeSlot)} Dishes (${state.selectedDishes.length})',
                               style: GoogleFonts.inter(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF374151),
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF1F2937),
                               ),
                             ),
-                          ),
-
-                          ...state.selectedDishes.map(
-                            (dish) => _buildDishCard(dish, viewModel),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Add Dish Button
-                          GestureDetector(
-                            onTap: () =>
-                                _showGlobalSearchBottomSheet(context, ref),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0FDF4),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFF86EFAC),
-                                  width: 2,
-                                  style: BorderStyle.solid,
+                            if (state.selectedDishes.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Active Daily',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF15803D),
+                                  ),
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.add_circle_outline,
-                                    color: Color(0xFF16A34A),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Add Dish from Global Catalog',
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFF16A34A),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
+                          ],
+                        ),
+                      ),
+
+                      if (state.selectedDishes.isEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.restaurant_menu_outlined,
+                                size: 40,
+                                color: Color(0xFF9CA3AF),
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No dishes added for ${_slotShortLabel(activeSlot)} yet',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF4B5563),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Add dishes below so students can see today’s ${_slotShortLabel(activeSlot)} menu.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      ...state.selectedDishes.map(
+                        (dish) => _buildDishCard(dish, viewModel),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Add Dish Button
+                      GestureDetector(
+                        onTap: () =>
+                            _showGlobalSearchBottomSheet(context, ref),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF86EFAC),
+                              width: 1.5,
+                              style: BorderStyle.solid,
                             ),
                           ),
-
-                          const SizedBox(
-                            height: 100,
-                          ), // Padding for floating button
-                        ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.add_circle_outline,
+                                color: Color(0xFF16A34A),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Add Dish from Global Catalog',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF16A34A),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
+
+                      const SizedBox(
+                        height: 100,
+                      ), // Padding for floating button
+                    ],
+                  ),
+                ),
+              ],
             ),
       // Save Button
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -356,8 +422,11 @@ class _OwnerMenuPlannerV2PageState
                     await viewModel.saveTemplate();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Menu saved successfully!'),
+                        SnackBar(
+                          content: Text(
+                            '${_slotShortLabel(activeSlot)} menu saved and active for all days!',
+                          ),
+                          backgroundColor: const Color(0xFF10B981),
                         ),
                       );
                     }
@@ -367,8 +436,12 @@ class _OwnerMenuPlannerV2PageState
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(28),
                   ),
+                  icon: const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                  ),
                   label: Text(
-                    'Save ${state.selectedDay} Menu',
+                    'Save ${_slotShortLabel(activeSlot)} Menu',
                     style: GoogleFonts.inter(
                       color: Colors.white,
                       fontSize: 16,

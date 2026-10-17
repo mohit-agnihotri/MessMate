@@ -829,12 +829,13 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   }
 
   void _updateSelectedFor(String day, String slot, List<MenuModel> templates) {
-    // We don't have exact dates anymore, so we use a dummy date for the MenuModel if it doesn't exist
-    // The ID could just be '${day}_$slot'
     final template = templates.firstWhere(
-      (m) => m.menuId == '${day}_$slot',
+      (m) =>
+          m.menuId == slot ||
+          m.menuId == '${day}_$slot' ||
+          (m.mealSlot == slot && m.dishes.isNotEmpty),
       orElse: () => MenuModel(
-        menuId: '${day}_$slot',
+        menuId: slot,
         messId: state.messId,
         date: DateTime.now(),
         mealSlot: slot,
@@ -858,16 +859,16 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   }
 
   void _syncTemplates(List<DishModel> newDishes) {
-    final menuId = '${state.selectedDay}_${state.selectedSlot}';
+    final slot = state.selectedSlot;
     final existingIndex = state.weeklyTemplates.indexWhere(
-      (m) => m.menuId == menuId,
+      (m) => m.menuId == slot || m.mealSlot == slot,
     );
 
     final updatedMenu = MenuModel(
-      menuId: menuId,
+      menuId: slot,
       messId: state.messId,
       date: DateTime.now(),
-      mealSlot: state.selectedSlot,
+      mealSlot: slot,
       dishes: newDishes,
     );
 
@@ -908,18 +909,32 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   }
 
   Future<void> saveTemplate() async {
-    final menuId = '${state.selectedDay}_${state.selectedSlot}';
+    final slot = state.selectedSlot;
     final menu = MenuModel(
-      menuId: menuId,
+      menuId: slot,
       messId: state.messId,
-      date: DateTime.now(), // Ignored in tem plate logic basically
-      mealSlot: state.selectedSlot,
+      date: DateTime.now(),
+      mealSlot: slot,
       dishes: state.selectedDishes,
     );
 
-    await _service.saveWeeklyTemplate(menu, menuId);
+    // Save as primary regular slot menu
+    await _service.saveWeeklyTemplate(menu, slot);
 
-    // Also publish it immediately for simplicity in this flow
+    // Also populate all 7 days for seamless backward compatibility
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    for (final day in days) {
+      final dayMenu = MenuModel(
+        menuId: '${day}_$slot',
+        messId: state.messId,
+        date: DateTime.now(),
+        mealSlot: slot,
+        dishes: state.selectedDishes,
+      );
+      await _service.saveWeeklyTemplate(dayMenu, '${day}_$slot');
+    }
+
+    // Refresh state
     await load();
   }
 }
