@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/onesignal_config.dart';
+
 /// Centralized service wrapping all OneSignal push notification interactions.
 ///
 /// Follows the OneSignal v5 SDK architectural guidelines:
@@ -17,7 +19,7 @@ class NotificationService {
   NotificationService._();
 
   /// Default OneSignal App ID for Mess app.
-  static const String defaultAppId = 'f2bb3a4c-0631-4e35-a7e7-2155631fbbcf';
+  static const String defaultAppId = OneSignalConfig.appId;
 
   /// Global navigator key used for presentation of the verification dialog.
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -45,11 +47,8 @@ class NotificationService {
     if (_initialized) return;
 
     _appId = customAppId ?? defaultAppId;
-    _restApiKey = restApiKey ??
-        const String.fromEnvironment('ONESIGNAL_REST_API_KEY', defaultValue: '');
-    if (_restApiKey!.isEmpty) {
-      _restApiKey = null;
-    }
+    final envKey = const String.fromEnvironment('ONESIGNAL_REST_API_KEY', defaultValue: '');
+    _restApiKey = restApiKey ?? (envKey.isNotEmpty ? envKey : OneSignalConfig.defaultRestApiKey);
 
     try {
       // 1. Configure logging
