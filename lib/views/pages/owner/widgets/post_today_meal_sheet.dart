@@ -42,11 +42,6 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
   final List<DishModel> _chosenDishes = [];
   bool _isSaving = false;
 
-  final TextEditingController _searchController = TextEditingController();
-  List<DishModel> _searchResults = [];
-  bool _isSearching = false;
-  Timer? _searchDebounce;
-
   @override
   void initState() {
     super.initState();
@@ -65,13 +60,6 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
     _loadExistingDishesForSlot();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    super.dispose();
-  }
-
   void _loadExistingDishesForSlot() {
     final menuState = ref.read(ownerMenuProvider);
     final now = DateTime.now();
@@ -80,136 +68,18 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
 
     // Check if already published for today
     final existingToday = menuState.weeklyTemplates.where(
-      (m) => m.menuId == todayMenuId || (m.date.toIso8601String().startsWith(todayIso) && m.mealSlot == _selectedSlot),
+      (m) =>
+          m.menuId == todayMenuId ||
+          (m.date.toIso8601String().startsWith(todayIso) &&
+              m.mealSlot == _selectedSlot),
     ).firstOrNull;
 
     _chosenDishes.clear();
     if (existingToday != null && existingToday.isPublished) {
       _chosenDishes.addAll(existingToday.dishes);
       _selectedMenuType = existingToday.menuType;
-    } else {
-      // Default to regular menu template dishes for easy 1-tap selection
-      final template = menuState.weeklyTemplates.where(
-        (m) => m.mealSlot == _selectedSlot && (m.menuId == _selectedSlot || !m.menuId.contains('_')),
-      ).firstOrNull;
-
-      if (template != null) {
-        _chosenDishes.addAll(template.dishes);
-      }
     }
-  }
-
-  void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-      });
-      return;
-    }
-    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
-      setState(() => _isSearching = true);
-      try {
-        final results = await ref.read(appServiceProvider).searchGlobalDishes(trimmed);
-        if (mounted) {
-          setState(() {
-            _searchResults = results;
-            _isSearching = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _isSearching = false);
-      }
-    });
-  }
-
-  void _addCustomDish(String dishName) {
-    final trimmed = dishName.trim();
-    if (trimmed.isEmpty) return;
-
-    if (_chosenDishes.any((d) => d.name.toLowerCase() == trimmed.toLowerCase())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"$trimmed" is already in today\'s menu.'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    final match = _searchResults.where((d) => d.name.toLowerCase() == trimmed.toLowerCase()).firstOrNull;
-    final dishToAdd = match ??
-        DishModel(
-          dishId: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-          name: trimmed,
-          category: _detectCategory(trimmed),
-          dishFoodType: _detectFoodType(trimmed),
-          isCustom: true,
-        );
-
-    setState(() {
-      _chosenDishes.add(dishToAdd);
-      _searchController.clear();
-      _searchResults = [];
-      _isSearching = false;
-    });
-  }
-
-  void _toggleDish(DishModel dish) {
-    setState(() {
-      final idx = _chosenDishes.indexWhere(
-        (d) => d.dishId == dish.dishId || d.name.toLowerCase() == dish.name.toLowerCase(),
-      );
-      if (idx >= 0) {
-        _chosenDishes.removeAt(idx);
-      } else {
-        _chosenDishes.add(dish);
-      }
-    });
-  }
-
-  String _detectCategory(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('roti') || n.contains('chapati') || n.contains('naan') || n.contains('paratha') || n.contains('puri') || n.contains('poori') || n.contains('kulcha') || n.contains('bread')) {
-      return 'roti';
-    }
-    if (n.contains('rice') || n.contains('chawal') || n.contains('pulao') || n.contains('pulav') || n.contains('biryani') || n.contains('khichdi') || n.contains('fried rice')) {
-      return 'rice';
-    }
-    if (n.contains('dal') || n.contains('daal') || n.contains('sambar') || n.contains('rasam') || n.contains('kadhi') || n.contains('rajma') || n.contains('chole') || n.contains('chhole')) {
-      return 'dal';
-    }
-    if (n.contains('sweet') || n.contains('kheer') || n.contains('halwa') || n.contains('gulab') || n.contains('laddu') || n.contains('jalebi') || n.contains('custard') || n.contains('ice cream') || n.contains('rasgulla')) {
-      return 'sweet';
-    }
-    if (n.contains('snack') || n.contains('samosa') || n.contains('pakora') || n.contains('kachori') || n.contains('poha') || n.contains('upma') || n.contains('sandwich')) {
-      return 'snack';
-    }
-    if (n.contains('chicken') || n.contains('egg') || n.contains('mutton') || n.contains('fish') || n.contains('curry')) {
-      return 'curry';
-    }
-    return 'sabzi';
-  }
-
-  String _detectFoodType(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('chicken') || n.contains('egg') || n.contains('mutton') || n.contains('fish') || n.contains('meat') || n.contains('prawn')) {
-      return 'nonveg';
-    }
-    return 'veg';
-  }
-
-  String _categoryEmoji(String cat) {
-    final c = cat.toLowerCase();
-    if (c.contains('dal')) return '🍲';
-    if (c.contains('roti') || c.contains('bread')) return '🫓';
-    if (c.contains('rice')) return '🍚';
-    if (c.contains('sweet')) return '🍨';
-    if (c.contains('snack')) return '🥟';
-    if (c.contains('curry') || c.contains('non')) return '🍗';
-    return '🥗';
+    // Note: If not published for today, keep _chosenDishes empty as requested!
   }
 
   String _slotName(String slot) {
@@ -242,18 +112,55 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
     }
   }
 
+  String _categoryEmoji(String cat) {
+    final c = cat.toLowerCase();
+    if (c.contains('dal')) return '🍲';
+    if (c.contains('roti') || c.contains('bread')) return '🫓';
+    if (c.contains('rice')) return '🍚';
+    if (c.contains('sweet')) return '🍨';
+    if (c.contains('snack')) return '🥟';
+    if (c.contains('curry') || c.contains('non')) return '🍗';
+    return '🥗';
+  }
+
+  void _openCatalogSearchBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _TodayMealCatalogSearchSheet(
+        mess: widget.mess,
+        alreadySelectedDishes: _chosenDishes,
+        onDishAdded: (dish) {
+          setState(() {
+            if (!_chosenDishes.any(
+              (d) =>
+                  d.dishId == dish.dishId ||
+                  d.name.toLowerCase() == dish.name.toLowerCase(),
+            )) {
+              _chosenDishes.add(dish);
+            }
+          });
+        },
+        onDishRemoved: (dish) {
+          setState(() {
+            _chosenDishes.removeWhere(
+              (d) =>
+                  d.dishId == dish.dishId ||
+                  d.name.toLowerCase() == dish.name.toLowerCase(),
+            );
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final menuState = ref.watch(ownerMenuProvider);
     final enabledSlots = ['morning', 'noon', 'evening', 'night']
         .where((s) => widget.mess.mealTimings[s]?['enabled'] == 'true')
         .toList();
-
-    // Template dishes available for this slot to pick from
-    final template = menuState.weeklyTemplates.where(
-      (m) => m.mealSlot == _selectedSlot && (m.menuId == _selectedSlot || !m.menuId.contains('_')),
-    ).firstOrNull;
-    final availableDishes = template?.dishes ?? [];
 
     final now = DateTime.now();
     final todayIso = now.toIso8601String().substring(0, 10);
@@ -550,249 +457,42 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
 
-            // Search Bar & Instant Add
-            TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              onSubmitted: (val) => _addCustomDish(val),
-              decoration: InputDecoration(
-                hintText: 'Search or type dish name (e.g. Biryani, Kheer)...',
-                hintStyle: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF9CA3AF),
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF10B981),
-                  size: 22,
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: 18,
-                          color: Color(0xFF9CA3AF),
-                        ),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF9FAFB),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
-                ),
-              ),
-            ),
-
-            // Instant "+ Add '[search]' as dish" button
-            if (_searchController.text.trim().isNotEmpty) ...[
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: () => _addCustomDish(_searchController.text),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF10B981),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 14),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '+ Add "${_searchController.text.trim()}" to Today\'s Menu',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF065F46),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF86EFAC)),
-                        ),
-                        child: Text(
-                          'Add Now',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF059669),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            // Search results from database
-            if (_isSearching) ...[
-              const SizedBox(height: 10),
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(6),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
-                  ),
-                ),
-              ),
-            ] else if (_searchResults.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Matching dishes in library:',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF4B5563),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _searchResults.map((dish) {
-                  final isChosen = _chosenDishes.any(
-                    (d) => d.dishId == dish.dishId || d.name.toLowerCase() == dish.name.toLowerCase(),
-                  );
-                  return FilterChip(
-                    avatar: Text(_categoryEmoji(dish.category), style: const TextStyle(fontSize: 12)),
-                    label: Text(dish.name),
-                    selected: isChosen,
-                    selectedColor: const Color(0xFFDCFCE7),
-                    checkmarkColor: const Color(0xFF16A34A),
-                    backgroundColor: Colors.white,
-                    side: BorderSide(
-                      color: isChosen ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
-                    ),
-                    labelStyle: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: isChosen ? FontWeight.w600 : FontWeight.w500,
-                      color: isChosen ? const Color(0xFF15803D) : const Color(0xFF374151),
-                    ),
-                    onSelected: (_) => _toggleDish(dish),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            // Quick pick from template dishes
-            if (availableDishes.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text(
-                'Quick select from saved ${_slotName(_selectedSlot)} offerings:',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF4B5563),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: availableDishes.map((dish) {
-                  final isChosen = _chosenDishes.any(
-                    (d) => d.dishId == dish.dishId || d.name.toLowerCase() == dish.name.toLowerCase(),
-                  );
-                  return FilterChip(
-                    avatar: Text(_categoryEmoji(dish.category), style: const TextStyle(fontSize: 12)),
-                    label: Text(dish.name),
-                    selected: isChosen,
-                    selectedColor: const Color(0xFFDCFCE7),
-                    checkmarkColor: const Color(0xFF16A34A),
-                    backgroundColor: const Color(0xFFF9FAFB),
-                    side: BorderSide(
-                      color: isChosen ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
-                    ),
-                    labelStyle: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: isChosen ? FontWeight.w600 : FontWeight.w500,
-                      color: isChosen ? const Color(0xFF15803D) : const Color(0xFF374151),
-                    ),
-                    onSelected: (_) => _toggleDish(dish),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            const SizedBox(height: 16),
-
-            // Selected dishes container
-            Text(
-              'Selected for Today\'s ${_slotName(_selectedSlot)} (${_chosenDishes.length}):',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1F2937),
-              ),
-            ),
-            const SizedBox(height: 8),
-
+            // Empty state or Selected Dishes Chips
             if (_chosenDishes.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE5E7EB)),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.soup_kitchen_outlined, color: Color(0xFF9CA3AF), size: 26),
-                    const SizedBox(height: 6),
+                    const Icon(
+                      Icons.soup_kitchen_outlined,
+                      color: Color(0xFF9CA3AF),
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      'No dishes selected yet.',
+                      'No dishes added for today yet',
                       style: GoogleFonts.inter(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4B5563),
+                        color: const Color(0xFF374151),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'Type any dish name above to add, or tap items from your saved menu.',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF9CA3AF),
-                      ),
+                      'Tap "Add Dish from Catalog" below to search and add dishes cooked today.',
                       textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
@@ -800,10 +500,10 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
             else
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFBBF7D0)),
                 ),
                 child: Wrap(
@@ -813,12 +513,15 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
                     return Chip(
                       avatar: CircleAvatar(
                         backgroundColor: const Color(0xFFD1FAE5),
-                        child: Text(_categoryEmoji(dish.category), style: const TextStyle(fontSize: 12)),
+                        child: Text(
+                          _categoryEmoji(dish.category),
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ),
                       label: Text(
                         dish.name,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF1F2937),
                         ),
@@ -831,23 +534,65 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
                       onDeleted: () {
                         setState(() {
                           _chosenDishes.removeWhere(
-                            (d) => d.dishId == dish.dishId || d.name.toLowerCase() == dish.name.toLowerCase(),
+                            (d) =>
+                                d.dishId == dish.dishId ||
+                                d.name.toLowerCase() == dish.name.toLowerCase(),
                           );
                         });
                       },
                       backgroundColor: Colors.white,
                       side: const BorderSide(color: Color(0xFF86EFAC)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     );
                   }).toList(),
                 ),
               ),
 
+            const SizedBox(height: 12),
+
+            // ── Button: Add Dish from Catalog ──
+            GestureDetector(
+              onTap: () => _openCatalogSearchBottomSheet(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFF86EFAC),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.add_circle_outline,
+                      color: Color(0xFF16A34A),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Add Dish from Catalog',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF16A34A),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             // ── Step 4: Publish Action ──
             if (_isSaving)
-              const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+              const Center(
+                child: CircularProgressIndicator(color: Color(0xFF10B981)),
+              )
             else
               Row(
                 children: [
@@ -899,7 +644,8 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
                         if (_chosenDishes.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please select at least 1 dish to publish!'),
+                              content:
+                                  Text('Please select at least 1 dish to publish!'),
                             ),
                           );
                           return;
@@ -959,4 +705,544 @@ class _PostTodayMealSheetState extends ConsumerState<PostTodayMealSheet> {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATALOG SEARCH BOTTOM SHEET FOR TODAY'S MEAL
+// ─────────────────────────────────────────────────────────────────────────────
+class _TodayMealCatalogSearchSheet extends ConsumerStatefulWidget {
+  final MessModel mess;
+  final List<DishModel> alreadySelectedDishes;
+  final Function(DishModel) onDishAdded;
+  final Function(DishModel) onDishRemoved;
+
+  const _TodayMealCatalogSearchSheet({
+    required this.mess,
+    required this.alreadySelectedDishes,
+    required this.onDishAdded,
+    required this.onDishRemoved,
+  });
+
+  @override
+  ConsumerState<_TodayMealCatalogSearchSheet> createState() =>
+      _TodayMealCatalogSearchSheetState();
+}
+
+class _TodayMealCatalogSearchSheetState
+    extends ConsumerState<_TodayMealCatalogSearchSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<DishModel> _searchResults = [];
+  bool _isSearching = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String val) {
+    _debounce?.cancel();
+    final trimmed = val.trim();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 250), () async {
+      setState(() => _isSearching = true);
+      try {
+        final results = await ref
+            .read(appServiceProvider)
+            .searchGlobalDishes(trimmed);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) setState(() => _isSearching = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 16),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Add Dish',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+
+          // Custom Dish Action Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  _showCreateCustomDishDialog(
+                    context,
+                    ref,
+                    widget.mess,
+                    (newDish) {
+                      widget.onDishAdded(newDish);
+                      setState(() {});
+                    },
+                  );
+                },
+                icon: const Icon(Icons.add, size: 18, color: Color(0xFF10B981)),
+                label: Text(
+                  '+ Create Custom Dish for My Mess',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: const Color(0xFF10B981),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'e.g. Paneer, Dal, Rice...',
+                hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF3F4F6),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+
+          // Results / Empty State
+          Expanded(
+            child: _isSearching
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF10B981)),
+                  )
+                : _searchResults.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _searchController.text.isEmpty
+                                ? 'Type to search global dishes\nor tap "+ Create Custom Dish" above'
+                                : 'No dishes found for "${_searchController.text.trim()}"\nTap "+ Create Custom Dish" above to create it!',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9CA3AF),
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, index) {
+                          final dish = _searchResults[index];
+                          final isAlreadyAdded = widget.alreadySelectedDishes
+                              .any((d) => d.dishId == dish.dishId || d.name.toLowerCase() == dish.name.toLowerCase());
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(8),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: SizedBox(
+                                  width: 54,
+                                  height: 54,
+                                  child: (dish.imageUrl.isNotEmpty &&
+                                          !dish.imageUrl.contains('placeholder'))
+                                      ? Image.network(
+                                          dish.imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            color: const Color(0xFFF3F4F6),
+                                            child: const Icon(
+                                              Icons.restaurant,
+                                              color: Color(0xFF9CA3AF),
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          color: const Color(0xFFECFDF5),
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            Icons.restaurant_menu,
+                                            color: Color(0xFF10B981),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              title: Text(
+                                dish.name,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                dish.category,
+                                style: GoogleFonts.inter(
+                                  color: dish.dishFoodType == 'nonveg'
+                                      ? const Color(0xFFDC2626)
+                                      : const Color(0xFF16A34A),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              trailing: isAlreadyAdded
+                                  ? IconButton(
+                                      icon: const Icon(
+                                        Icons.check_circle,
+                                        color: Color(0xFF10B981),
+                                        size: 28,
+                                      ),
+                                      onPressed: () {
+                                        widget.onDishRemoved(dish);
+                                        setState(() {});
+                                      },
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: () {
+                                        widget.onDishAdded(dish);
+                                        setState(() {});
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF10B981),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: const Text('Add'),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CREATE CUSTOM DISH DIALOG FOR OWNER MESS
+// ─────────────────────────────────────────────────────────────────────────────
+void _showCreateCustomDishDialog(
+  BuildContext context,
+  WidgetRef ref,
+  MessModel mess,
+  Function(DishModel) onDishCreated,
+) {
+  final nameCtrl = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final foodType = mess.foodType;
+
+  String selectedCategory = 'sabzi';
+  String selectedDishFoodType = foodType == 'pure_veg'
+      ? 'veg'
+      : (foodType == 'non_veg' ? 'nonveg' : 'veg');
+
+  const defaultCategoryImages = {
+    'dal': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop',
+    'roti': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop',
+    'rice': 'https://images.unsplash.com/photo-1516684732162-798a0062be99?q=80&w=800&auto=format&fit=crop',
+    'sabzi': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=800&auto=format&fit=crop',
+    'sweet': 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=800&auto=format&fit=crop',
+    'snack': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=800&auto=format&fit=crop',
+    'curry': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?q=80&w=800&auto=format&fit=crop',
+  };
+
+  bool isSaving = false;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (dialogCtx, setDialogState) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Create Custom Dish',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dish Name *',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: nameCtrl,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Please enter dish name' : null,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Shahi Paneer, Dal Makhani...',
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border:
+                          OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Category',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    items: ['dal', 'roti', 'rice', 'sabzi', 'sweet', 'snack', 'curry']
+                        .map((cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(cat[0].toUpperCase() + cat.substring(1)),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedCategory = val);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border:
+                          OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Food Type',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  if (foodType == 'pure_veg')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🌱 Pure Veg (Locked by Mess Setting)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF16A34A),
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else if (foodType == 'non_veg')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🍗 Non-Veg (Locked by Mess Setting)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFDC2626),
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('🌱 Veg'),
+                          selected: selectedDishFoodType == 'veg',
+                          selectedColor: const Color(0xFFDCFCE7),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedDishFoodType = 'veg');
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        ChoiceChip(
+                          label: const Text('🍗 Non-Veg'),
+                          selected: selectedDishFoodType == 'nonveg',
+                          selectedColor: const Color(0xFFFEE2E2),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedDishFoodType = 'nonveg');
+                          },
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => isSaving = true);
+
+                      try {
+                        final dishId = 'dish_${DateTime.now().millisecondsSinceEpoch}';
+                        final newDish = DishModel(
+                          dishId: dishId,
+                          name: nameCtrl.text.trim(),
+                          category: selectedCategory,
+                          imageUrl: defaultCategoryImages[selectedCategory] ??
+                              'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800',
+                          dishFoodType: selectedDishFoodType,
+                          isCustom: true,
+                        );
+
+                        final appService = ref.read(appServiceProvider);
+                        final messId = mess.messId;
+
+                        // 1. Add to mess subcollection /messes/{messId}/dishes/{dishId}
+                        await appService.addDishToMess(messId, newDish);
+
+                        // 2. Update masterDishNames cache on MessModel
+                        final names = List<String>.from(mess.masterDishNames);
+                        if (!names.contains(newDish.name)) {
+                          names.add(newDish.name);
+                          final updatedMess = mess.copyWith(masterDishNames: names);
+                          await appService.updateMess(updatedMess);
+                        }
+
+                        // 3. Callback to add to today's meal
+                        onDishCreated(newDish);
+
+                        if (context.mounted) {
+                          Navigator.pop(ctx); // Close dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('"${newDish.name}" created and added!'),
+                              backgroundColor: const Color(0xFF10B981),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error saving dish: $e'),
+                              backgroundColor: const Color(0xFFEF4444),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Create & Add'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
