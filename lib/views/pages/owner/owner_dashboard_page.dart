@@ -609,32 +609,38 @@ class OwnerDashboardPage extends ConsumerWidget {
       );
     }
 
-    if (state.currentMeal == null) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          'No menu set for the current meal.',
-          style: GoogleFonts.inter(color: const Color(0xFF6B7280)),
-        ),
-      );
-    }
+    final menu = state.currentMeal;
+    final slot = state.currentSlot;
+    final slotName = slot[0].toUpperCase() + slot.substring(1);
+    final timings = state.mess?.mealTimings[slot];
+    final startStr = timings?['start'] ?? '';
+    final endStr = timings?['end'] ?? '';
+    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr - $endStr' : '';
+    final isExplicitlyPosted = menu != null &&
+        menu.isPublished &&
+        (menu.menuType == 'special' || menu.menuType == 'regular') &&
+        menu.dishes.isNotEmpty;
+    final isSpecial = isExplicitlyPosted && menu.menuType == 'special';
+    final dishes = menu?.dishes ?? [];
 
-    final menu = state.currentMeal!;
+    final slotIcon = slot == 'morning'
+        ? '🌅'
+        : slot == 'noon'
+            ? '☀️'
+            : slot == 'evening'
+                ? '🌇'
+                : '🌙';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSpecial
+              ? const Color(0xFFFDE68A)
+              : (isExplicitlyPosted ? const Color(0xFFA7F3D0) : const Color(0xFFE5E7EB)),
+          width: isExplicitlyPosted ? 1.5 : 1.0,
+        ),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -646,45 +652,67 @@ class OwnerDashboardPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text(
-                      'Current Meal',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: const Color(0xFF111827),
-                      ),
-                    ),
-                    Text(
-                      "Today's ${menu.mealSlot[0].toUpperCase()}${menu.mealSlot.substring(1)} Menu",
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF6B7280),
-                      ),
+                    Text(slotIcon, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Meal: $slotName',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: const Color(0xFF111827),
+                          ),
+                        ),
+                        if (timeRange.isNotEmpty)
+                          Text(
+                            'Serving Timings: $timeRange',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: isSpecial
+                        ? const Color(0xFFFFFBEB)
+                        : (isExplicitlyPosted
+                            ? const Color(0xFFECFDF5)
+                            : const Color(0xFFF1F5F9)),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSpecial
+                          ? const Color(0xFFFDE68A)
+                          : (isExplicitlyPosted
+                              ? const Color(0xFFA7F3D0)
+                              : const Color(0xFFE2E8F0)),
+                    ),
                   ),
                   child: Text(
-                    'Live',
+                    isSpecial
+                        ? '✨ Special'
+                        : (isExplicitlyPosted ? 'Cooked Today' : 'Standard Menu'),
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF16A34A),
-                      fontSize: 12,
+                      color: isSpecial
+                          ? const Color(0xFFD97706)
+                          : (isExplicitlyPosted
+                              ? const Color(0xFF059669)
+                              : const Color(0xFF64748B)),
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -692,115 +720,242 @@ class OwnerDashboardPage extends ConsumerWidget {
               ],
             ),
           ),
-          if (menu.dishes.isEmpty)
+
+          const Divider(height: 1),
+
+          // Body: Either Posted Dishes or Unposted Info
+          if (isExplicitlyPosted) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-              child: Text(
-                'No dishes added yet.',
-                style: GoogleFonts.inter(color: Colors.grey),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: Row(
+                children: [
+                  Icon(
+                    isSpecial ? Icons.auto_awesome : Icons.check_circle_outline,
+                    size: 16,
+                    color: isSpecial ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isSpecial
+                        ? "Today's Special Dishes Announced:"
+                        : "Today's Cooked Dishes Announced:",
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isSpecial ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                    ),
+                  ),
+                ],
               ),
-            )
-          else
-            ...menu.dishes.map(
-              (dish) => Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: Image.network(
-                          (dish.imageUrl?.isNotEmpty ?? false)
-                              ? dish.imageUrl!
-                              : 'https://via.placeholder.com/50',
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, err, stack) => Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.restaurant,
-                              color: Colors.grey,
-                              size: 20,
+            ),
+            // Horizontal scroll of dishes
+            SizedBox(
+              height: 74,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                itemCount: dishes.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (ctx, i) {
+                  final dish = dishes[i];
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: SizedBox(
+                            width: 38,
+                            height: 38,
+                            child: Image.network(
+                              (dish.imageUrl?.isNotEmpty ?? false)
+                                  ? dish.imageUrl!
+                                  : 'https://via.placeholder.com/40',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: const Color(0xFFE5E7EB),
+                                child: const Icon(Icons.restaurant, size: 16, color: Colors.grey),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              dish.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1F2937),
+                              ),
+                            ),
+                            Text(
+                              dish.category,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: dish.category.toLowerCase() == 'non-veg'
+                                    ? Colors.red
+                                    : Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
+                  );
+                },
+              ),
+            ),
+            // Edit button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (state.mess != null) {
+                      PostTodayMealSheet.show(
+                        context,
+                        mess: state.mess!,
+                        initialSlot: state.currentSlot,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                  label: Text(
+                    "Edit Today's Meal Post",
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF10B981),
+                    side: const BorderSide(color: Color(0xFF6EE7B7)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
+            // State: Not posted for today yet
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            dish.name,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF374151),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            dish.category,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: dish.category == 'Veg'
-                                  ? Colors.green
-                                  : Colors.red,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '1 Portion',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF9CA3AF),
+                      child: Text(
+                        "Today's specific meal not posted yet. Students are shown your general template menu.",
+                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  if (state.mess != null) {
-                    PostTodayMealSheet.show(
-                      context,
-                      mess: state.mess!,
-                      initialSlot: state.currentSlot,
-                    );
-                  }
-                },
-                icon: const Icon(Icons.campaign_rounded, size: 18),
-                label: Text(
-                  "Post Today's Meal (Regular / Special)",
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+            if (dishes.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "Template Offerings ($slotName):",
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF6B7280)),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 38,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: dishes.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  itemBuilder: (ctx, i) {
+                    final dish = dishes[i];
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Image.network(
+                                (dish.imageUrl?.isNotEmpty ?? false)
+                                    ? dish.imageUrl!
+                                    : 'https://via.placeholder.com/20',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.restaurant, size: 12, color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            dish.name,
+                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF374151)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+            // Post button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    if (state.mess != null) {
+                      PostTodayMealSheet.show(
+                        context,
+                        mess: state.mess!,
+                        initialSlot: state.currentSlot,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.campaign_rounded, size: 18),
+                  label: Text(
+                    "Post What's Cooking Today (Regular / Special)",
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
-                  elevation: 0,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
