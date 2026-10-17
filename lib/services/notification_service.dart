@@ -124,10 +124,10 @@ class NotificationService {
 
   /// Displays the required Push Subscription Verification Dialog exactly once.
   static void _showVerificationDialogIfNeeded() {
-    if (_dialogShown) return;
+    if (_dialogShown && hasPushPermission) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (_dialogShown) return;
+      if (_dialogShown && hasPushPermission) return;
 
       final context = navigatorKey.currentContext;
       if (context == null) {
@@ -138,14 +138,6 @@ class NotificationService {
         );
         return;
       }
-
-      if (!context.mounted) return;
-
-      _dialogShown = true;
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_prefDialogShownKey, true);
-      } catch (_) {}
 
       if (!context.mounted) return;
 
@@ -169,6 +161,11 @@ class NotificationService {
               TextButton(
                 onPressed: () async {
                   Navigator.of(ctx).pop();
+                  _dialogShown = true;
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool(_prefDialogShownKey, true);
+                  } catch (_) {}
                   // Required: On button tap, request push permission
                   await requestPermission();
                 },
@@ -307,6 +304,9 @@ class NotificationService {
   static Future<bool> requestPermission() async {
     try {
       final granted = await OneSignal.Notifications.requestPermission(true);
+      if (granted) {
+        await OneSignal.User.pushSubscription.optIn();
+      }
       debugPrint('[NotificationService] Push notification permission result: $granted');
       return granted;
     } catch (e) {
