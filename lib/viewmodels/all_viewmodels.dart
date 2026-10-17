@@ -14,6 +14,7 @@ import '../models/stub_service.dart';
 import '../models/firebase_service.dart';
 import '../models/app_models.dart';
 import '../services/dish_catalog_service.dart';
+import '../services/notification_service.dart';
 
 import 'package:geolocator/geolocator.dart';
 
@@ -570,6 +571,17 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   Future<void> sendAnnouncement(String message) async {
     if (state.mess == null) return;
     await _service.sendAnnouncement(state.mess!.messId, message);
+    try {
+      await NotificationService.sendMessNotification(
+        messId: state.mess!.messId,
+        title: '📢 Notice from ${state.mess?.name ?? "Mess"}',
+        message: message,
+        targetPref: 'announcements',
+        data: {'type': 'announcement', 'messId': state.mess!.messId},
+      );
+    } catch (e) {
+      debugPrint('[OneSignal] Error sending announcement push: $e');
+    }
   }
 
   Future<void> emergencyClose(
@@ -700,6 +712,22 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       deductions: previewBill.deductions,
     );
     await _service.saveBill(finalBill);
+    try {
+      await NotificationService.sendStudentNotification(
+        studentId: student.studentId,
+        title: isPaid ? '💳 Bill Marked Paid' : '📄 Bill Updated',
+        message: isPaid
+            ? 'Payment recorded for ${previewBill.month}. Amount: ₹${previewBill.finalPayable}'
+            : 'Your bill for ${previewBill.month} has been updated. Amount: ₹${previewBill.finalPayable}',
+        data: {
+          'type': 'bill',
+          'billId': finalBill.billId,
+          'studentId': student.studentId,
+        },
+      );
+    } catch (e) {
+      debugPrint('[OneSignal] Error sending student bill push: $e');
+    }
 
     // Handle Extend Validity logic properly 
     if (extendDays != null && extendDays > 0 && student.subscriptionEndDate != null) {
@@ -956,6 +984,24 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
     );
     await _service.publishDailyMenu(menu);
     await load();
+    try {
+      final dishNames = dishes.map((d) => d.name).take(3).join(', ');
+      final title = menuType == 'special'
+          ? '✨ Special Today Menu (${slot.toUpperCase()})'
+          : "Today's Menu Updated (${slot.toUpperCase()})";
+      final body = dishNames.isNotEmpty
+          ? 'Menu: $dishNames'
+          : 'Check out today\'s meal options!';
+      await NotificationService.sendMessNotification(
+        messId: state.messId,
+        title: title,
+        message: body,
+        targetPref: 'menuPublished',
+        data: {'type': 'menu', 'slot': slot, 'messId': state.messId},
+      );
+    } catch (e) {
+      debugPrint('[OneSignal] Error sending menu push: $e');
+    }
   }
 
   Future<void> removeTodayMenu(String slot) async {
@@ -1737,6 +1783,14 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
     state = state.copyWith(isLoading: true);
     final mess = await _service.getMessByOwnerId(ownerId);
     state = state.copyWith(mess: mess, isLoading: false);
+    if (mess != null) {
+      NotificationService.setUserRoleAndMess(
+        role: 'owner',
+        messId: mess.messId,
+        userId: mess.ownerId,
+        preferences: mess.ownerNotificationPrefs,
+      );
+    }
   }
 
   Future<void> save(MessModel updated) async {
@@ -1774,6 +1828,7 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
     final updatedPrefs = Map<String, bool>.from(mess.ownerNotificationPrefs)
       ..[key] = value;
     await save(mess.copyWith(ownerNotificationPrefs: updatedPrefs));
+    NotificationService.updateNotificationPreference(key, value);
   }
 
   Future<bool> updateGpsLocation() async {
@@ -1865,6 +1920,13 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
 
     // Sync FCM topic subscriptions to match persisted prefs
     if (student != null && student.messId.isNotEmpty) {
+      NotificationService.setUserRoleAndMess(
+        role: 'student',
+        messId: student.messId,
+        userId: student.studentId,
+        preferences: student.notificationPrefs,
+      );
+
       final prefs = student.notificationPrefs;
       final messId = student.messId;
       final sid = student.studentId;
@@ -1941,6 +2003,7 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     final updated = student.copyWith(notificationPrefs: updatedPrefs);
     await _service.updateStudent(updated);
     state = state.copyWith(student: updated);
+    NotificationService.updateNotificationPreference(key, value);
   }
 
   Future<void> requestPlanChange(String newPlanId) async {
