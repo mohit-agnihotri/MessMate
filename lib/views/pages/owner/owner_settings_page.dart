@@ -1116,19 +1116,45 @@ class OwnerSettingsPage extends ConsumerWidget {
             ),
             const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
             _buildActionTile(
+              Icons.language_rounded,
+              ref.watch(localizationProvider) == 'hi' ? 'भाषा (Language)' : 'Language',
+              const Color(0xFF10B981),
+              () => _showLanguageModal(context, ref),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    ref.watch(localizationProvider) == 'hi' ? 'हिंदी (Hindi)' : 'English',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF9CA3AF),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
+            _buildActionTile(
               Icons.help_outline_rounded,
-              'Help & Support',
+              ref.watch(localizationProvider) == 'hi' ? 'सहायता और सपोर्ट' : 'Help & Support',
               const Color(0xFF374151),
               () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Support portal coming soon!')),
+                  SnackBar(content: Text(ref.read(localizationProvider) == 'hi' ? 'सपोर्ट पोर्टल जल्द आ रहा है!' : 'Support portal coming soon!')),
                 );
               },
             ),
             const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
             _buildActionTile(
               Icons.logout_rounded,
-              'Sign Out',
+              ref.watch(localizationProvider) == 'hi' ? 'लॉगआउट' : 'Sign Out',
               const Color(0xFFEF4444),
               () async {
                 await ref.read(authProvider.notifier).signOut();
@@ -1151,8 +1177,9 @@ class OwnerSettingsPage extends ConsumerWidget {
     IconData icon,
     String title,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    Widget? trailing,
+  }) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -1170,11 +1197,12 @@ class OwnerSettingsPage extends ConsumerWidget {
           color: const Color(0xFF111827),
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_right_rounded,
-        color: Color(0xFF9CA3AF),
-        size: 20,
-      ),
+      trailing: trailing ??
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: Color(0xFF9CA3AF),
+            size: 20,
+          ),
       onTap: onTap,
     );
   }
@@ -1471,6 +1499,15 @@ class OwnerSettingsPage extends ConsumerWidget {
                   onTap: () {
                     ref.read(localizationProvider.notifier).toggleLanguage('en');
                     Navigator.pop(ctx);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Language switched to English'),
+                          backgroundColor: Color(0xFF10B981),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                 ),
                 ListTile(
@@ -1493,6 +1530,15 @@ class OwnerSettingsPage extends ConsumerWidget {
                   onTap: () {
                     ref.read(localizationProvider.notifier).toggleLanguage('hi');
                     Navigator.pop(ctx);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('भाषा बदलकर हिंदी कर दी गई है'),
+                          backgroundColor: Color(0xFF10B981),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                 ),
               ],
