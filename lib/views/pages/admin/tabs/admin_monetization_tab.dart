@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -36,13 +37,14 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
             totalMesses * config.baseSoftwareMonthlyFee;
         final int estimatedStudents =
             totalMesses * 45; // average 45 students per mess
-        final double platformFeeTotal =
-            config.platformFeeEnabled ? (estimatedStudents * config.platformFeeAmount) : 0.0;
+        final double platformFeeTotal = config.platformFeeEnabled
+            ? (estimatedStudents * config.platformFeeAmount)
+            : 0.0;
         final double totalGrossRevenue = baseSoftwareTotal + platformFeeTotal;
         final double gatewayCutSaved = totalGrossRevenue * 0.02; // 2% saved!
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -50,10 +52,10 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
               Text(
                 'MONETIZATION & SETTLEMENTS',
                 style: GoogleFonts.outfit(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 2),
@@ -64,11 +66,10 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                   color: AdminCyberTheme.neonEmerald,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
               // Monthly Projection Card
               CyberCard(
-                glowColor: AdminCyberTheme.neonEmerald,
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +83,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: AdminCyberTheme.textMuted,
-                            letterSpacing: 1.0,
+                            letterSpacing: 0.8,
                           ),
                         ),
                         Container(
@@ -90,11 +91,11 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AdminCyberTheme.neonEmerald
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
                             border: Border.all(
                               color: AdminCyberTheme.neonEmerald
-                                  .withValues(alpha: 0.3),
+                                  .withValues(alpha: 0.35),
                             ),
                           ),
                           child: Text(
@@ -109,13 +110,16 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      '₹ ${totalGrossRevenue.toStringAsFixed(0)}',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -1.0,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '₹ ${totalGrossRevenue.toStringAsFixed(0)}',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -1.0,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -143,81 +147,139 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Developer UPI Account Pill Card
               CyberCard(
                 padding: const EdgeInsets.all(16),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color:
-                            AdminCyberTheme.neonCyan.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.qr_code_2_rounded,
-                          color: AdminCyberTheme.neonCyan, size: 24),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'REMITTANCE UPI ID (DIRECT TO YOU)',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: AdminCyberTheme.textMuted,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            config.developerUpiId,
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AdminCyberTheme.neonCyan,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            AdminCyberTheme.neonCyan.withValues(alpha: 0.15),
-                        foregroundColor: AdminCyberTheme.neonCyan,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
                             color: AdminCyberTheme.neonCyan
-                                .withValues(alpha: 0.35),
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.qr_code_2_rounded,
+                              color: AdminCyberTheme.neonCyan, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'UNIVERSAL REMITTANCE UPI ID',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AdminCyberTheme.textMuted,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      config.developerUpiId,
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: AdminCyberTheme.neonCyan,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Icons.copy_rounded,
+                                        size: 14,
+                                        color: AdminCyberTheme.textMuted),
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(
+                                          text: config.developerUpiId));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Copied UPI ID: ${config.developerUpiId}'),
+                                          duration: const Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                      ),
-                      onPressed: () => _showEditUpiDialog(
-                          context, config.developerUpiId, adminService),
-                      icon: const Icon(Icons.edit_rounded, size: 14),
-                      label: Text(
-                        'Change',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AdminCyberTheme.neonCyan,
+                              side: BorderSide(
+                                  color: AdminCyberTheme.neonCyan
+                                      .withValues(alpha: 0.4)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onPressed: () => _showEditUpiDialog(
+                                context, config.developerUpiId, adminService),
+                            icon: const Icon(Icons.edit_rounded, size: 14),
+                            label: Text(
+                              'Change UPI',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AdminCyberTheme.neonCyan
+                                  .withValues(alpha: 0.15),
+                              foregroundColor: AdminCyberTheme.neonCyan,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onPressed: () => _showUpiQrSheet(
+                                context, config.developerUpiId),
+                            icon: const Icon(Icons.qr_code_scanner_rounded,
+                                size: 14),
+                            label: Text(
+                              'View QR Code',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Per-Mess Settlement Directory
               Text(
@@ -226,24 +288,32 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 1.0,
+                  letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               if (messes.isEmpty)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'No messes registered yet.',
-                      style: GoogleFonts.inter(
-                          color: AdminCyberTheme.textMuted, fontSize: 13),
+                    child: Column(
+                      children: [
+                        Icon(Icons.receipt_long_outlined,
+                            size: 40, color: Colors.white24),
+                        const SizedBox(height: 10),
+                        Text(
+                          'No messes registered yet for settlement.',
+                          style: GoogleFonts.inter(
+                              color: AdminCyberTheme.textMuted, fontSize: 13),
+                        ),
+                      ],
                     ),
                   ),
                 )
               else
-                ...messes.map((mess) => _buildMessInvoiceTile(mess, config, adminService)),
+                ...messes.map((mess) =>
+                    _buildMessInvoiceTile(mess, config, adminService)),
             ],
           ),
         );
@@ -262,6 +332,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
               fontSize: 12,
               color: AdminCyberTheme.textSecondary,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: 8),
@@ -286,7 +357,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
     final isLifetimeVip = mess.subscriptionStatus == 'lifetime_vip';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: CyberCard(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -300,26 +371,32 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     mess.name,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: isTrial || isLifetimeVip
-                        ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.15)
-                        : AdminCyberTheme.neonAmber.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                        ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.12)
+                        : AdminCyberTheme.neonAmber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isTrial || isLifetimeVip
+                          ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.3)
+                          : AdminCyberTheme.neonAmber.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     isLifetimeVip
                         ? 'LIFETIME VIP (₹0)'
                         : isTrial
-                            ? '6M TRIAL (₹0 DUE)'
+                            ? '180D TRIAL (₹0 DUE)'
                             : 'BILLING ACTIVE',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 10,
@@ -332,16 +409,16 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               'Owner: ${mess.ownerName} • 📞 ${mess.ownerPhone}',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: AdminCyberTheme.textSecondary,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -351,7 +428,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     Text(
                       'TOTAL DUE THIS CYCLE',
                       style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: AdminCyberTheme.textMuted,
                       ),
                     ),
@@ -360,7 +437,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                           ? '₹ 0.00'
                           : '₹ ${config.baseSoftwareMonthlyFee.toInt()}',
                       style: GoogleFonts.jetBrainsMono(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: isTrial || isLifetimeVip
                             ? AdminCyberTheme.neonEmerald
@@ -369,20 +446,21 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     ),
                   ],
                 ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AdminCyberTheme.neonCyan,
+                    side: BorderSide(
+                        color:
+                            AdminCyberTheme.neonCyan.withValues(alpha: 0.35)),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
                   onPressed: () => _showAuditDialog(context, mess, adminService),
                   icon: const Icon(Icons.people_outline_rounded,
-                      size: 15, color: AdminCyberTheme.neonCyan),
+                      size: 14, color: AdminCyberTheme.neonCyan),
                   label: Text(
                     'Audit Students',
                     style: GoogleFonts.inter(
@@ -399,6 +477,101 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
     );
   }
 
+  void _showUpiQrSheet(BuildContext context, String upiId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AdminCyberTheme.bgObsidian,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'REMITTANCE SCAN & PAY',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Owners can scan with any UPI App (GPay, PhonePe, Paytm)',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AdminCyberTheme.textMuted,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.qr_code_2_rounded,
+                        size: 160, color: Colors.black87),
+                    const SizedBox(height: 8),
+                    Text(
+                      upiId,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AdminCyberTheme.neonCyan,
+                  foregroundColor: const Color(0xFF04202C),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: upiId));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Copied $upiId to clipboard!')),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: Text(
+                  'Copy UPI Address',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showAuditDialog(
     BuildContext context,
     MessModel mess,
@@ -409,7 +582,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
       backgroundColor: const Color(0xFF070B14),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) {
         return FutureBuilder<List<Map<String, dynamic>>>(
@@ -430,17 +603,18 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: AdminCyberTheme.neonEmerald,
-                      letterSpacing: 1.0,
+                      letterSpacing: 0.8,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Billed Students for ${mess.name}',
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 16),
                   if (students.isEmpty)
@@ -520,7 +694,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
             return AlertDialog(
               backgroundColor: const Color(0xFF070B14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
                   color: AdminCyberTheme.neonCyan.withValues(alpha: 0.3),
                 ),
@@ -531,7 +705,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                       color: AdminCyberTheme.neonCyan, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'UPDATE REMITTANCE UPI ID',
+                    'UPDATE REMITTANCE UPI',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
@@ -608,7 +782,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     ),
                   ),
                   onPressed: isLoading
-                      ? null
+                       ? null
                       : () async {
                           final newUpi = controller.text.trim();
                           if (newUpi.isEmpty || !newUpi.contains('@')) {

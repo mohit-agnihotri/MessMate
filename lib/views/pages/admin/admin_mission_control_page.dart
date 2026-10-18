@@ -39,13 +39,13 @@ class _AdminMissionControlPageState
     return Scaffold(
       backgroundColor: AdminCyberTheme.bgObsidian,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: const Size.fromHeight(60),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF070B14).withValues(alpha: 0.95),
+            color: AdminCyberTheme.bgObsidian,
             border: Border(
               bottom: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AdminCyberTheme.borderSubtle,
                 width: 1.0,
               ),
             ),
@@ -54,68 +54,76 @@ class _AdminMissionControlPageState
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Brand & Status
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          gradient: AdminCyberTheme.emeraldCyanGradient,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.terminal_rounded,
-                            color: Color(0xFF04202C), size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'MISSION CONTROL',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 0.8,
-                            ),
+                  // Brand & Status (Expanded to prevent any overflow)
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            gradient: AdminCyberTheme.emeraldCyanGradient,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          Row(
+                          child: const Icon(Icons.dashboard_customize_rounded,
+                              color: Color(0xFF04202C), size: 17),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const PulsingBeacon(
-                                color: AdminCyberTheme.neonEmerald,
-                                size: 6,
-                              ),
-                              const SizedBox(width: 5),
                               Text(
-                                'SUPER ADMIN • LIVE',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: AdminCyberTheme.neonEmerald,
+                                'MISSION CONTROL',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.8,
                                 ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Row(
+                                children: [
+                                  const PulsingBeacon(
+                                    color: AdminCyberTheme.neonEmerald,
+                                    size: 6,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      'SUPER ADMIN • LIVE',
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: AdminCyberTheme.neonEmerald,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
 
                   // Actions: Sandbox Switcher & Logout
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       PopupMenuButton<String>(
                         icon: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: AdminCyberTheme.cardSurface,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15)),
+                            border:
+                                Border.all(color: AdminCyberTheme.borderSubtle),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -161,7 +169,8 @@ class _AdminMissionControlPageState
                             child: Row(
                               children: [
                                 const Icon(Icons.storefront_rounded,
-                                    size: 16, color: AdminCyberTheme.neonEmerald),
+                                    size: 16,
+                                    color: AdminCyberTheme.neonEmerald),
                                 const SizedBox(width: 10),
                                 Text('View as Mess Owner',
                                     style: GoogleFonts.inter(
@@ -184,16 +193,17 @@ class _AdminMissionControlPageState
                           ),
                         ],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       IconButton(
                         icon: const Icon(Icons.logout_rounded,
-                            size: 20, color: AdminCyberTheme.textMuted),
+                            size: 19, color: AdminCyberTheme.textMuted),
                         tooltip: 'Exit Mission Control',
                         onPressed: () {
                           ref.read(authProvider.notifier).signOut();
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginPage()),
+                            MaterialPageRoute(
+                                builder: (_) => const LoginPage()),
                             (route) => false,
                           );
                         },
@@ -212,17 +222,17 @@ class _AdminMissionControlPageState
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF070B14).withValues(alpha: 0.95),
+          color: AdminCyberTheme.bgObsidian,
           border: Border(
             top: BorderSide(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AdminCyberTheme.borderSubtle,
               width: 1.0,
             ),
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -249,20 +259,21 @@ class _AdminMissionControlPageState
 
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.symmetric(
           horizontal: isSelected ? 12 : 8,
-          vertical: 8,
+          vertical: 6,
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? activeColor.withValues(alpha: 0.15)
+              ? activeColor.withValues(alpha: 0.12)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: isSelected
-              ? Border.all(color: activeColor.withValues(alpha: 0.3), width: 1.2)
+              ? Border.all(
+                  color: activeColor.withValues(alpha: 0.35), width: 1.0)
               : null,
         ),
         child: Row(
@@ -270,11 +281,11 @@ class _AdminMissionControlPageState
           children: [
             Icon(
               icon,
-              size: 20,
+              size: 19,
               color: isSelected ? activeColor : AdminCyberTheme.textMuted,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: GoogleFonts.outfit(

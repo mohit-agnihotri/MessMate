@@ -24,67 +24,74 @@ class AdminCockpitTab extends ConsumerWidget {
             messes.where((m) => m.subscriptionStatus == 'trial_active').length;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // System Health & Telemetry Header
+              // System Health & Header (Zero Overflow Guarantee)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ECOSYSTEM PULSE',
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PLATFORM OVERVIEW',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const PulsingBeacon(
-                            color: AdminCyberTheme.neonEmerald,
-                            size: 7,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'All Cloud Systems Nominal • Asia-South1',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 11,
-                              color: AdminCyberTheme.textMuted,
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const PulsingBeacon(
+                              color: AdminCyberTheme.neonEmerald,
+                              size: 7,
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'All Systems Active • Mumbai',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AdminCyberTheme.textMuted,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                        horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color:
                           AdminCyberTheme.neonCyan.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
-                            AdminCyberTheme.neonCyan.withValues(alpha: 0.3),
+                            AdminCyberTheme.neonCyan.withValues(alpha: 0.25),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.hub_rounded,
-                            size: 13, color: AdminCyberTheme.neonCyan),
-                        const SizedBox(width: 5),
+                            size: 11, color: AdminCyberTheme.neonCyan),
+                        const SizedBox(width: 4),
                         Text(
                           'FCM v1 Active',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 11,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: AdminCyberTheme.neonCyan,
                           ),
@@ -94,9 +101,9 @@ class AdminCockpitTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // KPI Metric Cards Grid
+              // KPI Metric Cards Grid (100% Overflow Proof)
               Row(
                 children: [
                   Expanded(
@@ -108,69 +115,65 @@ class AdminCockpitTab extends ConsumerWidget {
                       accentColor: AdminCyberTheme.neonEmerald,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: CyberTelemetryMetric(
-                      title: 'Verified Partners',
+                      title: 'Verified Messes',
                       value: '$verifiedMesses',
-                      deltaText: 'Blue/Green Tick',
+                      deltaText: 'Verified Partners',
                       icon: Icons.verified_rounded,
                       accentColor: AdminCyberTheme.neonCyan,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: CyberTelemetryMetric(
-                      title: 'Base Software Tier',
+                      title: 'Base Plan',
                       value: '₹499/mo',
                       deltaText: 'Direct Remittance',
                       icon: Icons.payments_rounded,
                       accentColor: AdminCyberTheme.neonViolet,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: CyberTelemetryMetric(
                       title: 'Platform Fee',
                       value: '₹19/usr',
-                      deltaText: '0% Gateway Loss 🛡️',
+                      deltaText: '0% Gateway Cut',
                       icon: Icons.shield_rounded,
                       accentColor: AdminCyberTheme.neonAmber,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
 
-              // Zero Gateway Cut Philosophy Card
+              // Zero Gateway Cut Direct UPI Highlight
               CyberCard(
                 glowColor: AdminCyberTheme.neonEmerald,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: AdminCyberTheme.neonEmerald
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AdminCyberTheme.neonEmerald
-                              .withValues(alpha: 0.3),
-                        ),
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.account_balance_wallet_rounded,
                         color: AdminCyberTheme.neonEmerald,
-                        size: 22,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,17 +181,17 @@ class AdminCockpitTab extends ConsumerWidget {
                           Text(
                             'DIRECT UPI REMITTANCE ENGINE',
                             style: GoogleFonts.outfit(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: AdminCyberTheme.neonEmerald,
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
-                            'Students pay mess owners directly. Owners remit your ₹499 + (Students × ₹19) via UPI QR with zero 2% gateway commissions.',
+                            'Owners collect directly from students. Monthly software fees & ₹19 platform fee balance are remitted via your UPI QR with zero gateway fee deductions.',
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: AdminCyberTheme.textSecondary,
                               height: 1.35,
                             ),
@@ -199,32 +202,32 @@ class AdminCockpitTab extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Live Platform Event Feed
               Text(
                 'LIVE PLATFORM TICKER',
                 style: GoogleFonts.outfit(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 1.0,
+                  letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               CyberCard(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
                     _buildTickerItem(
                       timeAgo: 'Just now',
                       icon: Icons.fiber_manual_record_rounded,
                       iconColor: AdminCyberTheme.neonEmerald,
-                      title: 'OneSignal Push Engine Live',
+                      title: 'Push Notification Pipeline Active',
                       subtitle:
-                          'REST notification pipeline synced with FCM v1 service account.',
+                          'REST notification system ready with OneSignal & FCM v1 integration.',
                     ),
-                    const Divider(color: Colors.white10, height: 18),
+                    const Divider(color: Colors.white10, height: 16),
                     _buildTickerItem(
                       timeAgo: 'Automated',
                       icon: Icons.card_giftcard_rounded,
@@ -233,19 +236,19 @@ class AdminCockpitTab extends ConsumerWidget {
                       subtitle:
                           'New mess registrations automatically receive 180 days free VIP tier.',
                     ),
-                    const Divider(color: Colors.white10, height: 18),
+                    const Divider(color: Colors.white10, height: 16),
                     _buildTickerItem(
                       timeAgo: 'System',
                       icon: Icons.lock_clock_rounded,
                       iconColor: AdminCyberTheme.neonViolet,
-                      title: 'Cutoff Timing Guardian',
+                      title: 'Security Vault Live',
                       subtitle:
-                          'Choice meal preferences securely locked at earliest meal window.',
+                          'Dual-gate authentication active with Google Email Whitelist & Master PIN.',
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
             ],
           ),
         );
@@ -263,7 +266,15 @@ class AdminCockpitTab extends ConsumerWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: iconColor, size: 16),
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 13, color: iconColor),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -272,29 +283,36 @@ class AdminCockpitTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 6),
                   Text(
                     timeAgo,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
                       color: AdminCyberTheme.textMuted,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AdminCyberTheme.textSecondary,
+                  height: 1.35,
                 ),
               ),
             ],

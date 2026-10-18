@@ -7,7 +7,7 @@ import '../../../../services/admin_service.dart';
 import '../../../../services/notification_service.dart';
 import '../admin_cyber_theme.dart';
 
-/// Ops Deck: Master Toggles, Dynamic Master PIN Manager, and Mass Push Broadcaster.
+/// Ops Deck: Master Remote Toggles, Dynamic Master PIN Manager, and Mass Push Broadcaster.
 class AdminOpsTab extends ConsumerStatefulWidget {
   const AdminOpsTab({super.key});
 
@@ -18,7 +18,6 @@ class AdminOpsTab extends ConsumerStatefulWidget {
 class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
   final TextEditingController _newPinCtrl = TextEditingController();
   final TextEditingController _newUpiCtrl = TextEditingController();
-  final TextEditingController _bannerTextCtrl = TextEditingController();
   final TextEditingController _broadcastTitleCtrl = TextEditingController();
   final TextEditingController _broadcastBodyCtrl = TextEditingController();
 
@@ -31,7 +30,6 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
   void dispose() {
     _newPinCtrl.dispose();
     _newUpiCtrl.dispose();
-    _bannerTextCtrl.dispose();
     _broadcastTitleCtrl.dispose();
     _broadcastBodyCtrl.dispose();
     super.dispose();
@@ -44,7 +42,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
     final config = configAsync.value ?? const AdminGlobalConfigModel();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -55,10 +53,10 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: Colors.white,
-              letterSpacing: 1.0,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           CyberCard(
             padding: const EdgeInsets.all(16),
@@ -67,7 +65,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                 _buildToggleRow(
                   title: '6-Month Auto-Trial for New Messes',
                   subtitle:
-                      'When ON, newly registered messes get 180 days free VIP tier automatically.',
+                      'When ON, newly registered messes automatically receive 180 days free VIP tier.',
                   value: config.globalTrialEnabled,
                   accentColor: AdminCyberTheme.neonEmerald,
                   onChanged: (val) {
@@ -78,7 +76,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                 _buildToggleRow(
                   title: '₹19 Student Platform Maintenance Fee',
                   subtitle:
-                      'Add ₹19 line item to monthly student bills collected by owner.',
+                      'Automatically add ₹19 line item to monthly student bills collected by owner.',
                   value: config.platformFeeEnabled,
                   accentColor: AdminCyberTheme.neonCyan,
                   onChanged: (val) {
@@ -89,17 +87,18 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                 _buildToggleRow(
                   title: 'Emergency Maintenance Banner',
                   subtitle:
-                      'Display emergency top broadcast banner across all student & owner screens.',
+                      'Broadcast high-priority red alert banner across all student & owner screens.',
                   value: config.emergencyBannerEnabled,
                   accentColor: AdminCyberTheme.neonRose,
                   onChanged: (val) {
-                    adminService.updateGlobalToggles(emergencyBannerEnabled: val);
+                    adminService.updateGlobalToggles(
+                        emergencyBannerEnabled: val);
                   },
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Section 2: Master Security Passcode / PIN Manager
           Text(
@@ -108,41 +107,42 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: Colors.white,
-              letterSpacing: 1.0,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           CyberCard(
-            glowColor: AdminCyberTheme.neonViolet,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.key_rounded,
+                    const Icon(Icons.shield_outlined,
                         color: AdminCyberTheme.neonViolet, size: 18),
                     const SizedBox(width: 8),
                     Text(
                       'ACTIVE MASTER PIN: ${config.masterPin}',
                       style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: AdminCyberTheme.neonViolet,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  'Change your master security passcode below. This updates both your Google Login 2FA code and the 5-tap Stealth Gate PIN instantly.',
+                  'Change your master passcode below. This synchronizes both your Google Login 2FA verification code and the 5-tap Stealth Gate PIN instantly in Firestore.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AdminCyberTheme.textSecondary,
+                    height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
@@ -151,7 +151,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                         keyboardType: TextInputType.number,
                         maxLength: 8,
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                           letterSpacing: 2,
@@ -162,11 +162,22 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                           hintStyle: GoogleFonts.inter(
                               color: AdminCyberTheme.textMuted, fontSize: 13),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: const Color(0xFF0C1322),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: AdminCyberTheme.borderSubtle),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: AdminCyberTheme.borderSubtle),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: AdminCyberTheme.neonViolet,
+                              width: 1.5,
                             ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -180,7 +191,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                         backgroundColor: AdminCyberTheme.neonViolet,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
@@ -193,7 +204,8 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                               if (pin.length < 4) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('PIN must be at least 4 digits'),
+                                    content:
+                                        Text('PIN must be at least 4 digits'),
                                     backgroundColor: AdminCyberTheme.neonRose,
                                   ),
                                 );
@@ -214,27 +226,29 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                                   );
                                 }
                               } finally {
-                                if (mounted) setState(() => _isSavingPin = false);
+                                if (mounted) {
+                                  setState(() => _isSavingPin = false);
+                                }
                               }
                             },
                       child: _isSavingPin
                           ? const SizedBox(
-                              width: 18,
-                              height: 18,
+                              width: 16,
+                              height: 16,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2),
                             )
                           : Text(
                               'UPDATE PIN',
                               style: GoogleFonts.outfit(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                     ),
                   ],
                 ),
-                const Divider(color: Colors.white10, height: 28),
+                const Divider(color: Colors.white10, height: 26),
                 Row(
                   children: [
                     const Icon(Icons.qr_code_2_rounded,
@@ -253,7 +267,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   'Update your direct remittance UPI ID globally. Mess owners will remit software subscription & platform fees to this address.',
                   style: GoogleFonts.inter(
@@ -261,27 +275,38 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                     color: AdminCyberTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _newUpiCtrl,
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AdminCyberTheme.neonCyan,
                         ),
                         decoration: InputDecoration(
                           hintText: 'e.g. name@bank',
                           hintStyle: GoogleFonts.inter(
-                              color: AdminCyberTheme.textMuted, fontSize: 13),
+                              color: AdminCyberTheme.textMuted, fontSize: 12),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: const Color(0xFF0C1322),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: AdminCyberTheme.borderSubtle),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: AdminCyberTheme.borderSubtle),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: AdminCyberTheme.neonCyan,
+                              width: 1.5,
                             ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -295,7 +320,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                         backgroundColor: AdminCyberTheme.neonCyan,
                         foregroundColor: const Color(0xFF04202C),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
@@ -338,15 +363,15 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                             },
                       child: _isSavingUpi
                           ? const SizedBox(
-                              width: 18,
-                              height: 18,
+                              width: 16,
+                              height: 16,
                               child: CircularProgressIndicator(
                                   color: Color(0xFF04202C), strokeWidth: 2),
                             )
                           : Text(
                               'UPDATE UPI',
                               style: GoogleFonts.outfit(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -356,7 +381,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Section 3: Mass Push Notification Broadcaster
           Text(
@@ -365,10 +390,10 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: Colors.white,
-              letterSpacing: 1.0,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           CyberCard(
             padding: const EdgeInsets.all(16),
@@ -382,20 +407,33 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                     _buildAudienceChip('All Mess Owners', 'all_owners'),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _broadcastTitleCtrl,
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Notification Title (e.g. Festival Wishes / Update)',
+                    hintText:
+                        'Notification Title (e.g. Festival Wishes / Maintenance)',
                     hintStyle: GoogleFonts.inter(
                         color: AdminCyberTheme.textMuted, fontSize: 12),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    fillColor: const Color(0xFF0C1322),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       borderSide:
-                          BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                          BorderSide(color: AdminCyberTheme.borderSubtle),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide:
+                          BorderSide(color: AdminCyberTheme.borderSubtle),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        color: AdminCyberTheme.neonCyan,
+                        width: 1.5,
+                      ),
                     ),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -411,11 +449,23 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                     hintStyle: GoogleFonts.inter(
                         color: AdminCyberTheme.textMuted, fontSize: 12),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    fillColor: const Color(0xFF0C1322),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       borderSide:
-                          BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                          BorderSide(color: AdminCyberTheme.borderSubtle),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide:
+                          BorderSide(color: AdminCyberTheme.borderSubtle),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        color: AdminCyberTheme.neonCyan,
+                        width: 1.5,
+                      ),
                     ),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -424,13 +474,13 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
-                  height: 46,
+                  height: 44,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AdminCyberTheme.neonCyan,
                       foregroundColor: const Color(0xFF04202C),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       elevation: 0,
                     ),
@@ -464,14 +514,16 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                                 );
                               }
                             } finally {
-                              if (mounted) setState(() => _isBroadcasting = false);
+                              if (mounted) {
+                                setState(() => _isBroadcasting = false);
+                              }
                             }
                           },
                     icon: const Icon(Icons.campaign_rounded, size: 18),
                     label: Text(
                       'DISPATCH MASS BROADCAST',
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
                       ),
@@ -481,7 +533,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
               ],
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -536,17 +588,18 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
     return InkWell(
       onTap: () => setState(() => _broadcastTarget = value),
       borderRadius: BorderRadius.circular(10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? AdminCyberTheme.neonCyan.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.05),
+              : AdminCyberTheme.cardSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? AdminCyberTheme.neonCyan
-                : Colors.white.withValues(alpha: 0.1),
+                : AdminCyberTheme.borderSubtle,
           ),
         ),
         child: Text(

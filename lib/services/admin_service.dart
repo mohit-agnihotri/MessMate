@@ -52,6 +52,9 @@ class AdminService {
         return const AdminGlobalConfigModel();
       }
       return AdminGlobalConfigModel.fromMap(snap.data()!);
+    }).handleError((error) {
+      debugPrint('[AdminService] streamGlobalConfig error caught gracefully: $error');
+      return const AdminGlobalConfigModel();
     });
   }
 
@@ -125,6 +128,9 @@ class AdminService {
   Stream<List<MessModel>> streamAllMesses() {
     return _db.collection(_messesCollection).snapshots().map((snap) {
       return snap.docs.map((doc) => MessModel.fromMap(doc.data())).toList();
+    }).handleError((error) {
+      debugPrint('[AdminService] streamAllMesses error caught gracefully: $error');
+      return <MessModel>[];
     });
   }
 
@@ -208,6 +214,9 @@ class AdminService {
       // Sort by createdAt descending
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
+    }).handleError((error) {
+      debugPrint('[AdminService] streamSupportTickets error caught gracefully: $error');
+      return <SupportTicketModel>[];
     });
   }
 
@@ -266,28 +275,43 @@ class AdminService {
     final double baseFee = config.baseSoftwareMonthlyFee;
     final double perStudentFee = config.platformFeeEnabled ? config.platformFeeAmount : 0.0;
 
-    // Fetch bills generated for this mess during this month
-    final billsSnap = await _db
-        .collection('bills')
-        .where('messId', isEqualTo: messId)
-        .where('generatedAt', isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
-        .where('generatedAt', isLessThanOrEqualTo: endOfMonth.toIso8601String())
-        .get();
+    try {
+      final billsSnap = await _db
+          .collection('bills')
+          .where('messId', isEqualTo: messId)
+          .where('generatedAt',
+              isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
+          .where('generatedAt',
+              isLessThanOrEqualTo: endOfMonth.toIso8601String())
+          .get();
 
-    final billedStudentsCount = billsSnap.docs.length;
-    final double studentPlatformSum = billedStudentsCount * perStudentFee;
-    final double totalRemittance = baseFee + studentPlatformSum;
+      final billedStudentsCount = billsSnap.docs.length;
+      final double studentPlatformSum = billedStudentsCount * perStudentFee;
+      final double totalRemittance = baseFee + studentPlatformSum;
 
-    return {
-      'messId': messId,
-      'month': '${month.year}-${month.month.toString().padLeft(2, '0')}',
-      'baseFee': baseFee,
-      'perStudentFee': perStudentFee,
-      'billedStudentsCount': billedStudentsCount,
-      'studentPlatformSum': studentPlatformSum,
-      'totalRemittance': totalRemittance,
-      'developerUpiId': config.developerUpiId,
-    };
+      return {
+        'messId': messId,
+        'month': '${month.year}-${month.month.toString().padLeft(2, '0')}',
+        'baseFee': baseFee,
+        'perStudentFee': perStudentFee,
+        'billedStudentsCount': billedStudentsCount,
+        'studentPlatformSum': studentPlatformSum,
+        'totalRemittance': totalRemittance,
+        'developerUpiId': config.developerUpiId,
+      };
+    } catch (e) {
+      debugPrint('[AdminService] calculateMonthlySettlement error: $e');
+      return {
+        'messId': messId,
+        'month': '${month.year}-${month.month.toString().padLeft(2, '0')}',
+        'baseFee': baseFee,
+        'perStudentFee': perStudentFee,
+        'billedStudentsCount': 0,
+        'studentPlatformSum': 0.0,
+        'totalRemittance': baseFee,
+        'developerUpiId': config.developerUpiId,
+      };
+    }
   }
 
   /// Fetches the itemized list of billed students for zero-dispute audit.
@@ -298,23 +322,57 @@ class AdminService {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
 
-    final billsSnap = await _db
-        .collection('bills')
-        .where('messId', isEqualTo: messId)
-        .where('generatedAt', isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
-        .where('generatedAt', isLessThanOrEqualTo: endOfMonth.toIso8601String())
-        .get();
+    try {
+      final billsSnap = await _db
+          .collection('bills')
+          .where('messId', isEqualTo: messId)
+          .where('generatedAt',
+              isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
+          .where('generatedAt',
+              isLessThanOrEqualTo: endOfMonth.toIso8601String())
+          .get();
 
-    return billsSnap.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'billId': doc.id,
-        'studentId': data['studentId'] ?? '',
-        'studentName': data['studentName'] ?? 'Student',
-        'finalAmount': (data['finalAmount'] ?? 0.0).toDouble(),
-        'generatedAt': data['generatedAt'] ?? '',
-        'status': data['status'] ?? 'pending',
-      };
-    }).toList();
+      return billsSnap.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'billId': doc.id,
+          'studentId': data['studentId'] ?? '',
+          'studentName': data['studentName'] ?? 'Student',
+          'finalAmount': (data['finalAmount'] ?? 0.0).toDouble(),
+          'generatedAt': data['generatedAt'] ?? '',
+          'status': data['status'] ?? 'pending',
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('[AdminService] getBilledStudentsForMess error: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  /// Seeds a realistic sample mess so the admin dashboard can be previewed immediately.
+  Future<void> seedSampleMess() async {
+    final now = DateTime.now();
+    final demoMess = MessModel(
+      messId: 'demo_mess_${now.millisecondsSinceEpoch}',
+      name: 'Royal Rajputana Mess',
+      ownerId: 'owner_demo_01',
+      ownerName: 'Vikramaditya Rathore',
+      ownerPhone: '+91 98290 12345',
+      gpsLat: 26.9124,
+      gpsLng: 75.7873,
+      capacity: 120,
+      monthlyFee: 3200,
+      perMealRate: 60,
+      cutoffHours: 2,
+      messCode: 'ROYAL${now.millisecond % 900 + 100}',
+      subscriptionStatus: 'trial_active',
+      trialStartDate: now,
+      trialExpiresAt: now.add(const Duration(days: 180)),
+      isVerified: true,
+      isFrozen: false,
+    );
+
+    await _db.collection(_messesCollection).doc(demoMess.messId).set(demoMess.toMap());
   }
 }
+

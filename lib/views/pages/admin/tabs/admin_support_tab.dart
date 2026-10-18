@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -46,7 +47,7 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
           children: [
             // Status Filter Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -69,29 +70,55 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
               ),
             ),
 
-            // Tickets List
+            // Tickets List or Empty Inbox
             Expanded(
               child: tickets.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.mark_email_read_outlined,
-                              size: 48, color: Colors.white24),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Support inbox clear! Zero pending complaints 🚀',
-                            style: GoogleFonts.inter(
-                              color: AdminCyberTheme.textMuted,
-                              fontSize: 14,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AdminCyberTheme.cardSurface,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: AdminCyberTheme.borderSubtle),
+                              ),
+                              child: const Icon(
+                                Icons.mark_email_read_outlined,
+                                size: 44,
+                                color: AdminCyberTheme.neonEmerald,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'Support Inbox Clear',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Zero pending user complaints or suggestions.\nAll live customer tickets are up to date.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: AdminCyberTheme.textMuted,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
+                          horizontal: 16, vertical: 6),
                       itemCount: tickets.length,
                       itemBuilder: (context, index) {
                         final ticket = tickets[index];
@@ -110,17 +137,18 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
     return InkWell(
       onTap: () => setState(() => _selectedStatus = value),
       borderRadius: BorderRadius.circular(20),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
               ? AdminCyberTheme.neonViolet.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.05),
+              : AdminCyberTheme.cardSurface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AdminCyberTheme.neonViolet
-                : Colors.white.withValues(alpha: 0.1),
+                ? AdminCyberTheme.neonViolet.withValues(alpha: 0.6)
+                : AdminCyberTheme.borderSubtle,
           ),
         ),
         child: Row(
@@ -138,7 +166,9 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: isSelected
+                    ? AdminCyberTheme.neonViolet.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -163,70 +193,81 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
     final replyCtrl = _getReplyCtrl(ticket.ticketId);
 
     Color badgeColor = AdminCyberTheme.neonCyan;
-    String categoryName = 'Feedback';
+    String categoryName = 'FEEDBACK';
     IconData categoryIcon = Icons.chat_bubble_outline_rounded;
 
     if (ticket.category == 'bug') {
       badgeColor = AdminCyberTheme.neonRose;
-      categoryName = '🐛 BUG REPORT';
+      categoryName = 'BUG REPORT';
       categoryIcon = Icons.bug_report_rounded;
     } else if (ticket.category == 'suggestion') {
       badgeColor = AdminCyberTheme.neonViolet;
-      categoryName = '💡 FEATURE SUGGESTION';
+      categoryName = 'SUGGESTION';
       categoryIcon = Icons.lightbulb_outline_rounded;
     } else if (ticket.category == 'billing_dispute') {
       badgeColor = AdminCyberTheme.neonAmber;
-      categoryName = '💰 BILLING DISPUTE';
+      categoryName = 'BILLING DISPUTE';
       categoryIcon = Icons.receipt_long_rounded;
     }
 
+    final isResolved = ticket.status == 'resolved';
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: CyberCard(
-        glowColor: badgeColor,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Category & Status Header
+            // Top Row: Category Squircle + Title + Status Pill
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(categoryIcon, size: 14, color: badgeColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      categoryName,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: badgeColor,
-                        letterSpacing: 0.8,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(categoryIcon, size: 12, color: badgeColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        categoryName,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: badgeColor,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const Spacer(),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: ticket.status == 'resolved'
-                        ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.15)
-                        : AdminCyberTheme.neonAmber.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    color: isResolved
+                        ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.12)
+                        : AdminCyberTheme.neonAmber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: ticket.status == 'resolved'
-                          ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.4)
-                          : AdminCyberTheme.neonAmber.withValues(alpha: 0.4),
+                      color: isResolved
+                          ? AdminCyberTheme.neonEmerald.withValues(alpha: 0.35)
+                          : AdminCyberTheme.neonAmber.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Text(
-                    ticket.status.toUpperCase(),
+                    isResolved ? 'RESOLVED' : 'PENDING',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      color: ticket.status == 'resolved'
+                      color: isResolved
                           ? AdminCyberTheme.neonEmerald
                           : AdminCyberTheme.neonAmber,
                     ),
@@ -234,25 +275,92 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 12),
+
+            // User Info & Role Tag
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ticket.userName,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              ticket.userRole.toUpperCase(),
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AdminCyberTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '📞 ${ticket.userPhone}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AdminCyberTheme.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 10),
 
-            // User Info & Device Telemetry
-            Text(
-              '${ticket.userName} (${ticket.userRole.toUpperCase()}) • 📞 ${ticket.userPhone}',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+            // Device Telemetry Pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AdminCyberTheme.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.devices_rounded,
+                      size: 13, color: AdminCyberTheme.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${ticket.deviceModel.isNotEmpty ? ticket.deviceModel : 'Unknown Device'} • ${ticket.osVersion} • Build ${ticket.appVersion}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10,
+                        color: AdminCyberTheme.textMuted,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              '📱 ${ticket.deviceModel.isNotEmpty ? ticket.deviceModel : 'Unknown Device'} • ${ticket.osVersion} • Build ${ticket.appVersion}',
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 11,
-                color: AdminCyberTheme.textMuted,
-              ),
-            ),
+
             const SizedBox(height: 12),
 
             // Ticket Message
@@ -260,9 +368,9 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                color: const Color(0xFF0C1322),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AdminCyberTheme.borderSubtle),
               ),
               child: Text(
                 ticket.message,
@@ -274,7 +382,7 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
               ),
             ),
 
-            // If already replied, show reply
+            // Reply Section
             if (ticket.adminReply != null &&
                 ticket.adminReply!.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -282,9 +390,8 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:
-                      AdminCyberTheme.neonEmerald.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AdminCyberTheme.neonEmerald.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: AdminCyberTheme.neonEmerald.withValues(alpha: 0.25),
                   ),
@@ -294,11 +401,11 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.reply_rounded,
-                            size: 14, color: AdminCyberTheme.neonEmerald),
+                        const Icon(Icons.check_circle_outline_rounded,
+                            size: 13, color: AdminCyberTheme.neonEmerald),
                         const SizedBox(width: 6),
                         Text(
-                          'YOUR DISPATCHED PUSH REPLY',
+                          'PUSH NOTIFICATION DISPATCHED',
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
@@ -320,7 +427,7 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
               ),
             ] else ...[
               // Reply Input Field & Push Button
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -335,21 +442,19 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                           fontSize: 12,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        fillColor: AdminCyberTheme.cardSurface,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              BorderSide(color: AdminCyberTheme.borderSubtle),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              BorderSide(color: AdminCyberTheme.borderSubtle),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           borderSide: const BorderSide(
                             color: AdminCyberTheme.neonCyan,
                             width: 1.5,
@@ -366,9 +471,9 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                       backgroundColor: AdminCyberTheme.neonCyan,
                       foregroundColor: const Color(0xFF04202C),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                          horizontal: 14, vertical: 11),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       elevation: 0,
                     ),
@@ -392,13 +497,16 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                             content: Row(
                               children: [
                                 const Icon(Icons.send_rounded,
-                                    color: AdminCyberTheme.neonCyan, size: 18),
+                                    color: AdminCyberTheme.neonCyan, size: 16),
                                 const SizedBox(width: 8),
-                                Text(
-                                  'Push reply sent to ${ticket.userName} 🚀',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                Expanded(
+                                  child: Text(
+                                    'Push reply sent to ${ticket.userName} 🚀',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -407,19 +515,12 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                         );
                       }
                     },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.send_rounded, size: 14),
-                        const SizedBox(width: 6),
-                        Text(
-                          'REPLY',
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Reply',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],

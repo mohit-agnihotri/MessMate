@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +40,15 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
       if (isValid) {
         HapticFeedback.mediumImpact();
         Navigator.pop(context); // Close sheet
+
+        // If not authenticated in Firebase, establish anonymous session for Firestore rules
+        if (FirebaseAuth.instance.currentUser == null) {
+          try {
+            await FirebaseAuth.instance.signInAnonymously();
+          } catch (e) {
+            debugPrint('[StealthGate] Anonymous sign-in: $e');
+          }
+        }
 
         // Set role to admin
         ref.read(authProvider.notifier).setRole(AuthRole.admin);

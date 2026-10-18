@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -18,6 +19,7 @@ class AdminMessesTab extends ConsumerStatefulWidget {
 class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _selectedFilter = 'all';
+  bool _isSeeding = false;
 
   @override
   void dispose() {
@@ -40,7 +42,8 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
           final matchesQuery = query.isEmpty ||
               mess.name.toLowerCase().contains(query) ||
               mess.messCode.toLowerCase().contains(query) ||
-              mess.ownerName.toLowerCase().contains(query);
+              mess.ownerName.toLowerCase().contains(query) ||
+              mess.ownerPhone.toLowerCase().contains(query);
 
           if (!matchesQuery) return false;
 
@@ -58,31 +61,39 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
           children: [
             // Search & Filter Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
                   TextField(
                     controller: _searchCtrl,
-                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Search mess name, code (#MESS-...), owner...',
+                      hintText: 'Search mess name, #code, owner phone...',
                       hintStyle: GoogleFonts.inter(
-                          color: AdminCyberTheme.textMuted, fontSize: 13),
+                        color: AdminCyberTheme.textMuted,
+                        fontSize: 12,
+                      ),
                       prefixIcon: const Icon(Icons.search_rounded,
                           color: AdminCyberTheme.neonCyan, size: 20),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded,
+                                  color: AdminCyberTheme.textMuted, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
                       filled: true,
-                      fillColor: const Color(0xFF101626),
+                      fillColor: AdminCyberTheme.cardSurface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
+                        borderSide: BorderSide(color: AdminCyberTheme.borderSubtle),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
+                        borderSide: BorderSide(color: AdminCyberTheme.borderSubtle),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -91,7 +102,8 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                           width: 1.5,
                         ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -106,8 +118,7 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                           'In Trial (180D)',
                           'trial',
                           allMesses
-                              .where((m) =>
-                                  m.subscriptionStatus == 'trial_active')
+                              .where((m) => m.subscriptionStatus == 'trial_active')
                               .length,
                         ),
                         const SizedBox(width: 8),
@@ -129,30 +140,13 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
               ),
             ),
 
-            // Messes List
+            // Messes List or Rich Empty State
             Expanded(
               child: filteredMesses.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.storefront_outlined,
-                              size: 48,
-                              color: Colors.white.withValues(alpha: 0.2)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No messes found matching query',
-                            style: GoogleFonts.inter(
-                              color: AdminCyberTheme.textMuted,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? _buildEmptyState(allMesses.isEmpty, adminService)
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
+                          horizontal: 16, vertical: 6),
                       itemCount: filteredMesses.length,
                       itemBuilder: (context, index) {
                         final mess = filteredMesses[index];
@@ -166,22 +160,155 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
     );
   }
 
+  Widget _buildEmptyState(bool isCompletelyEmpty, AdminService adminService) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AdminCyberTheme.cardSurface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AdminCyberTheme.borderSubtle),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: Icon(
+                isCompletelyEmpty
+                    ? Icons.storefront_outlined
+                    : Icons.filter_alt_off_rounded,
+                size: 44,
+                color: AdminCyberTheme.neonCyan.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              isCompletelyEmpty
+                  ? 'No Messes Onboarded Yet'
+                  : 'No Messes Match Current Filter',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isCompletelyEmpty
+                  ? 'Your database is fresh. You can seed a realistic demo mess with 1-click to test the entire ecosystem.'
+                  : 'Try resetting the filters or clearing the search query to see all registered messes.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: AdminCyberTheme.textMuted,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (isCompletelyEmpty)
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AdminCyberTheme.neonCyan,
+                  foregroundColor: const Color(0xFF04202C),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: _isSeeding
+                    ? null
+                    : () async {
+                        setState(() => _isSeeding = true);
+                        try {
+                          await adminService.seedSampleMess();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    '🎉 Demo Mess successfully onboarded with 180-day trial!'),
+                                backgroundColor: Color(0xFF04202C),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isSeeding = false);
+                        }
+                      },
+                icon: _isSeeding
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF04202C),
+                        ),
+                      )
+                    : const Icon(Icons.add_business_rounded, size: 18),
+                label: Text(
+                  _isSeeding ? 'Onboarding Demo...' : 'Seed Sample Mess (1-Click)',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              )
+            else
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AdminCyberTheme.neonCyan,
+                  side: const BorderSide(color: AdminCyberTheme.neonCyan),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                onPressed: () {
+                  _searchCtrl.clear();
+                  setState(() => _selectedFilter = 'all');
+                },
+                icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                label: Text(
+                  'Reset All Filters',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterChip(String label, String value, int count) {
     final isSelected = _selectedFilter == value;
     return InkWell(
       onTap: () => setState(() => _selectedFilter = value),
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? AdminCyberTheme.neonCyan.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.05),
+              ? AdminCyberTheme.neonCyan.withValues(alpha: 0.14)
+              : AdminCyberTheme.cardSurface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AdminCyberTheme.neonCyan
-                : Colors.white.withValues(alpha: 0.1),
+                ? AdminCyberTheme.neonCyan.withValues(alpha: 0.6)
+                : AdminCyberTheme.borderSubtle,
           ),
         ),
         child: Row(
@@ -199,7 +326,9 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: isSelected
+                    ? AdminCyberTheme.neonCyan.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -221,62 +350,139 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
 
   Widget _buildMessCard(MessModel mess, AdminService adminService) {
     int daysLeft = 0;
+    double progress = 1.0;
     if (mess.trialExpiresAt != null) {
       daysLeft = mess.trialExpiresAt!.difference(DateTime.now()).inDays;
       if (daysLeft < 0) daysLeft = 0;
+      progress = (daysLeft / 180.0).clamp(0.0, 1.0);
     }
 
+    final isVip = mess.subscriptionStatus == 'lifetime_vip';
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: CyberCard(
-        glowColor: mess.isFrozen
-            ? AdminCyberTheme.neonRose
-            : mess.isVerified
-                ? AdminCyberTheme.neonEmerald
-                : null,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row: Name, Status & Code
+            // Top Row: Avatar + Title + Status Badges
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      PulsingBeacon(
+                // Store Avatar Squircle
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: mess.isFrozen
+                          ? [
+                              AdminCyberTheme.neonRose.withValues(alpha: 0.25),
+                              const Color(0xFF1E1122),
+                            ]
+                          : [
+                              AdminCyberTheme.neonCyan.withValues(alpha: 0.25),
+                              const Color(0xFF0D1B2A),
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: mess.isFrozen
+                          ? AdminCyberTheme.neonRose.withValues(alpha: 0.4)
+                          : AdminCyberTheme.neonCyan.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      mess.name.isNotEmpty ? mess.name[0].toUpperCase() : 'M',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: mess.isFrozen
                             ? AdminCyberTheme.neonRose
-                            : AdminCyberTheme.neonEmerald,
-                        size: 7,
+                            : AdminCyberTheme.neonCyan,
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          mess.name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Mess Info (Expanded to prevent overflow)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              mess.name,
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          if (mess.isVerified) ...[
+                            const SizedBox(width: 5),
+                            const Icon(Icons.verified_rounded,
+                                size: 15, color: AdminCyberTheme.neonEmerald),
+                          ],
+                        ],
                       ),
-                      if (mess.isVerified) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded,
-                            size: 16, color: AdminCyberTheme.neonEmerald),
-                      ],
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded,
+                              size: 13, color: AdminCyberTheme.textMuted),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${mess.ownerName} • ${mess.ownerPhone}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AdminCyberTheme.textSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(Icons.copy_rounded,
+                                size: 13, color: AdminCyberTheme.textMuted),
+                            tooltip: 'Copy Phone',
+                            onPressed: () {
+                              Clipboard.setData(
+                                  ClipboardData(text: mess.ownerPhone));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Copied ${mess.ownerPhone} to clipboard'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+
+                const SizedBox(width: 8),
+
+                // Code Badge
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AdminCyberTheme.borderSubtle),
                   ),
                   child: Text(
                     '#${mess.messCode}',
@@ -289,68 +495,99 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Owner: ${mess.ownerName} • 📞 ${mess.ownerPhone}',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: AdminCyberTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 12),
+
+            const SizedBox(height: 14),
 
             // Plan & Trial Telemetry Row
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                border: Border.all(color: AdminCyberTheme.borderSubtle),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.timer_outlined,
-                            size: 14, color: AdminCyberTheme.neonAmber),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            mess.subscriptionStatus == 'lifetime_vip'
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isVip
+                                ? Icons.workspace_premium_rounded
+                                : Icons.hourglass_top_rounded,
+                            size: 14,
+                            color: isVip
+                                ? AdminCyberTheme.neonCyan
+                                : (daysLeft > 30
+                                    ? AdminCyberTheme.neonEmerald
+                                    : AdminCyberTheme.neonAmber),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isVip
                                 ? 'LIFETIME FREE VIP'
-                                : '$daysLeft Days Trial Remaining',
+                                : '$daysLeft Days Remaining in 180D Trial',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: mess.subscriptionStatus == 'lifetime_vip'
+                              color: isVip
                                   ? AdminCyberTheme.neonCyan
-                                  : AdminCyberTheme.neonAmber,
+                                  : (daysLeft > 30
+                                      ? AdminCyberTheme.neonEmerald
+                                      : AdminCyberTheme.neonAmber),
                             ),
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: mess.isFrozen
+                              ? AdminCyberTheme.neonRose.withValues(alpha: 0.15)
+                              : AdminCyberTheme.neonEmerald
+                                  .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          mess.isFrozen ? 'FROZEN' : 'ACTIVE',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: mess.isFrozen
+                                ? AdminCyberTheme.neonRose
+                                : AdminCyberTheme.neonEmerald,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    mess.isFrozen ? 'STATUS: FROZEN' : 'STATUS: ACTIVE',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: mess.isFrozen
-                          ? AdminCyberTheme.neonRose
-                          : AdminCyberTheme.neonEmerald,
+                  if (!isVip) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: Colors.white.withValues(alpha: 0.08),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          daysLeft > 30
+                              ? AdminCyberTheme.neonEmerald
+                              : AdminCyberTheme.neonAmber,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 14),
 
-            // Action Buttons Row
+            const SizedBox(height: 12),
+
+            // Action Buttons
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -373,7 +610,25 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                   },
                 ),
                 _buildActionPill(
-                  label: mess.isVerified ? 'Remove Badge' : 'Verify Badge ✓',
+                  label: isVip ? 'Revoke VIP' : 'Grant VIP 👑',
+                  icon: Icons.workspace_premium_rounded,
+                  color: AdminCyberTheme.neonViolet,
+                  onTap: () async {
+                    await adminService.setMessLifetimeVip(mess.messId, !isVip);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(isVip
+                              ? 'VIP revoked for ${mess.name}'
+                              : '👑 Lifetime VIP granted to ${mess.name}!'),
+                          backgroundColor: const Color(0xFF04202C),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                _buildActionPill(
+                  label: mess.isVerified ? 'Remove Tick' : 'Verify Badge ✓',
                   icon: Icons.verified_rounded,
                   color: AdminCyberTheme.neonEmerald,
                   onTap: () async {
@@ -406,13 +661,13 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
