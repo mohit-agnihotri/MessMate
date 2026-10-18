@@ -17,7 +17,7 @@ class AdminMonetizationTab extends ConsumerStatefulWidget {
 }
 
 class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
-  DateTime _selectedMonth = DateTime.now();
+  final DateTime _selectedMonth = DateTime.now();
 
   @override
   Widget build(BuildContext context) {

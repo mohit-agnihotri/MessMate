@@ -401,6 +401,35 @@ class NotificationService {
     return _dispatchRestNotification(payload);
   }
 
+  /// Sends a push notification to all users across the platform.
+  static Future<bool> sendBroadcastNotification({
+    required String title,
+    required String message,
+    String? targetRole,
+    Map<String, dynamic>? data,
+  }) async {
+    final filters = <Map<String, dynamic>>[];
+    if (targetRole != null && targetRole.isNotEmpty) {
+      filters.add({
+        'field': 'tag',
+        'key': 'role',
+        'relation': '=',
+        'value': targetRole,
+      });
+    }
+
+    final payload = {
+      'app_id': _appId,
+      'headings': {'en': title},
+      'contents': {'en': message},
+      if (filters.isNotEmpty) 'filters': filters,
+      if (filters.isEmpty) 'included_segments': ['All'],
+      if (data != null) 'data': data,
+    };
+
+    return _dispatchRestNotification(payload);
+  }
+
   /// Internal helper to dispatch notification payload to OneSignal REST endpoint.
   static Future<bool> _dispatchRestNotification(Map<String, dynamic> payload) async {
     if (_restApiKey == null || _restApiKey!.isEmpty) {

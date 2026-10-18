@@ -321,10 +321,12 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
 
                             setState(() => _isBroadcasting = true);
                             try {
-                              // Broadcast using NotificationService
                               await NotificationService.sendBroadcastNotification(
                                 title: title,
-                                body: body,
+                                message: body,
+                                targetRole: _broadcastTarget == 'all_students'
+                                    ? 'student'
+                                    : 'owner',
                               );
 
                               _broadcastTitleCtrl.clear();
@@ -400,7 +402,7 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
         const SizedBox(width: 12),
         Switch.adaptive(
           value: value,
-          activeColor: accentColor,
+          activeTrackColor: accentColor,
           onChanged: onChanged,
         ),
       ],

@@ -385,7 +385,7 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                       );
 
                       replyCtrl.clear();
-                      if (context.mounted) {
+                      if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: const Color(0xFF04202C),

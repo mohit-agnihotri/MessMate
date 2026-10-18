@@ -237,7 +237,7 @@ class AdminService {
       await NotificationService.sendStudentNotification(
         studentId: userId,
         title: '$categoryBadge from MessMate Dev',
-        body: reply.trim(),
+        message: reply.trim(),
       );
     } catch (e) {
       debugPrint('[AdminService] Note: Push notification dispatch notice: $e');
