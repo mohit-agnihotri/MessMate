@@ -50,7 +50,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
-        builder: (_) => const AdminStealthGateSheet(),
+        builder: (_) => AdminStealthGateSheet(
+          onSuccess: () {
+            ref.read(authProvider.notifier).setRole(AuthRole.admin);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const AdminMissionControlPage()),
+            );
+          },
+        ),
       );
     } else {
       HapticFeedback.selectionClick();

@@ -1,18 +1,20 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../services/admin_service.dart';
-import '../../../../viewmodels/all_viewmodels.dart';
 import '../admin_cyber_theme.dart';
-import '../admin_mission_control_page.dart';
 
 /// Layer 2: Secret Stealth Gate Sheet.
 /// Triggered by 5 rapid taps on the MessMate logo.
 class AdminStealthGateSheet extends ConsumerStatefulWidget {
-  const AdminStealthGateSheet({super.key});
+  final VoidCallback onSuccess;
+
+  const AdminStealthGateSheet({
+    super.key,
+    required this.onSuccess,
+  });
 
   @override
   ConsumerState<AdminStealthGateSheet> createState() =>
@@ -39,44 +41,8 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
 
       if (isValid) {
         HapticFeedback.mediumImpact();
-        Navigator.pop(context); // Close sheet
-
-        // If not authenticated in Firebase, establish anonymous session for Firestore rules
-        if (FirebaseAuth.instance.currentUser == null) {
-          try {
-            await FirebaseAuth.instance.signInAnonymously();
-          } catch (e) {
-            debugPrint('[StealthGate] Anonymous sign-in: $e');
-          }
-        }
-
-        // Set role to admin
-        ref.read(authProvider.notifier).setRole(AuthRole.admin);
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminMissionControlPage()),
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF064E3B),
-            content: Row(
-              children: [
-                const Icon(Icons.verified_user_rounded,
-                    color: AdminCyberTheme.neonEmerald, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  'Welcome Commander! Mission Control Unlocked 🚀',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        Navigator.pop(context); // Dismiss sheet
+        widget.onSuccess();     // Trigger transition in parent LoginPage context
       } else {
         HapticFeedback.vibrate();
         setState(() {
