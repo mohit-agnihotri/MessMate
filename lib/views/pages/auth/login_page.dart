@@ -1,10 +1,17 @@
-import '../../../services/localization_service.dart';
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../config/admin_config.dart';
+import '../../../services/admin_service.dart';
+import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import '../admin/admin_mission_control_page.dart';
+import '../admin/widgets/admin_pin_verification_sheet.dart';
+import '../admin/widgets/admin_stealth_gate_sheet.dart';
 import 'role_selection_page.dart';
 import 'owner_setup_page.dart';
 import 'student_setup_page.dart';
@@ -23,15 +30,70 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   bool get isHindi => ref.watch(localizationProvider) == 'hi';
 
+  int _logoTapCount = 0;
+  DateTime? _lastLogoTap;
+
+  void _onLogoTap() {
+    final now = DateTime.now();
+    if (_lastLogoTap == null ||
+        now.difference(_lastLogoTap!) > const Duration(seconds: 2)) {
+      _logoTapCount = 1;
+    } else {
+      _logoTapCount++;
+    }
+    _lastLogoTap = now;
+
+    if (_logoTapCount >= 5) {
+      _logoTapCount = 0;
+      HapticFeedback.heavyImpact();
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => const AdminStealthGateSheet(),
+      );
+    } else {
+      HapticFeedback.selectionClick();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    
+
     // Listen to authentication state changes
     ref.listen(authProvider, (prev, next) async {
       if (next.userId != null && prev?.userId == null) {
         final uid = next.userId!;
         final service = ref.read(appServiceProvider);
+
+        // 0. Super Admin Auto-Detection & Whitelist Check:
+        final currentUser = FirebaseAuth.instance.currentUser;
+        final adminService = ref.read(adminServiceProvider);
+        final config = await adminService.getGlobalConfig();
+        if (AdminConfig.isSuperAdminEmail(
+            currentUser?.email, config.adminEmails)) {
+          if (mounted) {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              isDismissible: false,
+              enableDrag: false,
+              builder: (_) => AdminPinVerificationSheet(
+                onSuccess: () {
+                  ref.read(authProvider.notifier).setRole(AuthRole.admin);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AdminMissionControlPage()),
+                  );
+                },
+              ),
+            );
+            return;
+          }
+        }
 
         // Smart Universal Account Auto-Detection:
         // 1. Check if user already exists as an Owner
@@ -184,27 +246,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // App Icon / Logo
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
+                  // App Icon / Logo (with 5-tap stealth easter egg)
+                  GestureDetector(
+                    onTap: _onLogoTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.restaurant_rounded,
-                      color: Colors.white,
-                      size: 32,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFF10B981).withValues(alpha: 0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 28),

@@ -31,7 +31,7 @@ final appServiceProvider = Provider<AppService>((ref) {
 });
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-enum AuthRole { none, owner, student }
+enum AuthRole { none, owner, student, admin }
 
 class AuthState {
   final String? userId;

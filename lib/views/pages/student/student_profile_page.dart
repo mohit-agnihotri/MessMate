@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../auth/login_page.dart';
+import '../common/user_feedback_sheet.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -553,12 +554,23 @@ class StudentProfilePage extends ConsumerWidget {
             ),
           ),
           InkWell(
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Help center coming soon!')),
-            ),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) => UserFeedbackSheet(
+                  userRole: 'student',
+                  messId: state.student?.messId ?? '',
+                  messName: state.mess?.name ?? '',
+                ),
+              );
+            },
             child: _buildArrowTile(
-              Icons.help_outline_rounded,
-              'Help & Support',
+              Icons.support_agent_rounded,
+              ref.watch(localizationProvider) == 'hi'
+                  ? 'सहायता और सुझाव (Help & Feedback)'
+                  : 'Help & Feature Suggestions',
               '',
             ),
           ),

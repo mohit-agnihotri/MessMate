@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/app_models.dart';
-//
+import '../../../services/admin_service.dart';
+import '../../../services/notification_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
 import 'role_selection_page.dart';
@@ -885,6 +886,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         perMealRefund = double.tryParse((first['skipCtrl'] as TextEditingController?)?.text ?? first['skipRefund'].toString()) ?? 40.0;
       }
 
+      final adminConfig = await ref.read(adminServiceProvider).getGlobalConfig();
+      final now = DateTime.now();
+      final trialStart = adminConfig.globalTrialEnabled ? now : null;
+      final trialExpiry = adminConfig.globalTrialEnabled
+          ? now.add(Duration(days: adminConfig.defaultTrialDays))
+          : null;
+
       final newMess = MessModel(
         messId: messId,
         ownerId: effectiveOwnerId,
@@ -900,9 +908,24 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         cutoffHours: _cutoffLeadHours,
         foodType: _foodType,
         capacity: int.tryParse(_capacityCtrl.text.trim()) ?? 50,
+        trialStartDate: trialStart,
+        trialExpiresAt: trialExpiry,
+        subscriptionStatus:
+            adminConfig.globalTrialEnabled ? 'trial_active' : 'active',
       );
 
       await appService.createMess(newMess);
+
+      if (adminConfig.globalTrialEnabled) {
+        try {
+          await NotificationService.sendStudentNotification(
+            studentId: effectiveOwnerId,
+            title: '🎉 Welcome to MessMate!',
+            body:
+                'Aapka 180 Days (6 Months) Free VIP Partner Access shuru ho gaya hai!',
+          );
+        } catch (_) {}
+      }
 
       for (final planConfig in enabledPlans) {
         final planId = '${messId}_${planConfig['id']}';

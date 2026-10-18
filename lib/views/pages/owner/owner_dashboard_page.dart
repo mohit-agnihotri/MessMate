@@ -7,6 +7,7 @@ import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
 import 'owner_absentee_tracker_page.dart';
+import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -104,6 +105,51 @@ class OwnerDashboardPage extends ConsumerWidget {
                         color: const Color(0xFF6B7280),
                       ),
                     ),
+                    if (state.mess != null) ...[
+                      const SizedBox(height: 5),
+                      InkWell(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            builder: (_) =>
+                                OwnerLaunchPartnerSheet(mess: state.mess!),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981)
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: const Color(0xFF10B981)
+                                    .withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  size: 13, color: Color(0xFF059669)),
+                              const SizedBox(width: 4),
+                              Text(
+                                state.mess!.subscriptionStatus == 'lifetime_vip'
+                                    ? 'VIP Lifetime Partner'
+                                    : '⭐ 180 Days Free VIP Active',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF059669),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

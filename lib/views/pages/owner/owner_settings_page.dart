@@ -12,7 +12,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 
 import '../../../viewmodels/all_viewmodels.dart';
-import '../../../models/app_models.dart';
+import '../common/user_feedback_sheet.dart';
+import 'widgets/owner_launch_partner_sheet.dart';
 import 'owner_about_mess_page.dart';
 
 class OwnerSettingsPage extends ConsumerWidget {
@@ -94,7 +95,7 @@ class OwnerSettingsPage extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                 sliver: SliverToBoxAdapter(
-                  child: _buildActionsCard(context, ref),
+                  child: _buildActionsCard(context, ref, mess),
                 ),
               ),
               SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -1030,7 +1031,8 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionsCard(BuildContext context, WidgetRef ref) {
+  Widget _buildActionsCard(
+      BuildContext context, WidgetRef ref, MessModel? mess) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
@@ -1048,6 +1050,22 @@ class OwnerSettingsPage extends ConsumerWidget {
         ),
         child: Column(
           children: [
+            if (mess != null) ...[
+              _buildActionTile(
+                Icons.star_rounded,
+                'My VIP Launch Partner Benefits',
+                const Color(0xFF10B981),
+                () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (_) => OwnerLaunchPartnerSheet(mess: mess),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
+            ],
             _buildActionTile(
               Icons.location_on_rounded,
               'Update Mess Location (GPS)',
@@ -1142,12 +1160,21 @@ class OwnerSettingsPage extends ConsumerWidget {
             ),
             const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
             _buildActionTile(
-              Icons.help_outline_rounded,
-              ref.watch(localizationProvider) == 'hi' ? 'सहायता और सपोर्ट' : 'Help & Support',
-              const Color(0xFF374151),
+              Icons.support_agent_rounded,
+              ref.watch(localizationProvider) == 'hi'
+                  ? 'सहायता और सुझाव (Help & Feedback)'
+                  : 'Help & Feature Suggestions',
+              const Color(0xFF06B6D4),
               () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(ref.read(localizationProvider) == 'hi' ? 'सपोर्ट पोर्टल जल्द आ रहा है!' : 'Support portal coming soon!')),
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) => UserFeedbackSheet(
+                    userRole: 'owner',
+                    messId: mess?.messId ?? '',
+                    messName: mess?.name ?? '',
+                  ),
                 );
               },
             ),

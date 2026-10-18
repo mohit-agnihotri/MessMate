@@ -433,6 +433,12 @@ class MessModel {
   // Phase 2 additions:
   final String foodType; // 'pure_veg' | 'non_veg' | 'both'
   final List<String> masterDishNames;
+  // Super Admin & Monetization Additions:
+  final DateTime? trialStartDate;
+  final DateTime? trialExpiresAt;
+  final String subscriptionStatus; // 'trial_active', 'active', 'grace_period', 'expired', 'lifetime_vip'
+  final bool isFrozen;
+  final bool isVerified;
 
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
     'skipAlert': true,
@@ -471,6 +477,11 @@ class MessModel {
     this.aboutContent,
     this.foodType = 'pure_veg',
     this.masterDishNames = const [],
+    this.trialStartDate,
+    this.trialExpiresAt,
+    this.subscriptionStatus = 'trial_active',
+    this.isFrozen = false,
+    this.isVerified = false,
   });
 
   MessModel copyWith({
@@ -500,6 +511,11 @@ class MessModel {
     Object? aboutContent = const _Sentinel(),
     String? foodType,
     List<String>? masterDishNames,
+    DateTime? trialStartDate,
+    DateTime? trialExpiresAt,
+    String? subscriptionStatus,
+    bool? isFrozen,
+    bool? isVerified,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -532,6 +548,11 @@ class MessModel {
           : aboutContent as String?,
       foodType: foodType ?? this.foodType,
       masterDishNames: masterDishNames ?? this.masterDishNames,
+      trialStartDate: trialStartDate ?? this.trialStartDate,
+      trialExpiresAt: trialExpiresAt ?? this.trialExpiresAt,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+      isFrozen: isFrozen ?? this.isFrozen,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
 
@@ -568,6 +589,28 @@ class MessModel {
         } catch (_) {}
       }
     }
+    DateTime? trialStart;
+    final rawTrialStart = map['trialStartDate'];
+    if (rawTrialStart != null) {
+      if (rawTrialStart is String) {
+        trialStart = DateTime.tryParse(rawTrialStart);
+      } else {
+        try {
+          trialStart = (rawTrialStart as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
+    DateTime? trialExpiry;
+    final rawTrialExpiry = map['trialExpiresAt'];
+    if (rawTrialExpiry != null) {
+      if (rawTrialExpiry is String) {
+        trialExpiry = DateTime.tryParse(rawTrialExpiry);
+      } else {
+        try {
+          trialExpiry = (rawTrialExpiry as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
     return MessModel(
       messId: map['messId'] ?? '',
       name: map['name'] ?? '',
@@ -595,6 +638,11 @@ class MessModel {
       aboutContent: map['aboutContent'],
       foodType: map['foodType'] ?? 'pure_veg',
       masterDishNames: List<String>.from(map['masterDishNames'] ?? []),
+      trialStartDate: trialStart,
+      trialExpiresAt: trialExpiry,
+      subscriptionStatus: map['subscriptionStatus'] ?? 'trial_active',
+      isFrozen: map['isFrozen'] ?? false,
+      isVerified: map['isVerified'] ?? false,
     );
   }
 
@@ -627,6 +675,13 @@ class MessModel {
       if (aboutContent != null) 'aboutContent': aboutContent,
       'foodType': foodType,
       'masterDishNames': masterDishNames,
+      if (trialStartDate != null)
+        'trialStartDate': trialStartDate!.toIso8601String(),
+      if (trialExpiresAt != null)
+        'trialExpiresAt': trialExpiresAt!.toIso8601String(),
+      'subscriptionStatus': subscriptionStatus,
+      'isFrozen': isFrozen,
+      'isVerified': isVerified,
     };
   }
 }
@@ -883,6 +938,7 @@ class BillModel {
   final String? planId;
   final String? planName;
   final List<DeductionItem> deductions;
+  final double platformFee;
 
   BillModel({
     required this.billId,
@@ -906,6 +962,7 @@ class BillModel {
     this.planId,
     this.planName,
     required this.deductions,
+    this.platformFee = 0.0,
   });
 
   factory BillModel.fromMap(Map<String, dynamic> map) {
@@ -933,6 +990,7 @@ class BillModel {
       deductions: (map['deductions'] as List<dynamic>? ?? [])
           .map((d) => DeductionItem.fromMap(d as Map<String, dynamic>))
           .toList(),
+      platformFee: (map['platformFee'] ?? 0.0).toDouble(),
     );
   }
 
@@ -958,6 +1016,7 @@ class BillModel {
         if (planId != null) 'planId': planId,
         if (planName != null) 'planName': planName,
         'deductions': deductions.map((d) => d.toMap()).toList(),
+        'platformFee': platformFee,
       };
 }
 
@@ -1078,3 +1137,178 @@ class FeedbackModel {
         'dishes': dishes,
       };
 }
+
+/// Model representing a User Support, Bug Report, or Feature Suggestion ticket.
+class SupportTicketModel {
+  final String ticketId;
+  final String userId;
+  final String userName;
+  final String userPhone;
+  final String userRole; // 'student' | 'owner'
+  final String messId;
+  final String messName;
+  final String category; // 'bug' | 'suggestion' | 'mess_issue' | 'billing_dispute'
+  final String message;
+  final String deviceModel;
+  final String osVersion;
+  final String appVersion;
+  final String status; // 'open' | 'in_progress' | 'resolved'
+  final DateTime createdAt;
+  final String? adminReply;
+  final DateTime? adminRepliedAt;
+
+  SupportTicketModel({
+    required this.ticketId,
+    required this.userId,
+    required this.userName,
+    required this.userPhone,
+    required this.userRole,
+    required this.messId,
+    this.messName = '',
+    required this.category,
+    required this.message,
+    this.deviceModel = '',
+    this.osVersion = '',
+    this.appVersion = '',
+    this.status = 'open',
+    required this.createdAt,
+    this.adminReply,
+    this.adminRepliedAt,
+  });
+
+  factory SupportTicketModel.fromMap(Map<String, dynamic> map, [String? docId]) {
+    DateTime created = DateTime.now();
+    final rawCreated = map['createdAt'];
+    if (rawCreated != null) {
+      if (rawCreated is String) {
+        created = DateTime.tryParse(rawCreated) ?? DateTime.now();
+      } else {
+        try {
+          created = (rawCreated as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
+
+    DateTime? replied;
+    final rawReplied = map['adminRepliedAt'];
+    if (rawReplied != null) {
+      if (rawReplied is String) {
+        replied = DateTime.tryParse(rawReplied);
+      } else {
+        try {
+          replied = (rawReplied as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
+
+    return SupportTicketModel(
+      ticketId: docId ?? map['ticketId'] ?? '',
+      userId: map['userId'] ?? '',
+      userName: map['userName'] ?? '',
+      userPhone: map['userPhone'] ?? '',
+      userRole: map['userRole'] ?? 'student',
+      messId: map['messId'] ?? '',
+      messName: map['messName'] ?? '',
+      category: map['category'] ?? 'bug',
+      message: map['message'] ?? '',
+      deviceModel: map['deviceModel'] ?? '',
+      osVersion: map['osVersion'] ?? '',
+      appVersion: map['appVersion'] ?? '',
+      status: map['status'] ?? 'open',
+      createdAt: created,
+      adminReply: map['adminReply'],
+      adminRepliedAt: replied,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'ticketId': ticketId,
+        'userId': userId,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userRole': userRole,
+        'messId': messId,
+        'messName': messName,
+        'category': category,
+        'message': message,
+        'deviceModel': deviceModel,
+        'osVersion': osVersion,
+        'appVersion': appVersion,
+        'status': status,
+        'createdAt': createdAt.toIso8601String(),
+        if (adminReply != null) 'adminReply': adminReply,
+        if (adminRepliedAt != null)
+          'adminRepliedAt': adminRepliedAt!.toIso8601String(),
+      };
+}
+
+/// Global remote config and master control variables for the developer.
+class AdminGlobalConfigModel {
+  final bool globalTrialEnabled;
+  final int defaultTrialDays;
+  final bool platformFeeEnabled;
+  final double platformFeeAmount;
+  final double baseSoftwareMonthlyFee;
+  final bool emergencyBannerEnabled;
+  final String emergencyBannerText;
+  final String minSupportedVersion;
+  final String developerUpiId;
+  final List<String> adminEmails;
+  final String masterPin;
+
+  const AdminGlobalConfigModel({
+    this.globalTrialEnabled = true,
+    this.defaultTrialDays = 180,
+    this.platformFeeEnabled = true,
+    this.platformFeeAmount = 19.0,
+    this.baseSoftwareMonthlyFee = 499.0,
+    this.emergencyBannerEnabled = false,
+    this.emergencyBannerText = '',
+    this.minSupportedVersion = '1.0.0',
+    this.developerUpiId = 'messmate.admin@okaxis',
+    this.adminEmails = const [
+      'mohitagnihotri.dev@gmail.com',
+      'mohit.developer@gmail.com',
+    ],
+    this.masterPin = '778899',
+  });
+
+  factory AdminGlobalConfigModel.fromMap(Map<String, dynamic> map) {
+    return AdminGlobalConfigModel(
+      globalTrialEnabled: map['globalTrialEnabled'] as bool? ?? true,
+      defaultTrialDays: (map['defaultTrialDays'] as num?)?.toInt() ?? 180,
+      platformFeeEnabled: map['platformFeeEnabled'] as bool? ?? true,
+      platformFeeAmount:
+          (map['platformFeeAmount'] as num?)?.toDouble() ?? 19.0,
+      baseSoftwareMonthlyFee:
+          (map['baseSoftwareMonthlyFee'] as num?)?.toDouble() ?? 499.0,
+      emergencyBannerEnabled:
+          map['emergencyBannerEnabled'] as bool? ?? false,
+      emergencyBannerText: map['emergencyBannerText'] as String? ?? '',
+      minSupportedVersion:
+          map['minSupportedVersion'] as String? ?? '1.0.0',
+      developerUpiId:
+          map['developerUpiId'] as String? ?? 'messmate.admin@okaxis',
+      adminEmails: List<String>.from(map['adminEmails'] ?? [
+        'mohitagnihotri.dev@gmail.com',
+        'mohit.developer@gmail.com',
+      ]),
+      masterPin: map['masterPin'] as String? ?? '778899',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'globalTrialEnabled': globalTrialEnabled,
+        'defaultTrialDays': defaultTrialDays,
+        'platformFeeEnabled': platformFeeEnabled,
+        'platformFeeAmount': platformFeeAmount,
+        'baseSoftwareMonthlyFee': baseSoftwareMonthlyFee,
+        'emergencyBannerEnabled': emergencyBannerEnabled,
+        'emergencyBannerText': emergencyBannerText,
+        'minSupportedVersion': minSupportedVersion,
+        'developerUpiId': developerUpiId,
+        'adminEmails': adminEmails,
+        'masterPin': masterPin,
+      };
+}
+
