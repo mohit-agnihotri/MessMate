@@ -25,6 +25,11 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
     final adminService = ref.watch(adminServiceProvider);
     final configAsync = ref.watch(adminConfigStreamProvider);
     final config = configAsync.value ?? const AdminGlobalConfigModel();
+    final studentsAsync = ref.watch(adminStudentsStreamProvider);
+    final allStudents = studentsAsync.value ?? [];
+    final activeStudentsCount = allStudents
+        .where((s) => s.status == 'active' || s.status == 'approved')
+        .length;
 
     return StreamBuilder<List<MessModel>>(
       stream: adminService.streamAllMesses(),
@@ -32,13 +37,11 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
         final messes = snapshot.data ?? [];
         final totalMesses = messes.length;
 
-        // Estimated revenue breakdown
+        // Real-time dynamic revenue calculation (Zero Hardcoded approximations)
         final double baseSoftwareTotal =
             totalMesses * config.baseSoftwareMonthlyFee;
-        final int estimatedStudents =
-            totalMesses * 45; // average 45 students per mess
         final double platformFeeTotal = config.platformFeeEnabled
-            ? (estimatedStudents * config.platformFeeAmount)
+            ? (activeStudentsCount * config.platformFeeAmount)
             : 0.0;
         final double totalGrossRevenue = baseSoftwareTotal + platformFeeTotal;
         final double gatewayCutSaved = totalGrossRevenue * 0.02; // 2% saved!
@@ -134,7 +137,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     ),
                     const SizedBox(height: 8),
                     _buildLedgerRow(
-                      'Student Platform Fees (₹${config.platformFeeAmount.toInt()} × ~$estimatedStudents users)',
+                      'Student Platform Fees (₹${config.platformFeeAmount.toInt()} × $activeStudentsCount active users)',
                       '₹ ${platformFeeTotal.toStringAsFixed(0)}',
                       AdminCyberTheme.neonEmerald,
                     ),
@@ -313,7 +316,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                 )
               else
                 ...messes.map((mess) =>
-                    _buildMessInvoiceTile(mess, config, adminService)),
+                    _buildMessInvoiceTile(mess, config, adminService, allStudents)),
             ],
           ),
         );
@@ -352,9 +355,22 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
     MessModel mess,
     AdminGlobalConfigModel config,
     AdminService adminService,
+    List<StudentModel> allStudents,
   ) {
     final isTrial = mess.subscriptionStatus == 'trial_active';
     final isLifetimeVip = mess.subscriptionStatus == 'lifetime_vip';
+
+    final messStudents =
+        allStudents.where((s) => s.messId == mess.messId).toList();
+    final messActiveStudents = messStudents
+        .where((s) => s.status == 'active' || s.status == 'approved')
+        .length;
+    final double studentPlatformSum = config.platformFeeEnabled
+        ? (messActiveStudents * config.platformFeeAmount)
+        : 0.0;
+    final double totalCycleDue = (isTrial || isLifetimeVip)
+        ? 0.0
+        : (config.baseSoftwareMonthlyFee + studentPlatformSum);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -418,6 +434,25 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
               ),
               overflow: TextOverflow.ellipsis,
             ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.people_alt_rounded,
+                    size: 13, color: AdminCyberTheme.neonCyan),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    '$messActiveStudents Active Enrolled • Platform: ₹${studentPlatformSum.toStringAsFixed(0)} (₹${config.platformFeeAmount.toInt()}/st)',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AdminCyberTheme.neonCyan,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -435,7 +470,7 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     Text(
                       isTrial || isLifetimeVip
                           ? '₹ 0.00'
-                          : '₹ ${config.baseSoftwareMonthlyFee.toInt()}',
+                          : '₹ ${totalCycleDue.toStringAsFixed(2)}',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -646,14 +681,30 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    st['studentName']?.toString() ?? 'Student',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        st['studentName']?.toString() ??
+                                            'Student',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (st['phone'] != null &&
+                                          st['phone'].toString().isNotEmpty)
+                                        Text(
+                                          '${st['phone']}${st['roomNo'] != null && st['roomNo'].toString().isNotEmpty ? ' • Rm ${st['roomNo']}' : ''}',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 10,
+                                            color: AdminCyberTheme.textMuted,
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 8),

@@ -16,6 +16,11 @@ final adminConfigStreamProvider = StreamProvider<AdminGlobalConfigModel>((ref) {
   return ref.watch(adminServiceProvider).streamGlobalConfig();
 });
 
+/// StreamProvider for real-time student count and profiles across all messes
+final adminStudentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
+  return ref.watch(adminServiceProvider).streamAllStudents();
+});
+
 /// Centralized service powering the Super Admin Mission Control,
 /// dual-gate security authentication, mess management, support tickets, and monetization.
 class AdminService {
@@ -131,6 +136,22 @@ class AdminService {
     }).handleError((error) {
       debugPrint('[AdminService] streamAllMesses error caught gracefully: $error');
       return <MessModel>[];
+    });
+  }
+
+  /// Real-time stream of all students enrolled across all messes.
+  Stream<List<StudentModel>> streamAllStudents() {
+    return _db.collection('students').snapshots().map((snap) {
+      return snap.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        if (data['studentId'] == null || data['studentId'].toString().isEmpty) {
+          data['studentId'] = doc.id;
+        }
+        return StudentModel.fromMap(data);
+      }).toList();
+    }).handleError((error) {
+      debugPrint('[AdminService] streamAllStudents error caught gracefully: $error');
+      return <StudentModel>[];
     });
   }
 
@@ -332,15 +353,38 @@ class AdminService {
               isLessThanOrEqualTo: endOfMonth.toIso8601String())
           .get();
 
-      return billsSnap.docs.map((doc) {
+      if (billsSnap.docs.isNotEmpty) {
+        return billsSnap.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'billId': doc.id,
+            'studentId': data['studentId'] ?? '',
+            'studentName': data['studentName'] ?? 'Student',
+            'phone': data['phone'] ?? '',
+            'finalAmount': (data['finalAmount'] ?? 0.0).toDouble(),
+            'generatedAt': data['generatedAt'] ?? '',
+            'status': data['status'] ?? 'pending',
+          };
+        }).toList();
+      }
+
+      // If no bills generated yet this cycle, query currently active enrolled students
+      final studentsSnap = await _db
+          .collection('students')
+          .where('messId', isEqualTo: messId)
+          .get();
+
+      return studentsSnap.docs.map((doc) {
         final data = doc.data();
         return {
-          'billId': doc.id,
-          'studentId': data['studentId'] ?? '',
-          'studentName': data['studentName'] ?? 'Student',
-          'finalAmount': (data['finalAmount'] ?? 0.0).toDouble(),
-          'generatedAt': data['generatedAt'] ?? '',
-          'status': data['status'] ?? 'pending',
+          'billId': 'ACTIVE_ENROLLED',
+          'studentId': doc.id,
+          'studentName': data['name'] ?? 'Student',
+          'phone': data['phone'] ?? '',
+          'roomNo': data['roomNo'] ?? '',
+          'finalAmount': 19.0, // Platform fee per student
+          'generatedAt': data['joinDate'] ?? '',
+          'status': data['status'] ?? 'active',
         };
       }).toList();
     } catch (e) {

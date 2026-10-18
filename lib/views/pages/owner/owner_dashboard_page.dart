@@ -704,33 +704,40 @@ class OwnerDashboardPage extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(slotIcon, style: const TextStyle(fontSize: 22)),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Current Meal: $slotName',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                        if (timeRange.isNotEmpty)
-                          Text(
-                            'Serving Timings: $timeRange',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF6B7280),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(slotIcon, style: const TextStyle(fontSize: 22)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current Meal: $slotName',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: const Color(0xFF111827),
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                            if (timeRange.isNotEmpty)
+                              Text(
+                                'Serving Timings: $timeRange',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF6B7280),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(

@@ -361,7 +361,7 @@ class OwnerStudentManagementPage extends ConsumerWidget {
               radius: 22,
               backgroundColor: const Color(0xFFDCFCE7),
               child: Text(
-                student.name[0],
+                student.name.isNotEmpty ? student.name[0].toUpperCase() : 'S',
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -555,7 +555,9 @@ class OwnerStudentManagementPage extends ConsumerWidget {
                                         radius: 30,
                                         backgroundColor: const Color(0xFFDCFCE7),
                                         child: Text(
-                                          student.name[0],
+                                          student.name.isNotEmpty
+                                              ? student.name[0].toUpperCase()
+                                              : 'S',
                                           style: GoogleFonts.inter(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,

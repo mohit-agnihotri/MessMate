@@ -13,6 +13,11 @@ class AdminCockpitTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final adminService = ref.watch(adminServiceProvider);
+    final studentsAsync = ref.watch(adminStudentsStreamProvider);
+    final allStudents = studentsAsync.value ?? [];
+    final activeStudentsCount = allStudents
+        .where((s) => s.status == 'active' || s.status == 'approved')
+        .length;
 
     return StreamBuilder<List<MessModel>>(
       stream: adminService.streamAllMesses(),
@@ -103,14 +108,14 @@ class AdminCockpitTab extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
 
-              // KPI Metric Cards Grid (100% Overflow Proof)
+              // KPI Metric Cards Grid (100% Overflow Proof & Live Data)
               Row(
                 children: [
                   Expanded(
                     child: CyberTelemetryMetric(
                       title: 'Total Messes',
                       value: '$totalMesses',
-                      deltaText: '$trialMesses in 6M Trial',
+                      deltaText: '$trialMesses in 180D Trial',
                       icon: Icons.storefront_rounded,
                       accentColor: AdminCyberTheme.neonEmerald,
                     ),
@@ -118,10 +123,10 @@ class AdminCockpitTab extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: CyberTelemetryMetric(
-                      title: 'Verified Messes',
-                      value: '$verifiedMesses',
-                      deltaText: 'Verified Partners',
-                      icon: Icons.verified_rounded,
+                      title: 'Active Students',
+                      value: '$activeStudentsCount',
+                      deltaText: '${allStudents.length} Total Users',
+                      icon: Icons.school_rounded,
                       accentColor: AdminCyberTheme.neonCyan,
                     ),
                   ),

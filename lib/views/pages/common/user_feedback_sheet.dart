@@ -8,7 +8,7 @@ import '../../../services/admin_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 
 /// User-facing In-App Feedback, Bug Report, & Feature Suggestion Sheet.
-/// Connects students and mess owners directly to the founder/developer.
+/// Allows students and mess owners to report issues or send suggestions.
 class UserFeedbackSheet extends ConsumerStatefulWidget {
   final String userRole; // 'student' | 'owner'
   final String messId;
@@ -53,15 +53,38 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
     try {
       final authState = ref.read(authProvider);
       final userId = authState.userId ?? 'anonymous';
+      String resolvedName =
+          widget.userRole == 'owner' ? 'Mess Owner' : 'Student User';
+      String resolvedPhone = '';
+      String resolvedMess = widget.messName;
+
+      if (widget.userRole == 'owner') {
+        final ownerState = ref.read(ownerSettingsProvider);
+        if (ownerState.mess != null) {
+          if (ownerState.mess!.ownerName.isNotEmpty) {
+            resolvedName = ownerState.mess!.ownerName;
+          }
+          resolvedPhone = ownerState.mess!.ownerPhone;
+          if (resolvedMess.isEmpty) resolvedMess = ownerState.mess!.name;
+        }
+      } else {
+        final studentProfile = ref.read(studentProfileProvider);
+        if (studentProfile.student != null) {
+          if (studentProfile.student!.name.isNotEmpty) {
+            resolvedName = studentProfile.student!.name;
+          }
+          resolvedPhone = studentProfile.student!.phone;
+        }
+      }
 
       final ticket = SupportTicketModel(
         ticketId: '',
         userId: userId,
-        userName: widget.userRole == 'owner' ? 'Mess Owner' : 'Student User',
-        userPhone: '',
+        userName: resolvedName,
+        userPhone: resolvedPhone,
         userRole: widget.userRole,
         messId: widget.messId,
-        messName: widget.messName,
+        messName: resolvedMess,
         category: _category,
         message: text,
         deviceModel: defaultTargetPlatform.name.toUpperCase(),
@@ -85,7 +108,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Feedback sent to developer team! You will receive a push reply 🚀',
+                  'Your complaint / feedback has been submitted successfully!',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -131,127 +154,131 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Text(
-                'Help & Feature Suggestions',
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Direct channel to the MessMate developer team. Send bugs, ideas or complaints.',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Category Selector
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildCategoryChip('🐛 Bug Report', 'bug', const Color(0xFFF43F5E)),
-                    const SizedBox(width: 8),
-                    _buildCategoryChip('💡 Suggestion', 'suggestion', const Color(0xFF8B5CF6)),
-                    const SizedBox(width: 8),
-                    _buildCategoryChip('🍽️ Mess Issue', 'mess_issue', const Color(0xFF06B6D4)),
-                    const SizedBox(width: 8),
-                    _buildCategoryChip('💰 Bill Dispute', 'billing_dispute', const Color(0xFFF59E0B)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Message input box
-              TextField(
-                controller: _msgCtrl,
-                maxLines: 4,
-                style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Describe your issue or suggestion in detail...',
-                  hintStyle: GoogleFonts.inter(
-                    color: const Color(0xFF64748B),
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF10B981),
-                      width: 1.5,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(14),
                 ),
-              ),
-              const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: const Color(0xFF041E15),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                Text(
+                  'Help & Feature Suggestions',
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
-                  onPressed: _isSubmitting ? null : _submitFeedback,
-                  icon: _isSubmitting
-                      ? const SizedBox.shrink()
-                      : const Icon(Icons.send_rounded, size: 18),
-                  label: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF041E15),
-                            strokeWidth: 2.5,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Send your complaints, suggestions, or billing issues directly.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Category Selector
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildCategoryChip(
+                          '🐛 Bug Report', 'bug', const Color(0xFFF43F5E)),
+                      const SizedBox(width: 8),
+                      _buildCategoryChip(
+                          '💡 Suggestion', 'suggestion', const Color(0xFF8B5CF6)),
+                      const SizedBox(width: 8),
+                      _buildCategoryChip(
+                          '🍽️ Mess Issue', 'mess_issue', const Color(0xFF06B6D4)),
+                      const SizedBox(width: 8),
+                      _buildCategoryChip('💰 Bill Dispute', 'billing_dispute',
+                          const Color(0xFFF59E0B)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Message input box
+                TextField(
+                  controller: _msgCtrl,
+                  maxLines: 4,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Describe your issue or suggestion in detail...',
+                    hintStyle: GoogleFonts.inter(
+                      color: const Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF10B981),
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.all(14),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: const Color(0xFF041E15),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: _isSubmitting ? null : _submitFeedback,
+                    icon: _isSubmitting
+                        ? const SizedBox.shrink()
+                        : const Icon(Icons.send_rounded, size: 18),
+                    label: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF041E15),
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            'SUBMIT COMPLAINT',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        )
-                      : Text(
-                          'SEND DIRECTLY TO DEVELOPER',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildCategoryChip(String label, String value, Color color) {

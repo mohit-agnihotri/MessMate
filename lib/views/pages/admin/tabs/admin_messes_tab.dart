@@ -30,6 +30,8 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
   @override
   Widget build(BuildContext context) {
     final adminService = ref.watch(adminServiceProvider);
+    final studentsAsync = ref.watch(adminStudentsStreamProvider);
+    final allStudents = studentsAsync.value ?? [];
 
     return StreamBuilder<List<MessModel>>(
       stream: adminService.streamAllMesses(),
@@ -150,7 +152,7 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                       itemCount: filteredMesses.length,
                       itemBuilder: (context, index) {
                         final mess = filteredMesses[index];
-                        return _buildMessCard(mess, adminService);
+                        return _buildMessCard(mess, adminService, allStudents);
                       },
                     ),
             ),
@@ -348,7 +350,17 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
     );
   }
 
-  Widget _buildMessCard(MessModel mess, AdminService adminService) {
+  Widget _buildMessCard(
+    MessModel mess,
+    AdminService adminService,
+    List<StudentModel> allStudents,
+  ) {
+    final messStudents =
+        allStudents.where((s) => s.messId == mess.messId).toList();
+    final activeStudentsCount = messStudents
+        .where((s) => s.status == 'active' || s.status == 'approved')
+        .length;
+
     int daysLeft = 0;
     double progress = 1.0;
     if (mess.trialExpiresAt != null) {
@@ -466,6 +478,26 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
                                 ),
                               );
                             },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Real Live Enrolled Students Counter
+                      Row(
+                        children: [
+                          const Icon(Icons.people_alt_rounded,
+                              size: 13, color: AdminCyberTheme.neonCyan),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '$activeStudentsCount Active Students • Cap: ${mess.capacity}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AdminCyberTheme.neonCyan,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -593,6 +625,13 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
               runSpacing: 8,
               children: [
                 _buildActionPill(
+                  label: 'Students ($activeStudentsCount)',
+                  icon: Icons.people_outline_rounded,
+                  color: AdminCyberTheme.neonCyan,
+                  onTap: () =>
+                      _showMessStudentsSheet(context, mess, messStudents),
+                ),
+                _buildActionPill(
                   label: '+30 Days Trial',
                   icon: Icons.add_circle_outline_rounded,
                   color: AdminCyberTheme.neonCyan,
@@ -650,6 +689,283 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showMessStudentsSheet(
+    BuildContext context,
+    MessModel mess,
+    List<StudentModel> students,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF070B14),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollCtrl) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ENROLLED STUDENTS DIRECTORY',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AdminCyberTheme.neonCyan,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              mess.name,
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color:
+                              AdminCyberTheme.neonCyan.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AdminCyberTheme.neonCyan
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          '${students.length} Total',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AdminCyberTheme.neonCyan,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(color: Colors.white10, height: 1),
+                  const SizedBox(height: 10),
+                  if (students.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.person_off_outlined,
+                                size: 48, color: Colors.white24),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No Students Enrolled Yet',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'When students join using code #${mess.messCode}, they will appear here live.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AdminCyberTheme.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: students.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(color: Colors.white10, height: 16),
+                        itemBuilder: (context, idx) {
+                          final st = students[idx];
+                          final isActive =
+                              st.status == 'active' || st.status == 'approved';
+
+                          return Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? AdminCyberTheme.neonCyan
+                                          .withValues(alpha: 0.15)
+                                      : AdminCyberTheme.neonAmber
+                                          .withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isActive
+                                        ? AdminCyberTheme.neonCyan
+                                            .withValues(alpha: 0.4)
+                                        : AdminCyberTheme.neonAmber
+                                            .withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    st.name.isNotEmpty
+                                        ? st.name[0].toUpperCase()
+                                        : 'S',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: isActive
+                                          ? AdminCyberTheme.neonCyan
+                                          : AdminCyberTheme.neonAmber,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      st.name.isNotEmpty
+                                          ? st.name
+                                          : 'Unknown Student',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          st.phone.isNotEmpty
+                                              ? st.phone
+                                              : 'No Phone',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 11,
+                                            color: AdminCyberTheme.textMuted,
+                                          ),
+                                        ),
+                                        if (st.phone.isNotEmpty) ...[
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(
+                                                  text: st.phone));
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Copied ${st.phone}'),
+                                                  duration: const Duration(
+                                                      seconds: 1),
+                                                ),
+                                              );
+                                            },
+                                            child: const Icon(Icons.copy_rounded,
+                                                size: 11,
+                                                color:
+                                                    AdminCyberTheme.textMuted),
+                                          ),
+                                        ],
+                                        if (st.roomNo.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '• Room ${st.roomNo}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              color: AdminCyberTheme
+                                                  .textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? AdminCyberTheme.neonEmerald
+                                          .withValues(alpha: 0.15)
+                                      : AdminCyberTheme.neonAmber
+                                          .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isActive
+                                        ? AdminCyberTheme.neonEmerald
+                                            .withValues(alpha: 0.3)
+                                        : AdminCyberTheme.neonAmber
+                                            .withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  st.status.toUpperCase(),
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: isActive
+                                        ? AdminCyberTheme.neonEmerald
+                                        : AdminCyberTheme.neonAmber,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

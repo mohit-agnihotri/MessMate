@@ -119,7 +119,7 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter Master Key',
+                'Enter Admin PIN',
                 style: GoogleFonts.outfit(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
@@ -128,7 +128,7 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Developer bypass active. Provide the master encryption key to proceed.',
+                'Admin authorization active. Enter the master security PIN to proceed.',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: AdminCyberTheme.textSecondary,
@@ -207,7 +207,7 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
                           ),
                         )
                       : Text(
-                          'AUTHENTICATE DEVELOPER ⚡',
+                          'ENTER ADMIN PANEL ⚡',
                           style: GoogleFonts.outfit(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,

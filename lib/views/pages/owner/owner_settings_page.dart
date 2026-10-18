@@ -233,12 +233,17 @@ class OwnerSettingsPage extends ConsumerWidget {
               color: const Color(0xFF6B7280),
             ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF111827),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF111827),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1163,8 +1168,8 @@ class OwnerSettingsPage extends ConsumerWidget {
             _buildActionTile(
               Icons.support_agent_rounded,
               ref.watch(localizationProvider) == 'hi'
-                  ? 'सहायता और सुझाव (Help & Feedback)'
-                  : 'Help & Feature Suggestions',
+                  ? 'सहायता और शिकायत (Help & Complaints)'
+                  : 'Help & Complaints',
               const Color(0xFF06B6D4),
               () {
                 showModalBottomSheet(

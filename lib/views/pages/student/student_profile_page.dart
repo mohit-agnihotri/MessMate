@@ -569,8 +569,8 @@ class StudentProfilePage extends ConsumerWidget {
             child: _buildArrowTile(
               Icons.support_agent_rounded,
               ref.watch(localizationProvider) == 'hi'
-                  ? 'सहायता और सुझाव (Help & Feedback)'
-                  : 'Help & Feature Suggestions',
+                  ? 'सहायता और शिकायत (Help & Complaints)'
+                  : 'Help & Complaints',
               '',
             ),
           ),
