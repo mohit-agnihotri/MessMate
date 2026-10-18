@@ -11,7 +11,11 @@ class AdminCyberTheme {
   static const Color bgObsidian = Color(0xFF090D16);
   static const Color bgSurface = Color(0xFF0F172A);
   static const Color bgCard = Color(0xFF131D2E);
+  static const Color cardSurface = Color(0xFF131D2E);
   static const Color bgGlass = Color(0x1AFFFFFF);
+
+  // Subtle Executive Borders & Dividers
+  static const Color borderSubtle = Color(0x14FFFFFF); // rgba(255, 255, 255, 0.08)
 
   // Refined Brand Accents (Vibrant yet executive)
   static const Color neonEmerald = Color(0xFF10B981); // Emerald / Success
@@ -27,7 +31,7 @@ class AdminCyberTheme {
 
   // Subtle Executive Borders
   static Border cyberBorder([Color? color, double width = 1.0]) => Border.all(
-        color: color ?? Colors.white.withValues(alpha: 0.08),
+        color: color ?? borderSubtle,
         width: width,
       );
 
