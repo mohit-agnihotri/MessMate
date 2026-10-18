@@ -17,17 +17,20 @@ class AdminOpsTab extends ConsumerStatefulWidget {
 
 class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
   final TextEditingController _newPinCtrl = TextEditingController();
+  final TextEditingController _newUpiCtrl = TextEditingController();
   final TextEditingController _bannerTextCtrl = TextEditingController();
   final TextEditingController _broadcastTitleCtrl = TextEditingController();
   final TextEditingController _broadcastBodyCtrl = TextEditingController();
 
   String _broadcastTarget = 'all_students'; // 'all_students' | 'all_owners'
   bool _isSavingPin = false;
+  bool _isSavingUpi = false;
   bool _isBroadcasting = false;
 
   @override
   void dispose() {
     _newPinCtrl.dispose();
+    _newUpiCtrl.dispose();
     _bannerTextCtrl.dispose();
     _broadcastTitleCtrl.dispose();
     _broadcastBodyCtrl.dispose();
@@ -223,6 +226,125 @@ class _AdminOpsTabState extends ConsumerState<AdminOpsTab> {
                             )
                           : Text(
                               'UPDATE PIN',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white10, height: 28),
+                Row(
+                  children: [
+                    const Icon(Icons.qr_code_2_rounded,
+                        color: AdminCyberTheme.neonCyan, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'REMITTANCE UPI ID: ${config.developerUpiId}',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AdminCyberTheme.neonCyan,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Update your direct remittance UPI ID globally. Mess owners will remit software subscription & platform fees to this address.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AdminCyberTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newUpiCtrl,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AdminCyberTheme.neonCyan,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. name@bank',
+                          hintStyle: GoogleFonts.inter(
+                              color: AdminCyberTheme.textMuted, fontSize: 13),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AdminCyberTheme.neonCyan,
+                        foregroundColor: const Color(0xFF04202C),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        elevation: 0,
+                      ),
+                      onPressed: _isSavingUpi
+                          ? null
+                          : () async {
+                              final upi = _newUpiCtrl.text.trim();
+                              if (upi.isEmpty || !upi.contains('@')) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please enter a valid UPI ID (e.g. name@bank)'),
+                                    backgroundColor: AdminCyberTheme.neonRose,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setState(() => _isSavingUpi = true);
+                              try {
+                                await adminService.updateGlobalToggles(
+                                    developerUpiId: upi);
+                                _newUpiCtrl.clear();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Remittance UPI ID updated to $upi globally! 🚀'),
+                                      backgroundColor: const Color(0xFF04202C),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isSavingUpi = false);
+                                }
+                              }
+                            },
+                      child: _isSavingUpi
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  color: Color(0xFF04202C), strokeWidth: 2),
+                            )
+                          : Text(
+                              'UPDATE UPI',
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,

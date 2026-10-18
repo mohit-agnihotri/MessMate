@@ -186,6 +186,34 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AdminCyberTheme.neonCyan.withValues(alpha: 0.15),
+                        foregroundColor: AdminCyberTheme.neonCyan,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: AdminCyberTheme.neonCyan
+                                .withValues(alpha: 0.35),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: () => _showEditUpiDialog(
+                          context, config.developerUpiId, adminService),
+                      icon: const Icon(Icons.edit_rounded, size: 14),
+                      label: Text(
+                        'Change',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -470,6 +498,165 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                     ),
                 ],
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditUpiDialog(
+    BuildContext context,
+    String currentUpiId,
+    AdminService adminService,
+  ) {
+    final controller = TextEditingController(text: currentUpiId);
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF070B14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: AdminCyberTheme.neonCyan.withValues(alpha: 0.3),
+                ),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.qr_code_2_rounded,
+                      color: AdminCyberTheme.neonCyan, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'UPDATE REMITTANCE UPI ID',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enter your direct UPI ID where mess owners will remit subscription & platform fee balances. Changes apply universally and instantly in real-time.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AdminCyberTheme.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    style: GoogleFonts.jetBrainsMono(
+                      color: AdminCyberTheme.neonCyan,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. yourname@okaxis',
+                      hintStyle: GoogleFonts.jetBrainsMono(
+                        color: AdminCyberTheme.textMuted,
+                        fontSize: 13,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AdminCyberTheme.neonCyan,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'CANCEL',
+                    style: GoogleFonts.inter(
+                      color: AdminCyberTheme.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AdminCyberTheme.neonCyan,
+                    foregroundColor: const Color(0xFF04202C),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final newUpi = controller.text.trim();
+                          if (newUpi.isEmpty || !newUpi.contains('@')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Please enter a valid UPI ID (e.g. name@bank)'),
+                                backgroundColor: AdminCyberTheme.neonRose,
+                              ),
+                            );
+                            return;
+                          }
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await adminService.updateGlobalToggles(
+                                developerUpiId: newUpi);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Remittance UPI ID updated to $newUpi universally! 🚀'),
+                                  backgroundColor: const Color(0xFF04202C),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isLoading = false);
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF04202C),
+                          ),
+                        )
+                      : Text(
+                          'SAVE GLOBALLY',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                ),
+              ],
             );
           },
         );
