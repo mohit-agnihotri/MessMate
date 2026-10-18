@@ -227,13 +227,16 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AdminCyberTheme.textSecondary,
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AdminCyberTheme.textSecondary,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           amount,
           style: GoogleFonts.jetBrainsMono(
@@ -426,29 +429,43 @@ class _AdminMonetizationTabState extends ConsumerState<AdminMonetizationTab> {
                       ),
                     )
                   else
-                    ...students.map(
-                      (st) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              st['studentName'],
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.55,
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: students.length,
+                        itemBuilder: (context, idx) {
+                          final st = students[idx];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    st['studentName']?.toString() ?? 'Student',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '₹ ${st['finalAmount']} (₹19 platform fee)',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 12,
+                                    color: AdminCyberTheme.neonCyan,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              '₹ ${st['finalAmount']} (₹19 platform fee)',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 12,
-                                color: AdminCyberTheme.neonCyan,
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ),
                 ],

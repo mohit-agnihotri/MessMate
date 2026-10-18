@@ -921,7 +921,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           await NotificationService.sendStudentNotification(
             studentId: effectiveOwnerId,
             title: '🎉 Welcome to MessMate!',
-            body:
+            message:
                 'Aapka 180 Days (6 Months) Free VIP Partner Access shuru ho gaya hai!',
           );
         } catch (_) {}

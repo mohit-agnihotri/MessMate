@@ -310,25 +310,31 @@ class _AdminMessesTabState extends ConsumerState<AdminMessesTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.timer_outlined,
-                          size: 14, color: AdminCyberTheme.neonAmber),
-                      const SizedBox(width: 6),
-                      Text(
-                        mess.subscriptionStatus == 'lifetime_vip'
-                            ? 'LIFETIME FREE VIP'
-                            : '$daysLeft Days Trial Remaining',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: mess.subscriptionStatus == 'lifetime_vip'
-                              ? AdminCyberTheme.neonCyan
-                              : AdminCyberTheme.neonAmber,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.timer_outlined,
+                            size: 14, color: AdminCyberTheme.neonAmber),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            mess.subscriptionStatus == 'lifetime_vip'
+                                ? 'LIFETIME FREE VIP'
+                                : '$daysLeft Days Trial Remaining',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: mess.subscriptionStatus == 'lifetime_vip'
+                                  ? AdminCyberTheme.neonCyan
+                                  : AdminCyberTheme.neonAmber,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     mess.isFrozen ? 'STATUS: FROZEN' : 'STATUS: ACTIVE',
                     style: GoogleFonts.jetBrainsMono(

@@ -127,9 +127,10 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
             right: 20,
             top: 16,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
@@ -249,7 +250,8 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCategoryChip(String label, String value, Color color) {

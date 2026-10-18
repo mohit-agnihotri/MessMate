@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'dart:typed_data';
 
+import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../common/user_feedback_sheet.dart';
 import 'widgets/owner_launch_partner_sheet.dart';

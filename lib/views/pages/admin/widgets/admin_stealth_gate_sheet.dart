@@ -107,9 +107,10 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
             right: 24,
             top: 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
@@ -243,6 +244,7 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
