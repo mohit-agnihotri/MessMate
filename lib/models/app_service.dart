@@ -69,8 +69,16 @@ abstract class AppService {
   );
   Future<void> emergencyCloseMess(String messId, DateTime date);
   
-  // FEEDBACK
+  // FEEDBACK & RATINGS
   Future<void> submitFeedback(FeedbackModel feedback);
+  Future<void> submitOrUpdateDishRating(DishRatingModel dishRating);
+  Future<void> deleteDishRating(String messId, String ratingId);
+  Stream<List<DishRatingModel>> streamDishRatings(String messId);
+
+  // MESS REVIEWS
+  Future<void> submitOrUpdateMessReview(MessReviewModel review);
+  Future<void> deleteMessReview(String messId, String reviewId);
+  Stream<List<MessReviewModel>> streamMessReviews(String messId);
 
 
   // LEAVES

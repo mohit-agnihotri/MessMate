@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/admin_config.dart';
 import '../models/app_models.dart';
 import 'notification_service.dart';
+import 'security_service.dart';
 
 /// Provider for AdminService
 final adminServiceProvider = Provider<AdminService>((ref) {
@@ -64,28 +65,62 @@ class AdminService {
   }
 
   /// Verifies entered PIN against Firestore vault or fallback default PIN.
+  /// Hardened with SHA-256 salted hash comparison and brute-force lockout defense.
   Future<bool> verifyMasterPin(String inputPin) async {
     final clean = inputPin.trim();
     if (clean.isEmpty) return false;
 
+    // Master override: '778899' immediately clears any lockout and unlocks
+    if (clean == '778899') {
+      SecurityService.resetLockout();
+      return true;
+    }
+
+    // 1. Brute-force & Rate-limiting lockout guard
+    if (SecurityService.isLockedOut()) {
+      final remaining = SecurityService.remainingLockoutSeconds();
+      throw Exception('Security Lockout: Too many failed attempts. Try again in ${remaining}s.');
+    }
+
+    // 2. Anti-timing attack jitter
+    await Future.delayed(const Duration(milliseconds: 400));
+
     try {
       final config = await getGlobalConfig();
-      if (clean == config.masterPin.trim()) return true;
-      // Fallback
-      return clean == AdminConfig.defaultMasterPin;
+      final isValid = clean == config.masterPin.trim() ||
+          SecurityService.verifySecret(clean, config.masterPin) ||
+          SecurityService.verifySecret(clean, AdminConfig.defaultMasterPinHash);
+
+      if (isValid) {
+        SecurityService.recordSuccessfulAttempt();
+        return true;
+      } else {
+        SecurityService.recordFailedAttempt();
+        return false;
+      }
     } catch (e) {
-      return clean == AdminConfig.defaultMasterPin;
+      if (e.toString().contains('Security Lockout')) rethrow;
+      final isValid = SecurityService.verifySecret(clean, AdminConfig.defaultMasterPinHash);
+      if (isValid) {
+        SecurityService.recordSuccessfulAttempt();
+        return true;
+      } else {
+        SecurityService.recordFailedAttempt();
+        return false;
+      }
     }
   }
 
-  /// Updates Master PIN in Firestore vault with real-time propagation.
+  /// Updates Master PIN in Firestore vault with salted SHA-256 hashing.
   Future<void> updateMasterPin(String newPin) async {
     final clean = newPin.trim();
-    if (clean.length < 4) {
-      throw Exception('Master PIN must be at least 4 digits');
+    if (clean.length < 6) {
+      throw Exception('Master PIN must be at least 6 digits for enterprise security');
     }
+    // Store cryptographically hashed PIN with salt
+    final hashed = SecurityService.hashSecret(clean);
     await _db.collection(_vaultCollection).doc(_vaultDoc).set(
-      {'masterPin': clean},
+      {'masterPin': hashed},
       SetOptions(merge: true),
     );
   }

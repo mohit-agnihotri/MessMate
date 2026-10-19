@@ -942,6 +942,117 @@ class FirebaseService implements AppService {
         );
   }
 
+  // DISH RATINGS
+  @override
+  Future<void> submitOrUpdateDishRating(DishRatingModel dishRating) async {
+    final sanitizedDish = dishRating.dishName.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+    final docId = dishRating.ratingId.isNotEmpty 
+        ? dishRating.ratingId 
+        : "${dishRating.studentId}_$sanitizedDish";
+
+    final docRef = _db
+        .collection('messes')
+        .doc(dishRating.messId)
+        .collection('dish_ratings')
+        .doc(docId);
+
+    final data = dishRating.toMap();
+    data['ratingId'] = docRef.id;
+    await docRef.set(data, SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> deleteDishRating(String messId, String ratingId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dish_ratings')
+        .doc(ratingId)
+        .delete();
+  }
+
+  @override
+  Stream<List<DishRatingModel>> streamDishRatings(String messId) {
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('dish_ratings')
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => DishRatingModel.fromMap(d.data())).toList());
+  }
+
+  // MESS REVIEWS
+  @override
+  Future<void> submitOrUpdateMessReview(MessReviewModel review) async {
+    final docId = review.reviewId.isNotEmpty ? review.reviewId : review.studentId;
+    final docRef = _db
+        .collection('messes')
+        .doc(review.messId)
+        .collection('reviews')
+        .doc(docId);
+
+    final data = review.toMap();
+    data['reviewId'] = docRef.id;
+    await docRef.set(data, SetOptions(merge: true));
+
+    // Recompute aggregate mess rating and count
+    await _recalculateMessRating(review.messId);
+  }
+
+  @override
+  Future<void> deleteMessReview(String messId, String reviewId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('reviews')
+        .doc(reviewId)
+        .delete();
+
+    // Recompute aggregate mess rating and count
+    await _recalculateMessRating(messId);
+  }
+
+  @override
+  Stream<List<MessReviewModel>> streamMessReviews(String messId) {
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('reviews')
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => MessReviewModel.fromMap(d.data())).toList());
+  }
+
+  Future<void> _recalculateMessRating(String messId) async {
+    try {
+      final reviewsSnap = await _db
+          .collection('messes')
+          .doc(messId)
+          .collection('reviews')
+          .get();
+
+      if (reviewsSnap.docs.isEmpty) {
+        await _db.collection('messes').doc(messId).update({
+          'rating': 0.0,
+          'reviewCount': 0,
+        });
+        return;
+      }
+
+      double total = 0.0;
+      for (final doc in reviewsSnap.docs) {
+        final r = (doc.data()['rating'] as num?)?.toDouble() ?? 5.0;
+        total += r;
+      }
+      final avg = double.parse((total / reviewsSnap.docs.length).toStringAsFixed(1));
+
+      await _db.collection('messes').doc(messId).update({
+        'rating': avg,
+        'reviewCount': reviewsSnap.docs.length,
+      });
+    } catch (_) {}
+  }
+
   // PLANS
   @override
   Future<List<MealPlanModel>> getMealPlans(String messId) async {

@@ -5,12 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../config/admin_config.dart';
-import '../../../services/admin_service.dart';
 import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../admin/admin_mission_control_page.dart';
-import '../admin/widgets/admin_pin_verification_sheet.dart';
 import '../admin/widgets/admin_stealth_gate_sheet.dart';
 import 'role_selection_page.dart';
 import 'owner_setup_page.dart';
@@ -33,6 +30,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   int _logoTapCount = 0;
   DateTime? _lastLogoTap;
 
+  bool _isNavigating = false;
+
   void _onLogoTap() {
     final now = DateTime.now();
     if (_lastLogoTap == null ||
@@ -46,6 +45,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (_logoTapCount >= 5) {
       _logoTapCount = 0;
       HapticFeedback.heavyImpact();
+
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -66,98 +66,88 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  Future<void> _handlePostSignIn(String uid) async {
+    if (_isNavigating) return;
+    _isNavigating = true;
+    try {
+      final service = ref.read(appServiceProvider);
+
+      // 1. Check if user already exists as an Owner
+      final mess = await service.getMessByOwnerId(uid);
+      if (mess != null && mounted) {
+        ref.read(authProvider.notifier).setRole(AuthRole.owner);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+        );
+        return;
+      }
+
+      // 2. Check if user already exists as a Student
+      final student = await service.getStudentById(uid);
+      if (student != null && mounted) {
+        ref.read(authProvider.notifier).setRole(AuthRole.student);
+        if (student.status == 'active' || student.status == 'approved') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentMainPage()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentPendingApprovalPage(
+                initialMessName: student.messId.isNotEmpty
+                    ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess')
+                    : null,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 3. New User without account:
+      if (mounted) {
+        if (widget.initialRole == AuthRole.owner) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
+          );
+        } else if (widget.initialRole == AuthRole.student) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+          );
+        } else {
+          // Take to Role Selection to choose Owner or Student
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[LoginPage] Error in post-sign-in routing: $e');
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+        );
+      }
+    } finally {
+      _isNavigating = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
     // Listen to authentication state changes
-    ref.listen(authProvider, (prev, next) async {
-      if (next.userId != null && prev?.userId == null) {
-        final uid = next.userId!;
-        final service = ref.read(appServiceProvider);
-
-        // 0. Super Admin Auto-Detection & Whitelist Check:
-        final currentUser = FirebaseAuth.instance.currentUser;
-        final adminService = ref.read(adminServiceProvider);
-        final config = await adminService.getGlobalConfig();
-        if (AdminConfig.isSuperAdminEmail(
-            currentUser?.email, config.adminEmails)) {
-          if (mounted) {
-            showModalBottomSheet(
-              context: context,
-              backgroundColor: Colors.transparent,
-              isScrollControlled: true,
-              isDismissible: false,
-              enableDrag: false,
-              builder: (_) => AdminPinVerificationSheet(
-                onSuccess: () {
-                  ref.read(authProvider.notifier).setRole(AuthRole.admin);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const AdminMissionControlPage()),
-                  );
-                },
-              ),
-            );
-            return;
-          }
-        }
-
-        // Smart Universal Account Auto-Detection:
-        // 1. Check if user already exists as an Owner
-        final mess = await service.getMessByOwnerId(uid);
-        if (mess != null && mounted) {
-          ref.read(authProvider.notifier).setRole(AuthRole.owner);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const OwnerMainPage()),
-          );
-          return;
-        }
-
-        // 2. Check if user already exists as a Student
-        final student = await service.getStudentById(uid);
-        if (student != null && mounted) {
-          ref.read(authProvider.notifier).setRole(AuthRole.student);
-          if (student.status == 'active' || student.status == 'approved') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const StudentMainPage()),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StudentPendingApprovalPage(
-                  initialMessName: student.messId.isNotEmpty ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess') : null,
-                ),
-              ),
-            );
-          }
-          return;
-        }
-
-        // 3. New User without account:
-        if (mounted) {
-          if (widget.initialRole == AuthRole.owner) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
-            );
-          } else if (widget.initialRole == AuthRole.student) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const StudentSetupPage()),
-            );
-          } else {
-            // Take to Role Selection to choose Owner or Student
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-            );
-          }
-        }
+    ref.listen(authProvider, (prev, next) {
+      if (next.userId != null && (prev?.userId == null || prev?.userId != next.userId)) {
+        _handlePostSignIn(next.userId!);
       }
       if (next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -324,7 +314,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       onPressed: authState.isLoading
                           ? null
-                          : () => ref.read(authProvider.notifier).signInWithGoogle(),
+                          : () async {
+                              await ref.read(authProvider.notifier).signInWithGoogle();
+                              final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                              if (currentUid != null && mounted) {
+                                await _handlePostSignIn(currentUid);
+                              }
+                            },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

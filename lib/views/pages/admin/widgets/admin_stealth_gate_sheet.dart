@@ -52,9 +52,10 @@ class _AdminStealthGateSheetState extends ConsumerState<AdminStealthGateSheet> {
       }
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().replaceAll('Exception: ', '').trim();
       setState(() {
         _isLoading = false;
-        _error = 'Error during bypass: $e';
+        _error = msg;
       });
     }
   }

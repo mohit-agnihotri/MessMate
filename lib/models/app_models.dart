@@ -439,6 +439,8 @@ class MessModel {
   final String subscriptionStatus; // 'trial_active', 'active', 'grace_period', 'expired', 'lifetime_vip'
   final bool isFrozen;
   final bool isVerified;
+  final double rating;
+  final int reviewCount;
 
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
     'skipAlert': true,
@@ -482,6 +484,8 @@ class MessModel {
     this.subscriptionStatus = 'trial_active',
     this.isFrozen = false,
     this.isVerified = false,
+    this.rating = 0.0,
+    this.reviewCount = 0,
   });
 
   MessModel copyWith({
@@ -516,6 +520,8 @@ class MessModel {
     String? subscriptionStatus,
     bool? isFrozen,
     bool? isVerified,
+    double? rating,
+    int? reviewCount,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -553,6 +559,8 @@ class MessModel {
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       isFrozen: isFrozen ?? this.isFrozen,
       isVerified: isVerified ?? this.isVerified,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
     );
   }
 
@@ -643,6 +651,8 @@ class MessModel {
       subscriptionStatus: map['subscriptionStatus'] ?? 'trial_active',
       isFrozen: map['isFrozen'] ?? false,
       isVerified: map['isVerified'] ?? false,
+      rating: (map['rating'] ?? 0.0).toDouble(),
+      reviewCount: (map['reviewCount'] ?? 0) as int,
     );
   }
 
@@ -682,6 +692,8 @@ class MessModel {
       'subscriptionStatus': subscriptionStatus,
       'isFrozen': isFrozen,
       'isVerified': isVerified,
+      'rating': rating,
+      'reviewCount': reviewCount,
     };
   }
 }
@@ -1135,6 +1147,111 @@ class FeedbackModel {
         'rating': rating,
         'comment': comment,
         'dishes': dishes,
+      };
+}
+
+/// Model representing an individual dish rating submitted by a student.
+class DishRatingModel {
+  final String ratingId;
+  final String messId;
+  final String studentId;
+  final String studentName;
+  final String dishName;
+  final double rating; // 1.0 to 5.0
+  final String? comment;
+  final DateTime updatedAt;
+
+  DishRatingModel({
+    required this.ratingId,
+    required this.messId,
+    required this.studentId,
+    required this.studentName,
+    required this.dishName,
+    required this.rating,
+    this.comment,
+    DateTime? updatedAt,
+  }) : updatedAt = updatedAt ?? DateTime.now();
+
+  factory DishRatingModel.fromMap(Map<String, dynamic> map) {
+    return DishRatingModel(
+      ratingId: map['ratingId'] ?? '',
+      messId: map['messId'] ?? '',
+      studentId: map['studentId'] ?? '',
+      studentName: map['studentName'] ?? 'Student',
+      dishName: map['dishName'] ?? '',
+      rating: (map['rating'] ?? 5.0).toDouble(),
+      comment: map['comment'],
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'ratingId': ratingId,
+        'messId': messId,
+        'studentId': studentId,
+        'studentName': studentName,
+        'dishName': dishName,
+        'rating': rating,
+        'comment': comment,
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+}
+
+/// Model representing a mess review submitted by a student.
+class MessReviewModel {
+  final String reviewId;
+  final String messId;
+  final String studentId;
+  final String studentName;
+  final String? studentPhotoUrl;
+  final double rating; // 1.0 to 5.0
+  final String? comment;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  MessReviewModel({
+    required this.reviewId,
+    required this.messId,
+    required this.studentId,
+    required this.studentName,
+    this.studentPhotoUrl,
+    required this.rating,
+    this.comment,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  factory MessReviewModel.fromMap(Map<String, dynamic> map) {
+    return MessReviewModel(
+      reviewId: map['reviewId'] ?? '',
+      messId: map['messId'] ?? '',
+      studentId: map['studentId'] ?? '',
+      studentName: map['studentName'] ?? 'Student',
+      studentPhotoUrl: map['studentPhotoUrl'],
+      rating: (map['rating'] ?? 5.0).toDouble(),
+      comment: map['comment'],
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'reviewId': reviewId,
+        'messId': messId,
+        'studentId': studentId,
+        'studentName': studentName,
+        if (studentPhotoUrl != null) 'studentPhotoUrl': studentPhotoUrl,
+        'rating': rating,
+        'comment': comment,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
       };
 }
 

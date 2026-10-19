@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../models/app_models.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
@@ -120,6 +121,9 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
     if (_selectedSlot == null || !activeSlots.contains(_selectedSlot)) {
       _selectedSlot = activeSlots.first;
     }
+
+    final dishRatingsAsync = ref.watch(dishRatingsProvider(widget.mess.messId));
+    final allDishRatings = dishRatingsAsync.valueOrNull ?? [];
 
     return Container(
       constraints: BoxConstraints(
@@ -290,14 +294,14 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                 ? const Center(
                     child: CircularProgressIndicator(color: Color(0xFF22C55E)),
                   )
-                : _buildSelectedSlotContent(_selectedSlot!),
+                : _buildSelectedSlotContent(_selectedSlot!, allDishRatings),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSelectedSlotContent(String slot) {
+  Widget _buildSelectedSlotContent(String slot, List<DishRatingModel> allDishRatings) {
     final template = _templatesBySlot[slot];
     final todayPosted = _todayPostedBySlot[slot];
     final templateDishes = template?.dishes ?? [];
@@ -401,6 +405,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                 dish,
                 isTodayActive: true,
                 menuType: todayPosted.menuType,
+                allDishRatings: allDishRatings,
               );
             },
           ),
@@ -457,7 +462,10 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (ctx, i) {
               final dish = templateDishes[i];
-              return _buildDishCard(dish);
+              return _buildDishCard(
+                dish,
+                allDishRatings: allDishRatings,
+              );
             },
           ),
         ] else if (todayPosted == null || todayPosted.dishes.isEmpty) ...[
@@ -572,6 +580,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
     DishModel dish, {
     bool isTodayActive = false,
     String? menuType,
+    required List<DishRatingModel> allDishRatings,
   }) {
     Color badgeBg;
     Color badgeText;
@@ -599,6 +608,16 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
       badgeBg = const Color(0xFFF3F4F6);
       badgeText = const Color(0xFF4B5563);
     }
+
+    final currentStudent = ref.watch(studentHomeProvider).student;
+    final currentUid = currentStudent?.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final dishRatings = allDishRatings
+        .where((r) => r.dishName.trim().toLowerCase() == dish.name.trim().toLowerCase())
+        .toList();
+    final myRating = dishRatings.where((r) => r.studentId == currentUid).firstOrNull;
+    final double avgDishRating = dishRatings.isNotEmpty
+        ? dishRatings.map((r) => r.rating).reduce((a, b) => a + b) / dishRatings.length
+        : 0.0;
 
     return Container(
       decoration: BoxDecoration(
@@ -718,29 +737,356 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             ),
           ),
 
-          // Status indicator
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: isTodayActive
-                  ? (menuType == 'special' ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5))
-                  : const Color(0xFFF9FAFB),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isTodayActive
-                    ? (menuType == 'special' ? const Color(0xFFFDE68A) : const Color(0xFFA7F3D0))
-                    : const Color(0xFFE5E7EB),
+          const SizedBox(width: 8),
+
+          // Interactive Dish Rating Action (Replaces tick icon with stars / rating)
+          InkWell(
+            onTap: () => _openDishRatingDialog(dish, myRating, allDishRatings),
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: myRating != null
+                    ? const Color(0xFFFEF3C7)
+                    : (dishRatings.isNotEmpty ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: myRating != null
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFD1D5DB),
+                  width: myRating != null ? 1.5 : 1.0,
+                ),
+                boxShadow: myRating != null
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ]
+                    : null,
               ),
-            ),
-            child: Icon(
-              isTodayActive ? Icons.local_fire_department_rounded : Icons.check,
-              size: 14,
-              color: isTodayActive
-                  ? (menuType == 'special' ? const Color(0xFFD97706) : const Color(0xFF059669))
-                  : const Color(0xFF10B981),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    myRating != null ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 16,
+                    color: myRating != null ? const Color(0xFFD97706) : const Color(0xFF6B7280),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    myRating != null
+                        ? myRating.rating.toStringAsFixed(1)
+                        : (dishRatings.isNotEmpty ? avgDishRating.toStringAsFixed(1) : 'Rate'),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: myRating != null ? FontWeight.bold : FontWeight.w600,
+                      color: myRating != null
+                          ? const Color(0xFFB45309)
+                          : const Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openDishRatingDialog(
+    DishModel dish,
+    DishRatingModel? existingRating,
+    List<DishRatingModel> allDishRatings,
+  ) {
+    final currentStudent = ref.read(studentHomeProvider).student;
+    final currentUid = currentStudent?.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final studentName = currentStudent?.name ?? FirebaseAuth.instance.currentUser?.displayName ?? 'Student';
+
+    if (currentUid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to rate dishes.')),
+      );
+      return;
+    }
+
+    final dishRatings = allDishRatings
+        .where((r) => r.dishName.trim().toLowerCase() == dish.name.trim().toLowerCase())
+        .toList();
+    final double avgRating = dishRatings.isNotEmpty
+        ? dishRatings.map((r) => r.rating).reduce((a, b) => a + b) / dishRatings.length
+        : 0.0;
+
+    double selectedRating = existingRating?.rating ?? 5.0;
+    final commentCtrl = TextEditingController(text: existingRating?.comment ?? '');
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          final isEditing = existingRating != null;
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: (dish.imageUrl.isNotEmpty && !dish.imageUrl.contains('placeholder'))
+                              ? Image.network(
+                                  dish.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(dish),
+                                )
+                              : _buildFallbackFoodIcon(dish),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dish.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              dishRatings.isNotEmpty
+                                  ? '⭐ ${avgRating.toStringAsFixed(1)} (${dishRatings.length} ratings)'
+                                  : 'No ratings yet • Be the first to rate!',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Text(
+                      isEditing ? 'Update Your Rating' : 'Rate This Dish',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF374151),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final starValue = (index + 1).toDouble();
+                      final isSelected = starValue <= selectedRating;
+                      return IconButton(
+                        iconSize: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        icon: Icon(
+                          isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                        onPressed: () {
+                          setModalState(() {
+                            selectedRating = starValue;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  Center(
+                    child: Text(
+                      selectedRating == 5
+                          ? '🤩 Delicious!'
+                          : selectedRating == 4
+                              ? '😋 Very Good'
+                              : selectedRating == 3
+                                  ? '😐 Average'
+                                  : selectedRating == 2
+                                      ? '🙁 Needs Improvement'
+                                      : '😞 Poor',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFD97706),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: commentCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Share feedback or note about taste, oil, salt... (optional)',
+                      hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF9CA3AF)),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF22C55E)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      if (isEditing) ...[
+                        OutlinedButton.icon(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  setModalState(() => isSubmitting = true);
+                                  try {
+                                    await ref.read(appServiceProvider).deleteDishRating(
+                                          widget.mess.messId,
+                                          existingRating.ratingId,
+                                        );
+                                    if (sheetContext.mounted) {
+                                      Navigator.pop(sheetContext);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Rating removed for ${dish.name}'),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setModalState(() => isSubmitting = false);
+                                    if (sheetContext.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to delete: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          label: Text(
+                            'Delete',
+                            style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  setModalState(() => isSubmitting = true);
+                                  try {
+                                    final ratingModel = DishRatingModel(
+                                      ratingId: existingRating?.ratingId ?? '',
+                                      messId: widget.mess.messId,
+                                      studentId: currentUid,
+                                      studentName: studentName,
+                                      dishName: dish.name,
+                                      rating: selectedRating,
+                                      comment: commentCtrl.text.trim().isEmpty ? null : commentCtrl.text.trim(),
+                                    );
+                                    await ref.read(appServiceProvider).submitOrUpdateDishRating(ratingModel);
+                                    if (sheetContext.mounted) {
+                                      Navigator.pop(sheetContext);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            isEditing
+                                                ? 'Updated rating for ${dish.name}!'
+                                                : 'Rating saved for ${dish.name}!',
+                                          ),
+                                          backgroundColor: const Color(0xFF22C55E),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setModalState(() => isSubmitting = false);
+                                    if (sheetContext.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Failed to save rating: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF22C55E),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  isEditing ? 'Update Rating' : 'Save Rating',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

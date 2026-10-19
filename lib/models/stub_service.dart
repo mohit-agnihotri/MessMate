@@ -376,6 +376,22 @@ class StubService implements AppService {
   @override
   Stream<List<FeedbackModel>> streamFeedbacks(String messId) =>
       Stream.value([]);
+
+  @override
+  Future<void> submitOrUpdateDishRating(DishRatingModel dishRating) async {}
+  @override
+  Future<void> deleteDishRating(String messId, String ratingId) async {}
+  @override
+  Stream<List<DishRatingModel>> streamDishRatings(String messId) =>
+      Stream.value([]);
+
+  @override
+  Future<void> submitOrUpdateMessReview(MessReviewModel review) async {}
+  @override
+  Future<void> deleteMessReview(String messId, String reviewId) async {}
+  @override
+  Stream<List<MessReviewModel>> streamMessReviews(String messId) =>
+      Stream.value([]);
   @override
   Future<double> getPreviousUnpaidDues(
     String studentId,

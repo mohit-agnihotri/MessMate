@@ -5,9 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
-import '../../../config/admin_config.dart';
-import '../../../services/admin_service.dart';
-import 'admin/admin_mission_control_page.dart';
 import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
 import 'owner/owner_main_page.dart';
@@ -47,22 +44,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
       try {
         final service = ref.read(appServiceProvider);
 
-        // 0. Check if user is Super Admin
-        final adminService = ref.read(adminServiceProvider);
-        final config = await adminService.getGlobalConfig();
-        if (AdminConfig.isSuperAdminEmail(user.email, config.adminEmails)) {
-          if (mounted) {
-            ref.read(authProvider.notifier).setRole(AuthRole.admin);
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const AdminMissionControlPage()),
-            );
-            return;
-          }
-        }
-
-        // Check if user is an owner
+        // 1. Check if user is an owner
         final mess = await service.getMessByOwnerId(user.uid);
         if (mess != null && mounted) {
           ref.read(authProvider.notifier).setRole(AuthRole.owner);

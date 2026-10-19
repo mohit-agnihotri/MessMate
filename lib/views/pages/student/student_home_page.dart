@@ -269,14 +269,6 @@ class StudentHomePage extends ConsumerWidget {
     final slot = state.currentSlot;
     final menu = state.currentMeal;
     final messId = state.mess?.messId ?? state.student?.messId ?? '';
-    final effectiveMenu = menu ??
-        MenuModel(
-          menuId: '${messId}_$slot',
-          messId: messId,
-          date: DateTime.now(),
-          mealSlot: slot,
-          dishes: [],
-        );
 
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
@@ -438,13 +430,14 @@ class StudentHomePage extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Timer row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'Cancellation closes in: ',
                           style: GoogleFonts.inter(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
@@ -452,7 +445,7 @@ class StudentHomePage extends ConsumerWidget {
                         Text(
                           cutoffStr,
                           style: GoogleFonts.inter(
-                            fontSize: 15,
+                            fontSize: 14.5,
                             fontWeight: FontWeight.bold,
                             color: hasCutoff
                                 ? const Color(0xFFFFB347)
@@ -472,11 +465,33 @@ class StudentHomePage extends ConsumerWidget {
                     const SizedBox(height: 14),
                     // Action buttons
                     if (!hasCutoff)
-                      _RateMealButton(
-                        context: context,
-                        ref: ref,
-                        state: state,
-                        menu: effectiveMenu,
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.stars_rounded, size: 16, color: Color(0xFFFBBF24)),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Meal concluded • Rate dishes in Mess Menu',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       )
                     else if (state.hasSelfSkipped)
                       _UndoButton(ref: ref)
@@ -1647,156 +1662,7 @@ class _UndoButton extends StatelessWidget {
   }
 }
 
-// ─── Rate Meal Button ─────────────────────────────────────────────────────────
-class _RateMealButton extends StatelessWidget {
-  final BuildContext context;
-  final WidgetRef ref;
-  final StudentHomeState state;
-  final MenuModel menu;
-  const _RateMealButton({
-    required this.context,
-    required this.ref,
-    required this.state,
-    required this.menu,
-  });
 
-  @override
-  Widget build(BuildContext _) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => _showRatingDialog(context, ref, state, menu),
-        icon: const Icon(
-          Icons.star_outline_rounded,
-          size: 18,
-          color: Colors.white,
-        ),
-        label: Text(
-          'Rate This Meal',
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          side: const BorderSide(color: Colors.white54),
-        ),
-      ),
-    );
-  }
-
-  void _showRatingDialog(
-    BuildContext context,
-    WidgetRef ref,
-    StudentHomeState state,
-    MenuModel menu,
-  ) {
-    if (state.student == null) return;
-    int selectedRating = 5;
-    final commentCtrl = TextEditingController();
-    bool isSubmitting = false;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'Rate ${menu.mealSlot[0].toUpperCase()}${menu.mealSlot.substring(1)} Meal',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  5,
-                  (i) => IconButton(
-                    icon: Icon(
-                      i < selectedRating
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      color: const Color(0xFFF59E0B),
-                      size: 36,
-                    ),
-                    onPressed: () => setState(() => selectedRating = i + 1),
-                  ),
-                ),
-              ),
-              TextField(
-                controller: commentCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Feedback? (Optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      setState(() => isSubmitting = true);
-                      try {
-                        final fb = FeedbackModel(
-                          feedbackId: '',
-                          messId: menu.messId,
-                          studentId: state.student!.studentId,
-                          date: DateTime.now(),
-                          mealSlot: menu.mealSlot,
-                          rating: selectedRating.toDouble(),
-                          comment: commentCtrl.text,
-                          dishes: menu.dishes.map((d) => d.name).toList(),
-                        );
-                        await ref.read(appServiceProvider).submitFeedback(fb);
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Thanks for your feedback!'),
-                              backgroundColor: Color(0xFF22C55E),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        setState(() => isSubmitting = false);
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text('Submit', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 
 // ─── Choice Groups Section (Balanced 3D Card) ─────────────────────────────────

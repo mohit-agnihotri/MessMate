@@ -311,26 +311,32 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  plan.deductionPolicy.policyType == 'none'
-                      ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी पर कोई कटौती नहीं' : 'No skip rebate')
-                      : plan.deductionPolicy.policyType == 'flat_fixed_rate'
-                          ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी वापसी: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / मील' : 'Skip refund: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / meal')
-                          : 'Dynamic Prorated Rebate',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF475569),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    plan.deductionPolicy.policyType == 'none'
+                        ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी पर कोई कटौती नहीं' : 'No skip rebate')
+                        : plan.deductionPolicy.policyType == 'flat_fixed_rate'
+                            ? (ref.watch(localizationProvider) == 'hi' ? 'छुट्टी वापसी: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / मील' : 'Skip refund: ₹${plan.deductionPolicy.flatRate?.toInt() ?? 0} / meal')
+                            : 'Dynamic Prorated Rebate',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF475569),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 20, color: Color(0xFF475569)),
@@ -767,20 +773,27 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildInputLabel('Choice Groups (Alternatives)'),
-                          Text(
-                            'e.g. Choose between Morning or Noon',
-                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInputLabel('Choice Groups (Alternatives)'),
+                            Text(
+                              'e.g. Choose between Morning or Noon',
+                              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       TextButton.icon(
                         icon: const Icon(Icons.add_rounded, size: 18),
                         label: const Text('Add Group'),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF10B981),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
                         onPressed: () {
                           setState(() {
                             _choiceGroups.add(_EditableChoiceGroup(
@@ -970,7 +983,8 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
           ),
           const SizedBox(height: 12),
           // Limit Selector
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('Diner picks at most: ', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
               const SizedBox(width: 8),
@@ -1026,7 +1040,10 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total Included Meals/Day:', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569))),
+              Expanded(
+                child: Text('Total Included Meals/Day:', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
               Text('$daily meals', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
             ],
           ),
@@ -1034,7 +1051,10 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Monthly Estimated Meals (30d):', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569))),
+              Expanded(
+                child: Text('Monthly Estimated Meals (30d):', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
               Text('$monthlyMeals meals', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
             ],
           ),
@@ -1042,7 +1062,10 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Effective Per-Meal Cost:', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569))),
+              Expanded(
+                child: Text('Effective Per-Meal Cost:', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
               Text('₹$perMeal / meal', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
             ],
           ),

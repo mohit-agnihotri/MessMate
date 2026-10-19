@@ -574,6 +574,7 @@ class StudentProfilePage extends ConsumerWidget {
               '',
             ),
           ),
+
           const Divider(height: 24, color: Color(0xFFF3F4F6)),
           InkWell(
             onTap: () async {

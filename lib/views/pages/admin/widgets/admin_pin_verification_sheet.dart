@@ -56,9 +56,10 @@ class _AdminPinVerificationSheetState
       }
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().replaceAll('Exception: ', '').trim();
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Verification failed: $e';
+        _errorMessage = msg;
       });
     }
   }

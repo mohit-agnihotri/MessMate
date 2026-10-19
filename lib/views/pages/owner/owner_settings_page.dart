@@ -1184,6 +1184,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                 );
               },
             ),
+
             const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
             _buildActionTile(
               Icons.logout_rounded,

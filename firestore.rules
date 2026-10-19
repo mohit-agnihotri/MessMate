@@ -2,133 +2,205 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global Dishes
-    match /global_dishes/{dishId} {
-      allow read, write: if true;
+    // ─── Security & Role Helpers ─────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Messes
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // True server-side admin check via Custom Claims & Cryptographically verified email
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'mohitagnihotri.dev@gmail.com' ||
+          request.auth.token.email == 'mohit.developer@gmail.com' ||
+          request.auth.token.email == 'admin@messmate.app' ||
+          request.auth.token.email == 'agnihotrimohit185@gmail.com' ||
+          request.auth.token.email == 'mohitagnihotri1320@gmail.com'
+        ))
+      );
+    }
+
+    function isMessOwner(messId) {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    // ─── Global Dishes ────────────────────────────────────────────────
+    match /global_dishes/{dishId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ─── Messes ───────────────────────────────────────────────────────
     match /messes/{messId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
-      allow update: if request.auth != null || true;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.ownerId || isAdmin());
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.ownerId ||
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount'])
+      );
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
 
-            match /meal_plans/{planId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+      match /meal_plans/{planId} {
+        allow read: if isAuthenticated();
+        allow write: if isMessOwner(messId) || isAdmin();
       }
 
       match /extra_fees/{feeId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow read: if isAuthenticated();
+        allow write: if isMessOwner(messId) || isAdmin();
       }
 
-match /dishes/{dishId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+      match /dishes/{dishId} {
+        allow read: if isAuthenticated();
+        allow write: if isMessOwner(messId) || isAdmin();
       }
 
       match /weekly_templates/{templateId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+        allow read: if isAuthenticated();
+        allow write: if isMessOwner(messId) || isAdmin();
       }
 
       match /closed_slots/{slotId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+        allow read: if isAuthenticated();
+        allow write: if isMessOwner(messId) || isAdmin();
       }
 
       match /feedbacks/{feedbackId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
           && request.auth.uid == request.resource.data.studentId
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5;
-        allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
-        allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid;
+        allow update, delete: if isMessOwner(messId) || isAdmin();
+      }
+
+      match /dish_ratings/{ratingId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId;
+        allow update, delete: if isAuthenticated() && (
+          request.auth.uid == resource.data.studentId ||
+          isMessOwner(messId) ||
+          isAdmin()
+        );
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId;
+        allow update, delete: if isAuthenticated() && (
+          request.auth.uid == resource.data.studentId ||
+          isMessOwner(messId) ||
+          isAdmin()
+        );
       }
     }
 
-    // Students
+    // ─── Students ─────────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid;
-      allow update: if request.auth != null && (
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid;
+      allow update: if isAuthenticated() && (
         request.auth.uid == studentId ||
-        (resource != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid)
+        (resource != null && isMessOwner(resource.data.messId)) ||
+        isAdmin()
       );
-      allow delete: if request.auth != null && request.auth.uid == studentId;
+      allow delete: if isAuthenticated() && (request.auth.uid == studentId || isAdmin());
     }
 
-    // Menus
+    // ─── Menus ────────────────────────────────────────────────────────
     match /menus/{menuId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid && request.resource.data.messId == resource.data.messId;
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isMessOwner(request.resource.data.messId) || isAdmin());
+      allow update: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin()) && request.resource.data.messId == resource.data.messId;
+      allow delete: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin());
     }
 
-    // Announcements
+    // ─── Announcements ────────────────────────────────────────────────
     match /announcements/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid && request.resource.data.messId == resource.data.messId;
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isMessOwner(request.resource.data.messId) || isAdmin());
+      allow update: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin()) && request.resource.data.messId == resource.data.messId;
+      allow delete: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin());
     }
 
-    // Meal Records
+    // ─── Meal Records ─────────────────────────────────────────────────
     match /meal_records/{recordId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null &&
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.studentId &&
         get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
-      allow update: if request.auth != null && resource != null && (
+      allow update: if isAuthenticated() && resource != null && (
         request.auth.uid == resource.data.studentId ||
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
+        isMessOwner(resource.data.messId) ||
+        isAdmin()
       ) && request.resource.data.studentId == resource.data.studentId;
-      allow delete: if request.auth != null && resource != null && (
+      allow delete: if isAuthenticated() && resource != null && (
         request.auth.uid == resource.data.studentId ||
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
+        isMessOwner(resource.data.messId) ||
+        isAdmin()
       );
     }
 
-    // Leaves
+    // ─── Leaves ───────────────────────────────────────────────────────
     match /leaves/{leaveId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null &&
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.studentId &&
         get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
-      allow update: if request.auth != null && resource != null && (
+      allow update: if isAuthenticated() && resource != null && (
         request.auth.uid == resource.data.studentId ||
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
+        isMessOwner(resource.data.messId) ||
+        isAdmin()
       ) && request.resource.data.studentId == resource.data.studentId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.studentId;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
     }
 
-    // Bills
+    // ─── Bills ────────────────────────────────────────────────────────
+    // Student can only read their own bills. Only Mess Owner or Admin can create/update bills!
     match /bills/{billId} {
-      allow read: if true;
-      allow create: if request.auth != null && (
-        request.auth.uid == request.resource.data.studentId ||
-        get(/databases/$(database)/documents/messes/$(request.resource.data.messId)).data.ownerId == request.auth.uid
-      );
-      allow update: if request.auth != null && (
+      allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.studentId ||
-        get(/databases/$(database)/documents/messes/$(resource.data.messId)).data.ownerId == request.auth.uid
+        isMessOwner(resource.data.messId) ||
+        isAdmin()
       );
-      allow delete: if false;
+      allow create: if isAuthenticated() && (
+        isMessOwner(request.resource.data.messId) ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        isMessOwner(resource.data.messId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
-    // System Configuration & Admin Vault
-    match /system_config/{document=**} {
-      allow read, write: if true;
+    // ─── System Configuration & Admin Vault ───────────────────────────
+    // Admin vault contains master PIN, dynamic emails, developer UPI remittance. Strictly restricted to Admin.
+    match /system_config/admin_vault {
+      allow read, write: if isAdmin();
+    }
+    match /system_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Support Tickets & In-App Help Desk
+    // ─── Support Tickets & Help Desk ──────────────────────────────────
     match /support_tickets/{ticketId} {
-      allow read, write: if true;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isAdmin()
+      );
+      allow update, delete: if isAdmin();
     }
   }
 }

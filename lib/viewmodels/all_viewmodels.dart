@@ -13,7 +13,6 @@ import '../models/app_service.dart';
 import '../models/stub_service.dart';
 import '../models/firebase_service.dart';
 import '../models/app_models.dart';
-import '../services/dish_catalog_service.dart';
 import '../services/notification_service.dart';
 
 import 'package:geolocator/geolocator.dart';
@@ -2050,8 +2049,18 @@ final studentProfileProvider =
       return StudentProfileViewModel(ref.read(appServiceProvider), uid);
     });
 
-// ─── Owner Analytics ────────────────────────────────────────────────────────
+// ─── Owner Analytics & Ratings ──────────────────────────────────────────────
 final ownerFeedbacksProvider = StreamProvider.autoDispose
     .family<List<FeedbackModel>, String>((ref, messId) {
       return ref.watch(appServiceProvider).streamFeedbacks(messId);
+    });
+
+final dishRatingsProvider = StreamProvider.autoDispose
+    .family<List<DishRatingModel>, String>((ref, messId) {
+      return ref.watch(appServiceProvider).streamDishRatings(messId);
+    });
+
+final messReviewsProvider = StreamProvider.autoDispose
+    .family<List<MessReviewModel>, String>((ref, messId) {
+      return ref.watch(appServiceProvider).streamMessReviews(messId);
     });
