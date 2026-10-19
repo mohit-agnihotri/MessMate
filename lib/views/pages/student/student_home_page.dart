@@ -12,12 +12,12 @@ import '../../../models/app_models.dart';
 import 'widgets/view_mess_menu_sheet.dart';
 import 'widgets/rate_mess_sheet.dart';
 
-// ─── Background images per slot ─────────────────────────────────────────────
-const _bgImages = {
-  'morning': 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop',
-  'noon': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=1000&auto=format&fit=crop',
-  'evening': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop',
-  'night': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop',
+// ─── Slot Illustration Banners ──────────────────────────────────────────────
+const _slotBannerAssets = {
+  'morning': 'assets/images/slot_morning.png',
+  'noon': 'assets/images/slot_noon.png',
+  'evening': 'assets/images/slot_evening.png',
+  'night': 'assets/images/slot_night.png',
 };
 
 const _slotIcons = {
@@ -295,246 +295,378 @@ class StudentHomePage extends ConsumerWidget {
                 ? 'Evening'
                 : 'Night';
 
-    String headerTitle;
-    String headerDishes;
-    if (isSpecial) {
-      headerTitle = '✨ SPECIAL ${slotDisplayName.toUpperCase()}';
-      headerDishes = menu.dishes.map((d) => d.name).join(', ');
-    } else if (isRegularToday) {
-      headerTitle = 'TODAY\'S ${slotDisplayName.toUpperCase()} MEAL';
-      headerDishes = menu.dishes.map((d) => d.name).join(', ');
-    } else {
-      headerTitle = slot.toUpperCase();
-      headerDishes = 'Homestyle Mess Meal';
-    }
+    final timings = state.mess?.mealTimings[slot];
+    final startStr = timings?['start'] ?? '';
+    final endStr = timings?['end'] ?? '';
+    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr - $endStr' : '';
 
     final cutoff = state.timeLeftToCutoff ?? Duration.zero;
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
-    final bgUrl = _bgImages[slot] ?? _bgImages['noon']!;
-    final icon = _slotIcons[slot] ?? '🍽';
+    final bannerAsset = _slotBannerAssets[slot] ?? _slotBannerAssets['noon']!;
+    final isNight = slot == 'night';
+
+    Color slotAccentColor;
+    Color slotBgBadgeColor;
+    IconData slotIconData;
+    switch (slot) {
+      case 'morning':
+        slotAccentColor = const Color(0xFFB45309);
+        slotBgBadgeColor = const Color(0xFFFEF3C7);
+        slotIconData = Icons.wb_sunny_rounded;
+        break;
+      case 'noon':
+        slotAccentColor = const Color(0xFF0284C7);
+        slotBgBadgeColor = const Color(0xFFE0F2FE);
+        slotIconData = Icons.wb_sunny_rounded;
+        break;
+      case 'evening':
+        slotAccentColor = const Color(0xFFEA580C);
+        slotBgBadgeColor = const Color(0xFFFFEDD5);
+        slotIconData = Icons.wb_twilight_rounded;
+        break;
+      case 'night':
+      default:
+        slotAccentColor = const Color(0xFF93C5FD);
+        slotBgBadgeColor = const Color(0xFF1E293B);
+        slotIconData = Icons.nightlight_round;
+        break;
+    }
+
+    String mealTitle;
+    if (isSpecial) {
+      mealTitle = '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Meal"}';
+    } else if (isRegularToday) {
+      mealTitle = 'Today\'s $slotDisplayName Meal';
+    } else {
+      mealTitle = 'Homestyle Mess Meal';
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
-      child: SizedBox(
-        height: 340,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isNight ? Colors.white12 : const Color(0xFFE5E7EB),
+            width: 1.0,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 16,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            // ── Food background image ──
-            Image.network(
-              bgUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: const Color(0xFF2C2C2E)),
+            // ── Slot Illustration Banner Background ──
+            Positioned.fill(
+              child: Image.asset(
+                bannerAsset,
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                errorBuilder: (_, __, ___) => Container(
+                  color: isNight ? const Color(0xFF19203A) : const Color(0xFFF8FAFC),
+                ),
+              ),
             ),
 
-            // ── Top glassmorphism strip ──
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: isSpecial
-                        ? const Color(0xFFB45309).withOpacity(0.55)
-                        : Colors.black.withOpacity(0.4),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    child: Row(
-                      children: [
-                        Text('$icon ', style: const TextStyle(fontSize: 18)),
-                        Text(
-                          headerTitle,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isSpecial
-                                ? const Color(0xFFFDE68A)
-                                : Colors.white,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            headerDishes,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: Colors.white.withOpacity(0.85),
-                              fontWeight: FontWeight.w500,
+            // ── Foreground Content ──
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Banner Row (Image 3 layout)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Themed Icon Badge
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: slotBgBadgeColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: isNight ? Border.all(color: Colors.white24) : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            slotIconData,
+                            color: isNight ? const Color(0xFFFCD34D) : slotAccentColor,
+                            size: 26,
                           ),
                         ),
-                        if (!isExplicitlyPosted && state.mess != null) ...[
-                          const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: () {
-                              ViewMessMenuSheet.show(
-                                context,
-                                mess: state.mess!,
-                                initialMenus: state.todayMenus.values.toList(),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Text Info Column
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              slot.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.3,
+                                color: slotAccentColor,
                               ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              mealTitle,
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isNight ? Colors.white : const Color(0xFF111827),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (timeRange.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 13,
+                                    color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    timeRange,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            // Live Status Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.white30),
+                                color: isNight
+                                    ? Colors.white.withValues(alpha: 0.14)
+                                    : const Color(0xFFDCFCE7),
+                                borderRadius: BorderRadius.circular(12),
+                                border: isNight
+                                    ? Border.all(color: Colors.white24)
+                                    : Border.all(color: const Color(0xFFBBF7D0)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Icon(
+                                    Icons.notifications_active_rounded,
+                                    size: 12,
+                                    color: isNight ? const Color(0xFF86EFAC) : const Color(0xFF16A34A),
+                                  ),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'Menu',
+                                    'Serving now',
                                     style: GoogleFonts.inter(
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      color: isNight ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
                                     ),
-                                  ),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 14,
-                                    color: Colors.white,
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+                          ],
+                        ),
+                      ),
 
-            // ── Bottom dark overlay ──
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.6),
-                      Colors.black.withOpacity(0.92),
+                      // Menu > Button (Top Right)
+                      if (state.mess != null)
+                        GestureDetector(
+                          onTap: () {
+                            ViewMessMenuSheet.show(
+                              context,
+                              mess: state.mess!,
+                              initialMenus: state.todayMenus.values.toList(),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isNight ? Colors.white.withValues(alpha: 0.18) : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isNight ? Colors.white30 : const Color(0xFFE2E8F0),
+                              ),
+                              boxShadow: isNight
+                                  ? null
+                                  : const [
+                                      BoxShadow(
+                                        color: Color(0x0E000000),
+                                        blurRadius: 6,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Menu',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isNight ? Colors.white : const Color(0xFF1F2937),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right,
+                                  size: 15,
+                                  color: isNight ? Colors.white : const Color(0xFF1F2937),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
-                    stops: const [0, 0.3, 1],
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Timer row
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'Cancellation closes in: ',
-                          style: GoogleFonts.inter(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          cutoffStr,
-                          style: GoogleFonts.inter(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.bold,
-                            color: hasCutoff
-                                ? const Color(0xFFFFB347)
-                                : const Color(0xFFF87171),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: hasCutoff
-                              ? const Color(0xFFFFB347)
-                              : const Color(0xFFF87171),
-                        ),
-                      ],
+
+                // Bottom Action & Cutoff Panel
+                Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isNight
+                        ? const Color(0xFF0F172A).withValues(alpha: 0.82)
+                        : Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isNight ? Colors.white12 : const Color(0xFFE2E8F0),
                     ),
-                    const SizedBox(height: 14),
-                    // Action buttons
-                    if (!hasCutoff)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.stars_rounded, size: 16, color: Color(0xFFFBBF24)),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Meal concluded • Rate dishes in Mess Menu',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (state.hasSelfSkipped)
-                      _UndoButton(ref: ref)
-                    else
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x08000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Timer row
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
-                            Expanded(
-                              flex: 3,
-                              child: _SkipButton(
-                                ref: ref,
-                                mealSlot: slot,
-                              ),
+                          Text(
+                            'Cancellation closes in: ',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
                             ),
-                            const SizedBox(width: 10),
-                          ],
-                          Expanded(
-                            flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
-                            child: _GuestButton(
-                              onAddGuest: () => _showAddGuestDialog(
-                                context,
-                                ref,
-                                state,
-                                slot,
-                                DateTime.now(),
-                              ),
+                          ),
+                          Text(
+                            cutoffStr,
+                            style: GoogleFonts.inter(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: hasCutoff
+                                  ? const Color(0xFFD97706)
+                                  : const Color(0xFFEF4444),
                             ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 13,
+                            color: hasCutoff
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFFEF4444),
                           ),
                         ],
                       ),
-                  ],
+                      const SizedBox(height: 10),
+                      // Action buttons
+                      if (!hasCutoff)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isNight ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isNight ? Colors.white12 : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.stars_rounded, size: 16, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Meal concluded • Rate dishes in Mess Menu',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isNight ? Colors.white : const Color(0xFF334155),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (state.hasSelfSkipped)
+                        _UndoButton(ref: ref)
+                      else
+                        Row(
+                          children: [
+                            if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
+                              Expanded(
+                                flex: 3,
+                                child: _SkipButton(
+                                  ref: ref,
+                                  mealSlot: slot,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                            Expanded(
+                              flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
+                              child: _GuestButton(
+                                onAddGuest: () => _showAddGuestDialog(
+                                  context,
+                                  ref,
+                                  state,
+                                  slot,
+                                  DateTime.now(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

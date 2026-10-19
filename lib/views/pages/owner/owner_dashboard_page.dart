@@ -669,18 +669,40 @@ class OwnerDashboardPage extends ConsumerWidget {
     final isSpecial = isExplicitlyPosted && menu.menuType == 'special';
     final dishes = menu?.dishes ?? [];
 
-    final slotIcon = slot == 'morning'
-        ? '🌅'
-        : slot == 'noon'
-            ? '☀️'
-            : slot == 'evening'
-                ? '🌇'
-                : '🌙';
+    final slotAsset = 'assets/images/slot_$slot.png';
+    final isNight = slot == 'night';
+
+    Color slotAccentColor;
+    Color slotBgBadgeColor;
+    IconData slotIconData;
+    switch (slot) {
+      case 'morning':
+        slotAccentColor = const Color(0xFFB45309);
+        slotBgBadgeColor = const Color(0xFFFEF3C7);
+        slotIconData = Icons.wb_sunny_rounded;
+        break;
+      case 'noon':
+        slotAccentColor = const Color(0xFF0284C7);
+        slotBgBadgeColor = const Color(0xFFE0F2FE);
+        slotIconData = Icons.wb_sunny_rounded;
+        break;
+      case 'evening':
+        slotAccentColor = const Color(0xFFEA580C);
+        slotBgBadgeColor = const Color(0xFFFFEDD5);
+        slotIconData = Icons.wb_twilight_rounded;
+        break;
+      case 'night':
+      default:
+        slotAccentColor = const Color(0xFF93C5FD);
+        slotBgBadgeColor = const Color(0xFF1E293B);
+        slotIconData = Icons.nightlight_round;
+        break;
+    }
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isSpecial
               ? const Color(0xFFFDE68A)
@@ -689,97 +711,161 @@ class OwnerDashboardPage extends ConsumerWidget {
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
+            color: Color(0x0A000000),
+            blurRadius: 12,
+            offset: Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // ── Thematic Slot Banner Header ──
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+            child: Stack(
               children: [
-                Expanded(
+                Positioned.fill(
+                  child: Image.asset(
+                    slotAsset,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: isNight ? const Color(0xFF19203A) : const Color(0xFFF8FAFC),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                   child: Row(
                     children: [
-                      Text(slotIcon, style: const TextStyle(fontSize: 22)),
-                      const SizedBox(width: 8),
+                      // Themed Icon Badge
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: slotBgBadgeColor,
+                          borderRadius: BorderRadius.circular(13),
+                          border: isNight ? Border.all(color: Colors.white24) : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            slotIconData,
+                            color: isNight ? const Color(0xFFFCD34D) : slotAccentColor,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Text Info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
+                              slot.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: slotAccentColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
                               'Current Meal: $slotName',
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: const Color(0xFF111827),
+                                color: isNight ? Colors.white : const Color(0xFF111827),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (timeRange.isNotEmpty)
-                              Text(
-                                'Serving Timings: $timeRange',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF6B7280),
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            if (timeRange.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 13,
+                                    color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Serving: $timeRange',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
+                            ],
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      // Status Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isNight
+                              ? Colors.white.withOpacity(0.18)
+                              : (isSpecial
+                                  ? const Color(0xFFFFFBEB)
+                                  : (isExplicitlyPosted
+                                      ? const Color(0xFFECFDF5)
+                                      : const Color(0xFFF1F5F9))),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isNight
+                                ? Colors.white30
+                                : (isSpecial
+                                    ? const Color(0xFFFDE68A)
+                                    : (isExplicitlyPosted
+                                        ? const Color(0xFFA7F3D0)
+                                        : const Color(0xFFE2E8F0))),
+                          ),
+                        ),
+                        child: Text(
+                          isSpecial
+                              ? '✨ Special'
+                              : (isExplicitlyPosted ? 'Cooked Today' : 'Standard Menu'),
+                          style: GoogleFonts.inter(
+                            color: isNight
+                                ? Colors.white
+                                : (isSpecial
+                                    ? const Color(0xFFD97706)
+                                    : (isExplicitlyPosted
+                                        ? const Color(0xFF059669)
+                                        : const Color(0xFF64748B))),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSpecial
-                        ? const Color(0xFFFFFBEB)
-                        : (isExplicitlyPosted
-                            ? const Color(0xFFECFDF5)
-                            : const Color(0xFFF1F5F9)),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSpecial
-                          ? const Color(0xFFFDE68A)
-                          : (isExplicitlyPosted
-                              ? const Color(0xFFA7F3D0)
-                              : const Color(0xFFE2E8F0)),
-                    ),
-                  ),
-                  child: Text(
-                    isSpecial
-                        ? '✨ Special'
-                        : (isExplicitlyPosted ? 'Cooked Today' : 'Standard Menu'),
-                    style: GoogleFonts.inter(
-                      color: isSpecial
-                          ? const Color(0xFFD97706)
-                          : (isExplicitlyPosted
-                              ? const Color(0xFF059669)
-                              : const Color(0xFF64748B)),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
 
-          // Body: Either Posted Dishes or Unposted Info
+          // ── Body: Either Posted Dishes or Unposted Info ──
           if (isExplicitlyPosted) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Row(
                 children: [
                   Icon(
@@ -801,77 +887,46 @@ class OwnerDashboardPage extends ConsumerWidget {
                 ],
               ),
             ),
-            // Horizontal scroll of dishes
-            SizedBox(
-              height: 74,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                itemCount: dishes.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (ctx, i) {
-                  final dish = dishes[i];
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
+            // Clean dish summary text banner (no messy chips)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSpecial ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSpecial ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.restaurant_rounded,
+                      size: 16,
+                      color: isSpecial ? const Color(0xFFD97706) : const Color(0xFF10B981),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: SizedBox(
-                            width: 38,
-                            height: 38,
-                            child: Image.network(
-                              (dish.imageUrl?.isNotEmpty ?? false)
-                                  ? dish.imageUrl!
-                                  : 'https://via.placeholder.com/40',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: const Color(0xFFE5E7EB),
-                                child: const Icon(Icons.restaurant, size: 16, color: Colors.grey),
-                              ),
-                            ),
-                          ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        dishes.map((d) => d.name).join(' • '),
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1F2937),
                         ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              dish.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF1F2937),
-                              ),
-                            ),
-                            Text(
-                              dish.category,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: dish.category.toLowerCase() == 'non-veg'
-                                    ? Colors.red
-                                    : Colors.green,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
             // Edit button
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -901,7 +956,7 @@ class OwnerDashboardPage extends ConsumerWidget {
           ] else ...[
             // State: Not posted for today yet
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -923,64 +978,9 @@ class OwnerDashboardPage extends ConsumerWidget {
                 ),
               ),
             ),
-            if (dishes.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Template Offerings ($slotName):",
-                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF6B7280)),
-                ),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                height: 38,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: dishes.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (ctx, i) {
-                    final dish = dishes[i];
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Image.network(
-                                (dish.imageUrl?.isNotEmpty ?? false)
-                                    ? dish.imageUrl!
-                                    : 'https://via.placeholder.com/20',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.restaurant, size: 12, color: Colors.grey),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            dish.name,
-                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF374151)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
             // Post button
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
