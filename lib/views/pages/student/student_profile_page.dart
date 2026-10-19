@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/login_page.dart';
 import '../common/user_feedback_sheet.dart';
+import 'widgets/rate_mess_sheet.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -443,6 +444,30 @@ class StudentProfilePage extends ConsumerWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFD97706),
+                side: const BorderSide(color: Color(0xFFF59E0B)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                if (state.mess != null) {
+                  final reviewsAsync = ref.read(messReviewsProvider(state.mess!.messId));
+                  final myReview = reviewsAsync.valueOrNull?.where((r) => r.studentId == (state.student?.studentId ?? '')).firstOrNull;
+                  RateMessSheet.show(context, mess: state.mess!, existingReview: myReview);
+                }
+              },
+              icon: const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF59E0B)),
+              label: Text(
+                ref.watch(localizationProvider) == 'hi' ? '⭐ मेस को रेटिंग और रिव्यू दें' : '⭐ Rate & Review My Mess',
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => _showLeaveDialog(context, ref),
               icon: const Icon(
@@ -574,6 +599,24 @@ class StudentProfilePage extends ConsumerWidget {
               '',
             ),
           ),
+          if (state.mess != null) ...[
+            const Divider(height: 24, color: Color(0xFFF3F4F6)),
+            InkWell(
+              onTap: () {
+                final reviewsAsync = ref.read(messReviewsProvider(state.mess!.messId));
+                final myReview = reviewsAsync.valueOrNull?.where((r) => r.studentId == (state.student?.studentId ?? '')).firstOrNull;
+                RateMessSheet.show(context, mess: state.mess!, existingReview: myReview);
+              },
+              child: _buildArrowTile(
+                Icons.star_rounded,
+                ref.watch(localizationProvider) == 'hi'
+                    ? 'मेस को रेटिंग दें (Rate My Mess)'
+                    : 'Rate & Review My Mess',
+                '',
+                color: const Color(0xFFD97706),
+              ),
+            ),
+          ],
 
           const Divider(height: 24, color: Color(0xFFF3F4F6)),
           InkWell(

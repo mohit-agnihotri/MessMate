@@ -2,6 +2,7 @@ import '../../../services/localization_service.dart';
 import '../../../viewmodels/cutoff_helper.dart';
 import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
 import 'widgets/view_mess_menu_sheet.dart';
+import 'widgets/rate_mess_sheet.dart';
 
 // ─── Background images per slot ─────────────────────────────────────────────
 const _bgImages = {
@@ -126,6 +128,15 @@ class StudentHomePage extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   sliver: SliverToBoxAdapter(
                     child: _buildMessMenuButtonCard(context, state),
+                  ),
+                ),
+
+              // ── Rate My Mess Card ──
+              if (state.mess != null)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _buildRateMessCard(context, ref, state),
                   ),
                 ),
 
@@ -268,7 +279,6 @@ class StudentHomePage extends ConsumerWidget {
 
     final slot = state.currentSlot;
     final menu = state.currentMeal;
-    final messId = state.mess?.messId ?? state.student?.messId ?? '';
 
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
@@ -617,6 +627,129 @@ class StudentHomePage extends ConsumerWidget {
                     Icons.chevron_right,
                     size: 16,
                     color: Color(0xFF16A34A),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Rate My Mess Card ────────────────────────────────────────────────────
+  Widget _buildRateMessCard(
+    BuildContext context,
+    WidgetRef ref,
+    StudentHomeState state,
+  ) {
+    final mess = state.mess;
+    if (mess == null) return const SizedBox.shrink();
+
+    final reviewsAsync = ref.watch(messReviewsProvider(mess.messId));
+    final reviews = reviewsAsync.valueOrNull ?? [];
+    final currentUid =
+        state.student?.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final myReview =
+        reviews.where((r) => r.studentId == currentUid).firstOrNull;
+
+    final isHi = ref.watch(localizationProvider) == 'hi';
+
+    return InkWell(
+      onTap: () {
+        RateMessSheet.show(context, mess: mess, existingReview: myReview);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: myReview != null
+                ? const Color(0xFFFDE68A)
+                : const Color(0xFFE5E7EB),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.star_rounded,
+                  color: Color(0xFFD97706), size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    myReview != null
+                        ? (isHi
+                            ? 'मेरी रेटिंग: ⭐ ${myReview.rating.toStringAsFixed(1)}'
+                            : 'My Rating: ⭐ ${myReview.rating.toStringAsFixed(1)}')
+                        : (isHi
+                            ? 'मेस को रेटिंग दें (Rate Mess)'
+                            : 'Rate & Review This Mess'),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    myReview != null
+                        ? (isHi
+                            ? 'रिव्यू अपडेट या एडिट करने के लिए टैप करें'
+                            : 'Tap to edit or update your review')
+                        : (isHi
+                            ? 'खाने का स्वाद, सर्विस व सफाई पर फीडबैक दें'
+                            : 'Rate food quality, cleanliness & service'),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    myReview != null ? 'Edit' : 'Rate',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD97706),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: Color(0xFFD97706),
                   ),
                 ],
               ),
