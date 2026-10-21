@@ -1167,14 +1167,25 @@ class _OwnerStudentManagementPageState
           ownerSlots: ownerSlots,
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: OwnerColors.surfaceLight,
             borderRadius: BorderRadius.circular(14),
-            border: Border(left: BorderSide(color: accentColor, width: 4)),
+            border: Border.all(color: OwnerColors.borderSubtle, width: 1),
             boxShadow: OwnerShadows.card,
           ),
-          child: Column(
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 4,
+                child: Container(color: accentColor),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -1207,8 +1218,11 @@ class _OwnerStudentManagementPageState
             ],
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+),
+);
   }
 
   Widget _buildInteractiveCalendar(

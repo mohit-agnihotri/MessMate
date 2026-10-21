@@ -251,14 +251,13 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
     return GestureDetector(
       onTap: () => _openPlanEditor(context, mess, existingPlan: plan),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border(
-            left: BorderSide(color: accentColor, width: 6),
-            top: const BorderSide(color: OwnerColors.borderSubtle, width: 1),
-            right: const BorderSide(color: OwnerColors.borderSubtle, width: 1),
-            bottom: const BorderSide(color: OwnerColors.borderSubtle, width: 1),
+          border: Border.all(
+            color: OwnerColors.borderSubtle,
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
@@ -268,179 +267,192 @@ class _OwnerPlanBuilderPageState extends ConsumerState<OwnerPlanBuilderPage> {
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Top Row: Overline + Switch
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  hasChoice
-                      ? 'CHOICE · ${plan.mealsIncludedPerDay} MEALS/DAY'
-                      : '${plan.mealsIncludedPerDay} MEALS/DAY',
-                  style: OwnerTypography.overline(
-                    size: 11,
-                    spacing: 1.2,
-                    color: OwnerColors.sageGreen,
-                  ),
-                ),
-                Transform.scale(
-                  scale: 0.85,
-                  child: Switch.adaptive(
-                    value: plan.isActive,
-                    activeTrackColor: OwnerColors.sageGreen,
-                    activeThumbColor: Colors.white,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: OwnerColors.borderSubtle,
-                    onChanged: (val) {
-                      appService.toggleMealPlanActive(
-                        mess.messId,
-                        plan.planId,
-                        val,
-                      );
-                    },
-                  ),
-                ),
-              ],
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 6,
+              child: Container(color: accentColor),
             ),
-
-            // Plan Title
-            Text(
-              plan.name,
-              style: OwnerTypography.editorialSerif(
-                size: 21,
-                weight: FontWeight.w700,
-                color: plan.isActive
-                    ? OwnerColors.walnutDark
-                    : OwnerColors.walnutMuted,
-              ),
-            ),
-            const SizedBox(height: 6),
-
-            // Price Row + Skip rebate pill
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      '₹${plan.monthlyFee.toInt()}',
-                      style: OwnerTypography.editorialSerif(
-                        size: 26,
-                        weight: FontWeight.w700,
-                        color: OwnerColors.walnutDark,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Row: Overline + Switch
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        hasChoice
+                            ? 'CHOICE · ${plan.mealsIncludedPerDay} MEALS/DAY'
+                            : '${plan.mealsIncludedPerDay} MEALS/DAY',
+                        style: OwnerTypography.overline(
+                          size: 11,
+                          spacing: 1.2,
+                          color: OwnerColors.sageGreen,
+                        ),
                       ),
+                      Transform.scale(
+                        scale: 0.85,
+                        child: Switch.adaptive(
+                          value: plan.isActive,
+                          activeTrackColor: OwnerColors.sageGreen,
+                          activeThumbColor: Colors.white,
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: OwnerColors.borderSubtle,
+                          onChanged: (val) {
+                            appService.toggleMealPlanActive(
+                              mess.messId,
+                              plan.planId,
+                              val,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Plan Title
+                  Text(
+                    plan.name,
+                    style: OwnerTypography.editorialSerif(
+                      size: 21,
+                      weight: FontWeight.w700,
+                      color: plan.isActive
+                          ? OwnerColors.walnutDark
+                          : OwnerColors.walnutMuted,
                     ),
-                    const SizedBox(width: 4),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Price Row + Skip rebate pill
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '₹${plan.monthlyFee.toInt()}',
+                            style: OwnerTypography.editorialSerif(
+                              size: 26,
+                              weight: FontWeight.w700,
+                              color: OwnerColors.walnutDark,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '/ month',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: OwnerColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6EEDF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          plan.deductionPolicy.policyType == 'none'
+                              ? 'No skip refund'
+                              : 'Skip refund ₹$refundAmount',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: OwnerColors.walnutDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  if (summaryText.isNotEmpty) ...[
+                    const SizedBox(height: 10),
                     Text(
-                      '/ month',
+                      summaryText,
                       style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
                         color: OwnerColors.textSecondary,
+                        height: 1.35,
                       ),
                     ),
                   ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF6EEDF),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    plan.deductionPolicy.policyType == 'none'
-                        ? 'No skip refund'
-                        : 'Skip refund ₹$refundAmount',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: OwnerColors.walnutDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
 
-            if (summaryText.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                summaryText,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: OwnerColors.textSecondary,
-                  height: 1.35,
-                ),
+                  const SizedBox(height: 8),
+
+                  // Quick Actions: Edit & Delete
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () =>
+                            _openPlanEditor(context, mess, existingPlan: plan),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.edit_outlined,
+                                size: 15,
+                                color: OwnerColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Edit',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: OwnerColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => _confirmDelete(context, mess, plan),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 15,
+                                color: Color(0xFFEF4444),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Delete',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFEF4444),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-
-            const SizedBox(height: 8),
-
-            // Quick Actions: Edit & Delete
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: () =>
-                      _openPlanEditor(context, mess, existingPlan: plan),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.edit_outlined,
-                          size: 15,
-                          color: OwnerColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Edit',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: OwnerColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => _confirmDelete(context, mess, plan),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 15,
-                          color: Color(0xFFEF4444),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Delete',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFEF4444),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

@@ -95,9 +95,9 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   }
 
   Future<void> _checkRoleConflict() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
       final appService = ref.read(appServiceProvider);
       final existingStudent = await appService.getStudentById(user.uid);
       if (existingStudent != null && mounted) {
@@ -1538,329 +1538,354 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: const Color(0xFFFAF8F3),
                 borderRadius: BorderRadius.circular(22),
-                border: Border(
-                  left: BorderSide(
-                    color: isEnabled
-                        ? const Color(0xFFF09E38)
-                        : const Color(0x142D231C),
-                    width: 5,
-                  ),
-                  top: const BorderSide(color: Color(0x142D231C)),
-                  right: const BorderSide(color: Color(0x142D231C)),
-                  bottom: const BorderSide(color: Color(0x142D231C)),
+                border: Border.all(
+                  color: isEnabled
+                      ? const Color(0xFFF09E38).withValues(alpha: 0.5)
+                      : const Color(0x142D231C),
+                  width: isEnabled ? 1.5 : 1,
                 ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A2D231C),
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Row: Badge & Switch
-                    Row(
+              child: Stack(
+                children: [
+                  if (isEnabled)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 5,
+                      child: Container(color: const Color(0xFFF09E38)),
+                    ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(isEnabled ? 20 : 18, 18, 18, 18),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                badge,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.1,
-                                  color: const Color(0xFF4E654F),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                isHindi
-                                    ? (plan['nameHi'] as String? ??
-                                        plan['name'] as String)
-                                    : (plan['name'] as String),
-                                style: GoogleFonts.newsreader(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF231A14),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                plan['desc'] as String,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF7A7971),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch.adaptive(
-                          value: isEnabled,
-                          activeTrackColor: const Color(0xFF4E654F),
-                          activeThumbColor: const Color(0xFFFAF8F3),
-                          onChanged: (val) {
-                            setState(() => plan['enabled'] = val);
-                          },
-                        ),
-                      ],
-                    ),
-
-                    if (isEnabled) ...[
-                      const SizedBox(height: 12),
-
-                      // Meal Chips
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          ...fixedMeals.map((m) {
-                            final slotName =
-                                _timings[m]?['slotNameEn'] ?? m;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE2E8DE),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                slotName,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2B3B2C),
-                                ),
-                              ),
-                            );
-                          }),
-                          if (hasChoice && choiceDesc.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE2E8DE),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                choiceDesc,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2B3B2C),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
-                      const Divider(height: 1, color: Color(0x142D231C)),
-                      const SizedBox(height: 14),
-
-                      // Monthly Fee Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isHindi ? 'महीने का शुल्क' : 'Monthly fee',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF231A14),
-                                ),
-                              ),
-                              Text(
-                                isHindi ? 'प्रति छात्र' : 'per student',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: const Color(0xFF7A7971),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              _buildRoundStepBtn('-', () => _adjustCtrl(feeCtrl, -100)),
-                              Container(
-                                width: 85,
-                                height: 38,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: const Color(0x1A2D231C)),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '₹${feeCtrl.text}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF231A14),
-                                  ),
-                                ),
-                              ),
-                              _buildRoundStepBtn('+', () => _adjustCtrl(feeCtrl, 100)),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Skip Refund Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isHindi ? 'स्किप रिफंड' : 'Skip refund',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF231A14),
-                                ),
-                              ),
-                              Text(
-                                isHindi ? 'प्रति वैध स्किप' : 'per valid skip',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: const Color(0xFF7A7971),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              _buildRoundStepBtn('-', () => _adjustCtrl(skipCtrl, -5)),
-                              Container(
-                                width: 85,
-                                height: 38,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: const Color(0x1A2D231C)),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '₹${skipCtrl.text}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF231A14),
-                                  ),
-                                ),
-                              ),
-                              _buildRoundStepBtn('+', () => _adjustCtrl(skipCtrl, 5)),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Max Skips Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isHindi ? 'अधिकतम स्किप' : 'Max skips',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF231A14),
-                                ),
-                              ),
-                              Text(
-                                isHindi ? 'प्रति माह' : 'per month',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: const Color(0xFF7A7971),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              if ((plan['maxSkip'] as int) != -1) ...[
-                                _buildRoundStepBtn('-', () {
-                                  final cur = plan['maxSkip'] as int;
-                                  if (cur > 1) setState(() => plan['maxSkip'] = cur - 1);
-                                }),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8),
-                                  child: Text(
-                                    '${plan['maxSkip']} meals',
+                        // Header Row: Badge & Switch
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    badge,
                                     style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.1,
+                                      color: const Color(0xFF4E654F),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isHindi
+                                        ? (plan['nameHi'] as String? ??
+                                            plan['name'] as String)
+                                        : (plan['name'] as String),
+                                    style: GoogleFonts.newsreader(
+                                      fontSize: 20,
                                       fontWeight: FontWeight.w700,
                                       color: const Color(0xFF231A14),
                                     ),
                                   ),
-                                ),
-                                _buildRoundStepBtn('+', () {
-                                  final cur = plan['maxSkip'] as int;
-                                  if (cur < 30) setState(() => plan['maxSkip'] = cur + 1);
-                                }),
-                                const SizedBox(width: 8),
-                              ],
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    if ((plan['maxSkip'] as int) == -1) {
-                                      plan['maxSkip'] = 6;
-                                    } else {
-                                      plan['maxSkip'] = -1;
-                                    }
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    plan['desc'] as String,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: const Color(0xFF7A7971),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch.adaptive(
+                              value: isEnabled,
+                              activeTrackColor: const Color(0xFF4E654F),
+                              activeThumbColor: const Color(0xFFFAF8F3),
+                              onChanged: (val) {
+                                setState(() => plan['enabled'] = val);
+                              },
+                            ),
+                          ],
+                        ),
+
+                        if (isEnabled) ...[
+                          const SizedBox(height: 12),
+
+                          // Meal Chips
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              ...fixedMeals.map((m) {
+                                final slotName =
+                                    _timings[m]?['slotNameEn'] ?? m;
+                                return Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
+                                      horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: (plan['maxSkip'] as int) == -1
-                                        ? const Color(0xFFFCE3BF)
-                                        : const Color(0xFFE2E8DE),
+                                    color: const Color(0xFFE2E8DE),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    isHindi ? 'असीमित' : 'Unlimited',
+                                    slotName,
                                     style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: (plan['maxSkip'] as int) == -1
-                                          ? const Color(0xFF8F4700)
-                                          : const Color(0xFF2B3B2C),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF2B3B2C),
+                                    ),
+                                  ),
+                                );
+                              }),
+                              if (hasChoice && choiceDesc.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE2E8DE),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    choiceDesc,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF2B3B2C),
                                     ),
                                   ),
                                 ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+                          const Divider(height: 1, color: Color(0x142D231C)),
+                          const SizedBox(height: 14),
+
+                          // Monthly Fee Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isHindi ? 'महीने का शुल्क' : 'Monthly fee',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF231A14),
+                                      ),
+                                    ),
+                                    Text(
+                                      isHindi ? 'प्रति छात्र' : 'per student',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: const Color(0xFF7A7971),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildRoundStepBtn('-', () => _adjustCtrl(feeCtrl, -100)),
+                                  Container(
+                                    width: 76,
+                                    height: 38,
+                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: const Color(0x1A2D231C)),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '₹${feeCtrl.text}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF231A14),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildRoundStepBtn('+', () => _adjustCtrl(feeCtrl, 100)),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Skip Refund Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isHindi ? 'स्किप रिफंड' : 'Skip refund',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF231A14),
+                                      ),
+                                    ),
+                                    Text(
+                                      isHindi ? 'प्रति वैध स्किप' : 'per valid skip',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: const Color(0xFF7A7971),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildRoundStepBtn('-', () => _adjustCtrl(skipCtrl, -5)),
+                                  Container(
+                                    width: 76,
+                                    height: 38,
+                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: const Color(0x1A2D231C)),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '₹${skipCtrl.text}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF231A14),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildRoundStepBtn('+', () => _adjustCtrl(skipCtrl, 5)),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Max Skips Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isHindi ? 'अधिकतम स्किप' : 'Max skips',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF231A14),
+                                      ),
+                                    ),
+                                    Text(
+                                      isHindi ? 'प्रति माह' : 'per month',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: const Color(0xFF7A7971),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if ((plan['maxSkip'] as int) != -1) ...[
+                                    _buildRoundStepBtn('-', () {
+                                      final cur = plan['maxSkip'] as int;
+                                      if (cur > 1) setState(() => plan['maxSkip'] = cur - 1);
+                                    }),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6),
+                                      child: Text(
+                                        '${plan['maxSkip']} m',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF231A14),
+                                        ),
+                                      ),
+                                    ),
+                                    _buildRoundStepBtn('+', () {
+                                      final cur = plan['maxSkip'] as int;
+                                      if (cur < 30) setState(() => plan['maxSkip'] = cur + 1);
+                                    }),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        if ((plan['maxSkip'] as int) == -1) {
+                                          plan['maxSkip'] = 6;
+                                        } else {
+                                          plan['maxSkip'] = -1;
+                                        }
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: (plan['maxSkip'] as int) == -1
+                                            ? const Color(0xFFFCE3BF)
+                                            : const Color(0xFFE2E8DE),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        isHindi ? 'असीमित' : 'Unlimited',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: (plan['maxSkip'] as int) == -1
+                                              ? const Color(0xFF8F4700)
+                                              : const Color(0xFF2B3B2C),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ],
-                      ),
-                    ],
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             );
           }),
