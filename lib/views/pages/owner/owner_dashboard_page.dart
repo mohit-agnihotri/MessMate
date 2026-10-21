@@ -9,6 +9,7 @@ import 'owner_absentee_tracker_page.dart';
 import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
+import 'widgets/manage_closed_slots_sheet.dart';
 import 'theme/owner_inspired_theme.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -51,6 +52,11 @@ class OwnerDashboardPage extends ConsumerWidget {
                       sliver: SliverToBoxAdapter(
                         child: _buildVipAndSearchRow(context, ref, state),
                       ),
+                    ),
+
+                    // Active / Scheduled Closure Banner
+                    SliverToBoxAdapter(
+                      child: _buildClosureBanner(context, ref, state),
                     ),
 
                     // Hero Card (Dark Walnut + Wavy Hills + Diner Count + CTA)
@@ -99,7 +105,30 @@ class OwnerDashboardPage extends ConsumerWidget {
     String daySlotOverline,
   ) {
     final messName = state.mess?.name ?? 'Mahakal\nmess';
-    final isOpen = state.mess?.isOpen ?? true;
+    final mess = state.mess;
+    final isClosedNow = mess?.isClosedNow ?? false;
+    final isUpcoming = mess?.isClosureUpcoming ?? false;
+    final isOpen = mess?.isOpen ?? true;
+
+    Color pillBg = OwnerColors.sageLight;
+    Color pillBorder = OwnerColors.sageBorder.withValues(alpha: 0.5);
+    Color dotColor = const Color(0xFF16A34A);
+    Color textColor = OwnerColors.sageText;
+    String pillText = 'Open · Close';
+
+    if (isClosedNow) {
+      pillBg = const Color(0xFFFEE2E2);
+      pillBorder = const Color(0xFFFCA5A5);
+      dotColor = const Color(0xFFDC2626);
+      textColor = const Color(0xFFB91C1C);
+      pillText = 'Closed';
+    } else if (isUpcoming) {
+      pillBg = const Color(0xFFFEF3C7);
+      pillBorder = const Color(0xFFFCD34D);
+      dotColor = const Color(0xFFD97706);
+      textColor = const Color(0xFF92400E);
+      pillText = 'Closure ⏳';
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
@@ -191,9 +220,9 @@ class OwnerDashboardPage extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: OwnerColors.sageLight,
+                    color: pillBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: OwnerColors.sageBorder.withValues(alpha: 0.5)),
+                    border: Border.all(color: pillBorder),
                   ),
                   child: Row(
                     children: [
@@ -202,16 +231,16 @@ class OwnerDashboardPage extends ConsumerWidget {
                         height: 7,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isOpen ? const Color(0xFF16A34A) : const Color(0xFFEF4444),
+                          color: dotColor,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        isOpen ? 'Open · Close' : 'Closed',
+                        pillText,
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: OwnerColors.sageText,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -558,6 +587,12 @@ class OwnerDashboardPage extends ConsumerWidget {
   ) {
     final current = state.currentSlot;
     final timings = state.mess?.mealTimings ?? {};
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+
+    final isMorningClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'morning');
+    final isNoonClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'noon');
+    final isEveningClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'evening');
+    final isNightClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'night');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -570,12 +605,39 @@ class OwnerDashboardPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'TODAY\'S SERVICE',
-            style: OwnerTypography.overline(
-              color: OwnerColors.textOverline,
-              fontSize: 11,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'TODAY\'S SERVICE',
+                style: OwnerTypography.overline(
+                  color: OwnerColors.textOverline,
+                  fontSize: 11,
+                ),
+              ),
+              if (isMorningClosed || isNoonClosed || isEveningClosed || isNightClosed)
+                GestureDetector(
+                  onTap: () {
+                    if (state.mess != null) {
+                      showManageClosedSlotsSheet(context, mess: state.mess!);
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFFDC2626)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Slots closed today',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFDC2626),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -583,56 +645,70 @@ class OwnerDashboardPage extends ConsumerWidget {
           Row(
             children: [
               _buildStepItem(
-                label: 'Morning',
+                label: isMorningClosed ? 'Morning ❌' : 'Morning',
                 enabled: timings['morning']?['enabled'] == 'true',
                 isCurrent: current == 'morning',
-                color: OwnerColors.amber,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'morning'),
-                  ),
-                ),
+                color: isMorningClosed ? const Color(0xFFEF4444) : OwnerColors.amber,
+                isClosed: isMorningClosed,
+                onTap: isMorningClosed
+                    ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
+                    : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'morning'),
+                          ),
+                        ),
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: 'Noon',
+                label: isNoonClosed ? 'Noon ❌' : 'Noon',
                 enabled: timings['noon']?['enabled'] == 'true',
                 isCurrent: current == 'noon',
-                color: OwnerColors.sage,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'noon'),
-                  ),
-                ),
+                color: isNoonClosed ? const Color(0xFFEF4444) : OwnerColors.sage,
+                isClosed: isNoonClosed,
+                onTap: isNoonClosed
+                    ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
+                    : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'noon'),
+                          ),
+                        ),
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: (timings['evening']?['enabled'] == 'true') ? 'Evening' : 'Evening off',
+                label: isEveningClosed
+                    ? 'Evening ❌'
+                    : ((timings['evening']?['enabled'] == 'true') ? 'Evening' : 'Evening off'),
                 enabled: timings['evening']?['enabled'] == 'true',
                 isCurrent: current == 'evening',
-                color: OwnerColors.sage,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'evening'),
-                  ),
-                ),
+                color: isEveningClosed ? const Color(0xFFEF4444) : OwnerColors.sage,
+                isClosed: isEveningClosed,
+                onTap: isEveningClosed
+                    ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
+                    : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'evening'),
+                          ),
+                        ),
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: 'Night',
+                label: isNightClosed ? 'Night ❌' : 'Night',
                 enabled: timings['night']?['enabled'] == 'true',
                 isCurrent: current == 'night' || current == 'closed',
-                color: OwnerColors.amber,
-                isGlow: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'night'),
-                  ),
-                ),
+                color: isNightClosed ? const Color(0xFFEF4444) : OwnerColors.amber,
+                isClosed: isNightClosed,
+                isGlow: !isNightClosed,
+                onTap: isNightClosed
+                    ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
+                    : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'night'),
+                          ),
+                        ),
               ),
             ],
           ),
@@ -647,8 +723,16 @@ class OwnerDashboardPage extends ConsumerWidget {
     required bool isCurrent,
     required Color color,
     bool isGlow = false,
+    bool isClosed = false,
     required VoidCallback onTap,
   }) {
+    Color dotColor = enabled ? (isGlow ? OwnerColors.amber : color) : Colors.transparent;
+    Color borderColor = enabled ? Colors.transparent : const Color(0xFFC7BCB3);
+    if (isClosed) {
+      dotColor = const Color(0xFFEF4444);
+      borderColor = const Color(0xFFDC2626);
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -659,12 +743,12 @@ class OwnerDashboardPage extends ConsumerWidget {
             height: isGlow ? 22 : 16,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: enabled ? (isGlow ? OwnerColors.amber : color) : Colors.transparent,
+              color: dotColor,
               border: Border.all(
-                color: enabled ? Colors.transparent : const Color(0xFFC7BCB3),
+                color: borderColor,
                 width: 1.5,
               ),
-              boxShadow: isGlow
+              boxShadow: (isGlow && !isClosed)
                   ? [
                       BoxShadow(
                         color: OwnerColors.amber.withValues(alpha: 0.4),
@@ -680,10 +764,12 @@ class OwnerDashboardPage extends ConsumerWidget {
             label,
             style: GoogleFonts.inter(
               fontSize: 11,
-              fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
-              color: isCurrent
-                  ? OwnerColors.textDark
-                  : (enabled ? OwnerColors.textMuted : const Color(0xFFB8B3AA)),
+              fontWeight: (isCurrent || isClosed) ? FontWeight.w800 : FontWeight.w500,
+              color: isClosed
+                  ? const Color(0xFFDC2626)
+                  : (isCurrent
+                      ? OwnerColors.textDark
+                      : (enabled ? OwnerColors.textMuted : const Color(0xFFB8B3AA))),
             ),
           ),
         ],
@@ -962,11 +1048,144 @@ class OwnerDashboardPage extends ConsumerWidget {
   }
 
   void _showEmergencyCloseDialog(BuildContext context, WidgetRef ref, bool isOpen, MessModel? mess) {
-    if (isOpen) {
+    if (mess?.hasScheduledClosure == true) {
+      showManageClosedSlotsSheet(context, mess: mess!);
+    } else {
       showScheduleClosureDialog(context, ref, mess: mess);
-    } else if (mess != null) {
-      showReopenMessDialog(context, ref, messId: mess.messId);
     }
+  }
+
+  Widget _buildClosureBanner(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    final mess = state.mess;
+    if (mess == null || !mess.hasScheduledClosure) {
+      return const SizedBox.shrink();
+    }
+
+    final isClosedNow = mess.isClosedNow;
+
+    final bgColor = isClosedNow ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
+    final borderColor = isClosedNow ? const Color(0xFFFECACA) : const Color(0xFFFDE68A);
+    final iconColor = isClosedNow ? const Color(0xFFDC2626) : const Color(0xFFD97706);
+    final titleColor = isClosedNow ? const Color(0xFF991B1B) : const Color(0xFF92400E);
+    final bodyColor = isClosedNow ? const Color(0xFFB91C1C) : const Color(0xFFB45309);
+
+    final title = isClosedNow ? 'Mess is Closed Today' : 'Closure Scheduled Ahead';
+
+    String dateRangeStr = '';
+    if (mess.closureStartDate != null && mess.temporarilyClosedUntil != null) {
+      final s = mess.closureStartDate!;
+      final e = mess.temporarilyClosedUntil!;
+      final startSlot = mess.closureStartSlot ?? 'morning';
+      final endSlot = mess.closureEndSlot ?? 'night';
+      dateRangeStr = '${s.day}/${s.month} ($startSlot) → ${e.day}/${e.month} ($endSlot)';
+    } else if (mess.temporarilyClosedUntil != null) {
+      final e = mess.temporarilyClosedUntil!;
+      dateRangeStr = 'Until ${e.day}/${e.month}/${e.year}';
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isClosedNow ? Icons.lock_clock_rounded : Icons.calendar_month_rounded,
+                  color: iconColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: titleColor,
+                      ),
+                    ),
+                    if (dateRangeStr.isNotEmpty)
+                      Text(
+                        dateRangeStr,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: bodyColor,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => showManageClosedSlotsSheet(context, mess: mess),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Manage',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: titleColor,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 16, color: titleColor),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isClosedNow
+                ? 'Your mess is currently closed for selected meals. Students have been notified, and refund deductions are active.'
+                : 'Upcoming closure is set. Meal slots will automatically turn off on the scheduled date.',
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              color: bodyColor.withValues(alpha: 0.9),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAnnouncementDialog(BuildContext context, WidgetRef ref) {

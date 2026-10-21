@@ -82,6 +82,12 @@ class StudentHomePage extends ConsumerWidget {
                 ),
               ),
 
+              // ── Mess Closure Banner ──
+              if (state.mess != null && (state.mess!.isClosedNow || state.mess!.isClosureUpcoming))
+                SliverToBoxAdapter(
+                  child: _MessClosureBanner(mess: state.mess!),
+                ),
+
               // ── On-leave banner ──
               if (state.activeLeave != null)
                 SliverToBoxAdapter(
@@ -182,11 +188,10 @@ class StudentHomePage extends ConsumerWidget {
 
                     final tomorrowSlots = enabledSlots;
 
-                    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-                    final tomorrowIso = DateTime.now()
-                        .add(const Duration(days: 1))
-                        .toIso8601String()
-                        .substring(0, 10);
+                    final now = DateTime.now();
+                    final tomorrowDate = now.add(const Duration(days: 1));
+                    final todayIso = now.toIso8601String().substring(0, 10);
+                    final tomorrowIso = tomorrowDate.toIso8601String().substring(0, 10);
 
                     final items = [
                       for (final s in todayRemaining)
@@ -198,6 +203,7 @@ class StudentHomePage extends ConsumerWidget {
                           isSkipped: state.skippedUpcomingMeals.containsKey(
                             '${todayIso}_$s',
                           ),
+                          isClosed: state.mess?.isSlotClosed(now, s) ?? false,
                         ),
                       for (final s in tomorrowSlots)
                         _UpcomingItem(
@@ -208,6 +214,7 @@ class StudentHomePage extends ConsumerWidget {
                           isSkipped: state.skippedUpcomingMeals.containsKey(
                             '${tomorrowIso}_$s',
                           ),
+                          isClosed: state.mess?.isSlotClosed(tomorrowDate, s) ?? false,
                         ),
                     ];
 
@@ -241,6 +248,7 @@ class StudentHomePage extends ConsumerWidget {
                                 state: state,
                                 label: item.label,
                                 isSkipped: item.isSkipped,
+                                isClosed: item.isClosed,
                                 onTap: () => _showMealBottomSheet(
                                   context,
                                   ref,
@@ -249,6 +257,7 @@ class StudentHomePage extends ConsumerWidget {
                                   item.menu,
                                   isToday: item.isToday,
                                   isSkipped: item.isSkipped,
+                                  isClosed: item.isClosed,
                                   date: item.isToday
                                       ? DateTime.now()
                                       : DateTime.now().add(const Duration(days: 1)),
@@ -284,6 +293,10 @@ class StudentHomePage extends ConsumerWidget {
           child: CircularProgressIndicator(color: StudentColors.amber),
         ),
       );
+    }
+
+    if (state.mess?.isClosedNow == true) {
+      return _MessClosureCard(mess: state.mess!);
     }
 
     if (state.currentSlot == 'closed') return _ClosedCard();
@@ -941,6 +954,7 @@ class StudentHomePage extends ConsumerWidget {
     MenuModel? menu, {
     required bool isToday,
     required bool isSkipped,
+    bool isClosed = false,
     DateTime? date,
   }) {
     final mealDate = date ?? DateTime.now();
@@ -1009,7 +1023,23 @@ class StudentHomePage extends ConsumerWidget {
                     ],
                   ),
                 ),
-                if (isSkipped)
+                if (isClosed)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: StudentColors.brickRedLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'CLOSED',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: StudentColors.brickRed,
+                      ),
+                    ),
+                  )
+                else if (isSkipped)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -1029,35 +1059,66 @@ class StudentHomePage extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Cutoff Info
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: StudentColors.borderSubtle),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 16,
-                    color: hasCutoff ? StudentColors.amber : StudentColors.brickRed,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    hasCutoff
-                        ? 'Cancellation closes in: $cutoffStr'
-                        : 'Cutoff passed ($cutoffStr)',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: hasCutoff ? StudentColors.amberText : StudentColors.brickRed,
+            // Cutoff Info or Closed Notice
+            if (isClosed)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: StudentColors.brickRedLight,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: StudentColors.brickRedBorder),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.door_sliding_outlined,
+                      size: 20,
+                      color: StudentColors.brickRed,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'This meal slot is closed by the mess administration. All closed slots are 100% credited back to your bill.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: StudentColors.brickRed,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: StudentColors.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 16,
+                      color: hasCutoff ? StudentColors.amber : StudentColors.brickRed,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      hasCutoff
+                          ? 'Cancellation closes in: $cutoffStr'
+                          : 'Cutoff passed ($cutoffStr)',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: hasCutoff ? StudentColors.amberText : StudentColors.brickRed,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 16),
 
             // Dishes list
@@ -1066,7 +1127,24 @@ class StudentHomePage extends ConsumerWidget {
               style: StudentTypography.overline(fontSize: 11),
             ),
             const SizedBox(height: 8),
-            if (isExplicitlyPosted)
+            if (isClosed)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: StudentColors.borderSubtle),
+                ),
+                child: Text(
+                  'No dishes scheduled for this slot due to temporary mess closure.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontStyle: FontStyle.italic,
+                    color: StudentColors.textSecondary,
+                  ),
+                ),
+              )
+            else if (isExplicitlyPosted)
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1102,7 +1180,29 @@ class StudentHomePage extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // Action Buttons
-            if (hasCutoff)
+            if (isClosed)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudentColors.walnut,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Got It',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else if (hasCutoff)
               Row(
                 children: [
                   if (!isSkipped)
@@ -1357,6 +1457,7 @@ class _UpcomingItem {
   final MenuModel? menu;
   final String label;
   final bool isSkipped;
+  final bool isClosed;
 
   _UpcomingItem({
     required this.slot,
@@ -1364,6 +1465,7 @@ class _UpcomingItem {
     required this.menu,
     required this.label,
     this.isSkipped = false,
+    this.isClosed = false,
   });
 }
 
@@ -1544,6 +1646,7 @@ class _UpcomingMealCard extends StatelessWidget {
   final VoidCallback onTap;
   final String? label;
   final bool isSkipped;
+  final bool isClosed;
 
   const _UpcomingMealCard({
     required this.slot,
@@ -1552,6 +1655,7 @@ class _UpcomingMealCard extends StatelessWidget {
     required this.onTap,
     this.label,
     this.isSkipped = false,
+    this.isClosed = false,
   });
 
   @override
@@ -1566,11 +1670,13 @@ class _UpcomingMealCard extends StatelessWidget {
         (menu!.menuType == 'special' || menu!.menuType == 'regular') &&
         menu!.dishes.isNotEmpty;
     final isSpecial = isExplicitlyPosted && menu!.menuType == 'special';
-    final dishesStr = isExplicitlyPosted
-        ? (isSpecial
-            ? '✨ Special: ${menu!.dishes.map((d) => d.name).join(", ")}'
-            : menu!.dishes.map((d) => d.name).join(", "))
-        : 'Regular Homestyle Meal';
+    final dishesStr = isClosed
+        ? 'Mess Closed • Auto Refunded'
+        : (isExplicitlyPosted
+            ? (isSpecial
+                ? '✨ Special: ${menu!.dishes.map((d) => d.name).join(", ")}'
+                : menu!.dishes.map((d) => d.name).join(", "))
+            : 'Regular Homestyle Meal');
 
     return GestureDetector(
       onTap: onTap,
@@ -1599,13 +1705,29 @@ class _UpcomingMealCard extends StatelessWidget {
                     slotName,
                     style: StudentTypography.bold(
                       fontSize: 14,
-                      color: isSkipped ? StudentColors.walnutMuted : StudentColors.textDark,
+                      color: (isSkipped || isClosed) ? StudentColors.walnutMuted : StudentColors.textDark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (isSkipped)
+                if (isClosed)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: StudentColors.brickRedLight,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'CLOSED',
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: StudentColors.brickRed,
+                      ),
+                    ),
+                  )
+                else if (isSkipped)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
@@ -1692,6 +1814,231 @@ class _ClosedCard extends StatelessWidget {
             style: GoogleFonts.inter(
               color: StudentColors.textSecondary,
               fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Mess Closure Card (Shown in Current Meal spot when closed) ──────────────
+const _monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _monthsFull = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+String _formatDateShort(DateTime d) => '${d.day} ${_monthsShort[d.month - 1]}';
+String _formatDateFull(DateTime d) => '${d.day} ${_monthsFull[d.month - 1]} ${d.year}';
+
+class _MessClosureCard extends StatelessWidget {
+  final MessModel mess;
+  const _MessClosureCard({required this.mess});
+
+  @override
+  Widget build(BuildContext context) {
+    final reopenDate = mess.temporarilyClosedUntil != null
+        ? _formatDateFull(mess.temporarilyClosedUntil!)
+        : 'soon';
+    final reopenSlot = mess.closureEndSlot != null
+        ? ' (${mess.closureEndSlot![0].toUpperCase()}${mess.closureEndSlot!.substring(1)})'
+        : '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: StudentColors.surfaceLight,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: StudentColors.brickRedBorder),
+        boxShadow: StudentColors.softShadow,
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: const BoxDecoration(
+              color: StudentColors.brickRedLight,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.door_sliding_outlined,
+              size: 32,
+              color: StudentColors.brickRed,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Mess Temporarily Closed',
+            style: StudentTypography.serifHeading(
+              fontSize: 20,
+              color: StudentColors.brickRed,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Regular service resumes on $reopenDate$reopenSlot.\nAll closed meals will be 100% credited back to your bill.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: StudentColors.textDark,
+              fontSize: 13,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (mess.closureReason != null && mess.closureReason!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: StudentColors.canvasWarm,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: StudentColors.borderSubtle),
+              ),
+              child: Text(
+                'Note: "${mess.closureReason}"',
+                style: GoogleFonts.inter(
+                  color: StudentColors.textSecondary,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 15,
+                color: StudentColors.sage,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'No manual skipping needed for closed meals',
+                style: GoogleFonts.inter(
+                  color: StudentColors.sageDark,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Mess Closure Banner (Notification strip below header) ────────────────────
+class _MessClosureBanner extends StatelessWidget {
+  final MessModel mess;
+  const _MessClosureBanner({required this.mess});
+
+  @override
+  Widget build(BuildContext context) {
+    final isClosedNow = mess.isClosedNow;
+    final bgColor = isClosedNow ? StudentColors.brickRedLight : StudentColors.amberLight;
+    final borderColor = isClosedNow ? StudentColors.brickRedBorder : StudentColors.amberPill;
+    final iconColor = isClosedNow ? StudentColors.brickRed : StudentColors.amberText;
+    final title = isClosedNow ? 'Mess Currently Closed' : 'Scheduled Mess Closure';
+
+    String detailText;
+    if (isClosedNow) {
+      final tillDate = mess.temporarilyClosedUntil != null
+          ? _formatDateShort(mess.temporarilyClosedUntil!)
+          : 'soon';
+      final tillSlot = mess.closureEndSlot != null
+          ? ' (${mess.closureEndSlot![0].toUpperCase()}${mess.closureEndSlot!.substring(1)})'
+          : '';
+      detailText = 'Service reopens on $tillDate$tillSlot. All closed slots are credited 100% to your bill.';
+    } else {
+      final startDate = mess.closureStartDate != null
+          ? _formatDateShort(mess.closureStartDate!)
+          : 'Upcoming';
+      final startSlot = mess.closureStartSlot != null
+          ? ' (${mess.closureStartSlot![0].toUpperCase()}${mess.closureStartSlot!.substring(1)})'
+          : '';
+      final endDate = mess.temporarilyClosedUntil != null
+          ? _formatDateShort(mess.temporarilyClosedUntil!)
+          : '';
+      final endSlot = mess.closureEndSlot != null
+          ? ' (${mess.closureEndSlot![0].toUpperCase()}${mess.closureEndSlot!.substring(1)})'
+          : '';
+      detailText = 'Closed from $startDate$startSlot to $endDate$endSlot. Auto deductions will be credited.';
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isClosedNow ? Icons.door_sliding_outlined : Icons.event_busy_rounded,
+            color: iconColor,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: StudentTypography.bold(
+                        fontSize: 13.5,
+                        color: iconColor,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isClosedNow ? 'ACTIVE' : 'UPCOMING',
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: iconColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detailText,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: StudentColors.textDark,
+                    height: 1.35,
+                  ),
+                ),
+                if (mess.closureReason != null && mess.closureReason!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Reason: "${mess.closureReason}"',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontStyle: FontStyle.italic,
+                      color: StudentColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

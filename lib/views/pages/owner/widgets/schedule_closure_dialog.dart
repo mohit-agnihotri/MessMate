@@ -126,10 +126,18 @@ class _ScheduleClosureDialogState extends ConsumerState<ScheduleClosureDialog> {
   @override
   void initState() {
     super.initState();
-    _startDate = DateTime.now();
-    _startSlot = 'morning';
-    _endDate = DateTime.now();
-    _endSlot = 'night';
+    final m = widget.mess;
+    if (m != null && m.hasScheduledClosure) {
+      _startDate = m.closureStartDate ?? DateTime.now();
+      _startSlot = m.closureStartSlot ?? 'morning';
+      _endDate = m.temporarilyClosedUntil ?? DateTime.now();
+      _endSlot = m.closureEndSlot ?? 'night';
+    } else {
+      _startDate = DateTime.now();
+      _startSlot = 'morning';
+      _endDate = DateTime.now();
+      _endSlot = 'night';
+    }
   }
 
   Future<void> _pickDate(bool isStart) async {

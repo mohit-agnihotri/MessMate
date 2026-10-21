@@ -427,6 +427,10 @@ class MessModel {
   final int mealsIncludedPerDay;
   final Map<String, Map<String, String>> mealTimings;
   final DateTime? temporarilyClosedUntil;
+  final DateTime? closureStartDate;
+  final String? closureStartSlot;
+  final String? closureEndSlot;
+  final String? closureReason;
   final bool allowMealSkipping;
   final Map<String, bool> ownerNotificationPrefs;
   final String? aboutContent;
@@ -474,6 +478,10 @@ class MessModel {
       'night': {'start': '20:00', 'end': '22:00', 'enabled': 'true'},
     },
     this.temporarilyClosedUntil,
+    this.closureStartDate,
+    this.closureStartSlot,
+    this.closureEndSlot,
+    this.closureReason,
     this.allowMealSkipping = true,
     this.ownerNotificationPrefs = _defaultOwnerNotifPrefs,
     this.aboutContent,
@@ -510,6 +518,10 @@ class MessModel {
     int? mealsIncludedPerDay,
     Map<String, Map<String, String>>? mealTimings,
     DateTime? temporarilyClosedUntil,
+    DateTime? closureStartDate,
+    String? closureStartSlot,
+    String? closureEndSlot,
+    String? closureReason,
     bool? allowMealSkipping,
     Map<String, bool>? ownerNotificationPrefs,
     Object? aboutContent = const _Sentinel(),
@@ -546,6 +558,10 @@ class MessModel {
       mealTimings: mealTimings ?? this.mealTimings,
       temporarilyClosedUntil:
           temporarilyClosedUntil ?? this.temporarilyClosedUntil,
+      closureStartDate: closureStartDate ?? this.closureStartDate,
+      closureStartSlot: closureStartSlot ?? this.closureStartSlot,
+      closureEndSlot: closureEndSlot ?? this.closureEndSlot,
+      closureReason: closureReason ?? this.closureReason,
       allowMealSkipping: allowMealSkipping ?? this.allowMealSkipping,
       ownerNotificationPrefs:
           ownerNotificationPrefs ?? this.ownerNotificationPrefs,
@@ -564,9 +580,62 @@ class MessModel {
     );
   }
 
-  bool get isOpen =>
-      temporarilyClosedUntil == null ||
-      temporarilyClosedUntil!.isBefore(DateTime.now());
+  bool get hasScheduledClosure {
+    if (temporarilyClosedUntil == null) return false;
+    final now = DateTime.now();
+    return temporarilyClosedUntil!.isAfter(now) || _isSameCalendarDay(temporarilyClosedUntil!, now);
+  }
+
+  bool get isClosedNow {
+    if (temporarilyClosedUntil == null) return false;
+    final now = DateTime.now();
+    final start = closureStartDate ?? temporarilyClosedUntil!;
+    final isAfterOrSameStart = now.isAfter(start) || _isSameCalendarDay(now, start);
+    final isBeforeOrSameEnd = now.isBefore(temporarilyClosedUntil!) || _isSameCalendarDay(now, temporarilyClosedUntil!);
+    return isAfterOrSameStart && isBeforeOrSameEnd;
+  }
+
+  bool get isClosureUpcoming {
+    if (closureStartDate == null || temporarilyClosedUntil == null) return false;
+    final now = DateTime.now();
+    return closureStartDate!.isAfter(now) && !_isSameCalendarDay(closureStartDate!, now);
+  }
+
+  bool get isOpen => !isClosedNow;
+
+  bool isSlotClosed(DateTime date, String slot) {
+    if (temporarilyClosedUntil == null) return false;
+    final start = closureStartDate ?? temporarilyClosedUntil!;
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final startOnly = DateTime(start.year, start.month, start.day);
+    final endOnly = DateTime(
+      temporarilyClosedUntil!.year,
+      temporarilyClosedUntil!.month,
+      temporarilyClosedUntil!.day,
+    );
+
+    if (dateOnly.isBefore(startOnly) || dateOnly.isAfter(endOnly)) return false;
+
+    const order = ['morning', 'noon', 'evening', 'night'];
+    final sIdx = order.indexOf(slot);
+    if (sIdx == -1) return false;
+
+    if (dateOnly.isAtSameMomentAs(startOnly)) {
+      final startIdx = order.indexOf(closureStartSlot ?? 'morning');
+      if (sIdx < (startIdx == -1 ? 0 : startIdx)) return false;
+    }
+
+    if (dateOnly.isAtSameMomentAs(endOnly)) {
+      final endIdx = order.indexOf(closureEndSlot ?? 'night');
+      if (sIdx > (endIdx == -1 ? order.length - 1 : endIdx)) return false;
+    }
+
+    return true;
+  }
+
+  static bool _isSameCalendarDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 
   factory MessModel.fromMap(Map<String, dynamic> map) {
     Map<String, Map<String, String>> timings = {
@@ -598,6 +667,17 @@ class MessModel {
       } else {
         try {
           closedUntil = (rawClosed as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
+    DateTime? closureStart;
+    final rawClosureStart = map['closureStartDate'];
+    if (rawClosureStart != null) {
+      if (rawClosureStart is String) {
+        closureStart = DateTime.tryParse(rawClosureStart);
+      } else {
+        try {
+          closureStart = (rawClosureStart as dynamic).toDate() as DateTime;
         } catch (_) {}
       }
     }
@@ -645,6 +725,10 @@ class MessModel {
       mealsIncludedPerDay: (map['mealsIncludedPerDay'] ?? 3) as int,
       mealTimings: timings,
       temporarilyClosedUntil: closedUntil,
+      closureStartDate: closureStart,
+      closureStartSlot: map['closureStartSlot'] as String?,
+      closureEndSlot: map['closureEndSlot'] as String?,
+      closureReason: map['closureReason'] as String?,
       allowMealSkipping: map['allowMealSkipping'] ?? true,
       ownerNotificationPrefs: ownerPrefs,
       aboutContent: map['aboutContent'],
@@ -684,6 +768,11 @@ class MessModel {
       'mealTimings': mealTimings,
       if (temporarilyClosedUntil != null)
         'temporarilyClosedUntil': temporarilyClosedUntil!.toIso8601String(),
+      if (closureStartDate != null)
+        'closureStartDate': closureStartDate!.toIso8601String(),
+      if (closureStartSlot != null) 'closureStartSlot': closureStartSlot,
+      if (closureEndSlot != null) 'closureEndSlot': closureEndSlot,
+      if (closureReason != null) 'closureReason': closureReason,
       'allowMealSkipping': allowMealSkipping,
       'ownerNotificationPrefs': ownerNotificationPrefs,
       if (aboutContent != null) 'aboutContent': aboutContent,

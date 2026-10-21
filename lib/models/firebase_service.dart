@@ -813,9 +813,14 @@ class FirebaseService implements AppService {
     }
 
     // 1. Update MessModel
+    final endDateTime = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     final messRef = _db.collection('messes').doc(mess.messId);
     batch.update(messRef, {
-      'temporarilyClosedUntil': endDate.toIso8601String(),
+      'temporarilyClosedUntil': endDateTime.toIso8601String(),
+      'closureStartDate': startDate.toIso8601String(),
+      'closureStartSlot': startSlot,
+      'closureEndSlot': endSlot,
+      'closureReason': reason,
     });
 
     // 2. Iterate dates
@@ -881,10 +886,14 @@ class FirebaseService implements AppService {
   Future<void> reopenMess(String messId) async {
     final batch = _db.batch();
 
-    // 1. Clear temporarilyClosedUntil on mess
+    // 1. Clear closure fields on mess
     final messRef = _db.collection('messes').doc(messId);
     batch.update(messRef, {
       'temporarilyClosedUntil': null,
+      'closureStartDate': null,
+      'closureStartSlot': null,
+      'closureEndSlot': null,
+      'closureReason': null,
     });
 
     // 2. Remove upcoming closed_slots from today onwards
@@ -910,6 +919,78 @@ class FirebaseService implements AppService {
     });
 
     await batch.commit();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getClosedSlots(String messId) async {
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final snap = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('closed_slots')
+        .where('date', isGreaterThanOrEqualTo: todayStr)
+        .get();
+
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = d.id;
+      return data;
+    }).toList();
+
+    final slotOrder = {'morning': 1, 'noon': 2, 'evening': 3, 'night': 4};
+    list.sort((a, b) {
+      final dateComp = (a['date'] as String? ?? '').compareTo(b['date'] as String? ?? '');
+      if (dateComp != 0) return dateComp;
+      final slotA = slotOrder[a['mealSlot']] ?? 0;
+      final slotB = slotOrder[b['mealSlot']] ?? 0;
+      return slotA.compareTo(slotB);
+    });
+
+    return list;
+  }
+
+  @override
+  Future<void> reopenSpecificSlot(String messId, String date, String mealSlot) async {
+    final docId = '${messId}_${date}_$mealSlot';
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('closed_slots')
+        .doc(docId)
+        .delete();
+
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final remaining = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('closed_slots')
+        .where('date', isGreaterThanOrEqualTo: todayStr)
+        .limit(1)
+        .get();
+
+    if (remaining.docs.isEmpty) {
+      await _db.collection('messes').doc(messId).update({
+        'temporarilyClosedUntil': null,
+        'closureStartDate': null,
+        'closureStartSlot': null,
+        'closureEndSlot': null,
+        'closureReason': null,
+      });
+    }
+
+    final slotNames = {
+      'morning': 'Breakfast',
+      'noon': 'Lunch',
+      'evening': 'Snacks',
+      'night': 'Dinner',
+    };
+    final prettySlot = slotNames[mealSlot] ?? mealSlot.toUpperCase();
+
+    await _db.collection('announcements').add({
+      'messId': messId,
+      'message': '🎉 UPDATE: $prettySlot on $date is re-opened for service!',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
   }
 
   // MESS CODE

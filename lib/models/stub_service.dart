@@ -324,6 +324,10 @@ class StubService implements AppService {
   @override
   Future<void> reopenMess(String messId) async {}
   @override
+  Future<List<Map<String, dynamic>>> getClosedSlots(String messId) async => [];
+  @override
+  Future<void> reopenSpecificSlot(String messId, String date, String mealSlot) async {}
+  @override
   Future<void> applyLeave(LeaveModel leave) async {}
   @override
   Future<void> cancelLeave(String leaveId, DateTime cancelledAt) async {}

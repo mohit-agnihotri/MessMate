@@ -15,6 +15,7 @@ import '../owner_settings_page.dart';
 import '../theme/owner_inspired_theme.dart';
 import 'owner_launch_partner_sheet.dart';
 import 'schedule_closure_dialog.dart';
+import 'manage_closed_slots_sheet.dart';
 
 class OwnerDrawer extends ConsumerWidget {
   const OwnerDrawer({super.key});
@@ -24,9 +25,10 @@ class OwnerDrawer extends ConsumerWidget {
     final dashboardState = ref.watch(ownerDashboardProvider);
     final MessModel? mess = dashboardState.mess;
 
-    final isClosed = mess?.temporarilyClosedUntil != null &&
-        mess!.temporarilyClosedUntil!.isAfter(DateTime.now());
-    final isOpen = !isClosed;
+    final isClosedNow = mess?.isClosedNow ?? false;
+    final isUpcoming = mess?.isClosureUpcoming ?? false;
+    final hasClosure = mess?.hasScheduledClosure ?? false;
+    final isOpen = mess?.isOpen ?? true;
 
     return Drawer(
       backgroundColor: OwnerColors.walnutDark,
@@ -145,14 +147,20 @@ class OwnerDrawer extends ConsumerWidget {
                               height: 8,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isOpen
-                                    ? const Color(0xFF4ADE80)
-                                    : const Color(0xFFEF4444),
+                                color: isClosedNow
+                                    ? const Color(0xFFEF4444)
+                                    : (isUpcoming
+                                        ? const Color(0xFFFBBF24)
+                                        : const Color(0xFF4ADE80)),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              isOpen ? 'Open for service' : 'Mess Closed',
+                              isClosedNow
+                                  ? 'Mess Closed'
+                                  : (isUpcoming
+                                      ? 'Open (Closure ⏳)'
+                                      : 'Open for service'),
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -166,19 +174,21 @@ class OwnerDrawer extends ConsumerWidget {
                           onTap: () {
                             final nav = Navigator.of(context);
                             nav.pop();
-                            if (isOpen) {
-                              showScheduleClosureDialog(nav.context, ref, mess: mess);
+                            if (hasClosure && mess != null) {
+                              showManageClosedSlotsSheet(nav.context, mess: mess);
                             } else {
-                              showReopenMessDialog(nav.context, ref, messId: mess!.messId);
+                              showScheduleClosureDialog(nav.context, ref, mess: mess);
                             }
                           },
                           child: Text(
-                            isOpen ? 'Schedule closure ›' : 'Re-open mess ›',
+                            hasClosure
+                                ? 'Manage closures ›'
+                                : 'Schedule closure ›',
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: isOpen
-                                  ? OwnerColors.amber
-                                  : const Color(0xFF4ADE80),
+                              color: isClosedNow
+                                  ? const Color(0xFF4ADE80)
+                                  : OwnerColors.amber,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -194,8 +204,8 @@ class OwnerDrawer extends ConsumerWidget {
                       nav.pop();
                       if (val == false) {
                         showScheduleClosureDialog(nav.context, ref, mess: mess);
-                      } else {
-                        showReopenMessDialog(nav.context, ref, messId: mess!.messId);
+                      } else if (mess != null) {
+                        showReopenMessDialog(nav.context, ref, messId: mess.messId);
                       }
                     },
                   ),

@@ -1083,7 +1083,9 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                             Expanded(
                               child: Text(
                                 isClosed
-                                    ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
+                                    ? (item.mess.temporarilyClosedUntil != null
+                                        ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
+                                        : 'TEMPORARILY CLOSED')
                                     : (item.activePostedMenu != null &&
                                             item.currentOrNextMealDishes.isNotEmpty
                                         ? '${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'

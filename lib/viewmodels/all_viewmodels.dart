@@ -198,6 +198,9 @@ class OwnerDashboardState {
   // Guest meals: slot -> list of guest records
   final Map<String, List<MealRecordModel>> guestsBySlot;
 
+  // Active / Upcoming closed slots from backend
+  final List<Map<String, dynamic>> closedSlots;
+
   const OwnerDashboardState({
     this.mess,
     this.activeStudents = 0,
@@ -217,6 +220,7 @@ class OwnerDashboardState {
     this.activeStudentsList = const [],
     this.upcomingLeaves = const [],
     this.guestsBySlot = const {},
+    this.closedSlots = const [],
   });
 
   OwnerDashboardState copyWith({
@@ -238,6 +242,7 @@ class OwnerDashboardState {
     List<StudentModel>? activeStudentsList,
     List<LeaveModel>? upcomingLeaves,
     Map<String, List<MealRecordModel>>? guestsBySlot,
+    List<Map<String, dynamic>>? closedSlots,
     bool clearCurrentMeal = false,
   }) => OwnerDashboardState(
     mess: mess ?? this.mess,
@@ -258,6 +263,7 @@ class OwnerDashboardState {
     activeStudentsList: activeStudentsList ?? this.activeStudentsList,
     upcomingLeaves: upcomingLeaves ?? this.upcomingLeaves,
     guestsBySlot: guestsBySlot ?? this.guestsBySlot,
+    closedSlots: closedSlots ?? this.closedSlots,
   );
 }
 
@@ -392,6 +398,11 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
       try {
         final plans = await _service.getMealPlans(mess.messId);
         _planMap = {for (var p in plans) p.planId: p};
+      } catch (_) {}
+
+      try {
+        final closedSlots = await _service.getClosedSlots(mess.messId);
+        state = state.copyWith(closedSlots: closedSlots);
       } catch (_) {}
 
       // Auto-cleanup old announcements quietly in the background
@@ -610,8 +621,20 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   Future<void> reopenMess() async {
     if (state.mess == null) return;
     await _service.reopenMess(state.mess!.messId);
-    final updated = state.mess!.copyWith(temporarilyClosedUntil: null);
-    state = state.copyWith(mess: updated);
+    final updated = state.mess!.copyWith(
+      temporarilyClosedUntil: null,
+      closureStartDate: null,
+      closureStartSlot: null,
+      closureEndSlot: null,
+      closureReason: null,
+    );
+    state = state.copyWith(mess: updated, closedSlots: []);
+    await _init();
+  }
+
+  Future<void> reopenSpecificSlot(String date, String mealSlot) async {
+    if (state.mess == null) return;
+    await _service.reopenSpecificSlot(state.mess!.messId, date, mealSlot);
     await _init();
   }
 

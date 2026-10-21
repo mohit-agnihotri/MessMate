@@ -69,6 +69,8 @@ abstract class AppService {
   );
   Future<void> emergencyCloseMess(String messId, DateTime date);
   Future<void> reopenMess(String messId);
+  Future<List<Map<String, dynamic>>> getClosedSlots(String messId);
+  Future<void> reopenSpecificSlot(String messId, String date, String mealSlot);
   
   // FEEDBACK & RATINGS
   Future<void> submitFeedback(FeedbackModel feedback);
