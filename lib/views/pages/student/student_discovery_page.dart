@@ -128,86 +128,116 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
         final now = DateTime.now();
         final currentMinutes = now.hour * 60 + now.minute;
 
-        if (menus.isNotEmpty) {
-          bool found = false;
-          final slotOrder = ['morning', 'noon', 'evening', 'night'];
+        bool found = false;
+        final slotOrder = ['morning', 'noon', 'evening', 'night'];
 
-          for (var slot in slotOrder) {
-            final timing = m.mealTimings[slot];
-            if (timing != null && timing['enabled'] == 'true') {
-              final startStr = timing['start'] ?? '00:00';
-              final endStr = timing['end'] ?? '00:00';
-              final startMin = _parseTime(startStr);
-              final endMin = _parseTime(endStr);
-
-              if (currentMinutes <= endMin) {
-                final matchingMenu = menus
-                    .where((menu) => menu.mealSlot.toLowerCase() == slot)
-                    .firstOrNull;
-
-                slotType = slot == 'morning'
-                    ? 'Morning'
-                    : slot == 'noon'
-                        ? 'Noon'
-                        : slot == 'evening'
-                            ? 'Evening'
-                            : 'Night';
-                mealName = slot == 'morning'
-                    ? 'Breakfast'
-                    : slot == 'noon'
-                        ? 'Lunch'
-                        : slot == 'evening'
-                            ? 'Snacks'
-                            : 'Dinner';
-
-                final isPosted = matchingMenu != null &&
-                    matchingMenu.isPublished &&
-                    (matchingMenu.menuType == 'special' ||
-                        matchingMenu.menuType == 'regular') &&
-                    matchingMenu.dishes.isNotEmpty;
-
-                if (isPosted) {
-                  activePosted = matchingMenu;
-                  dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
-                  if (matchingMenu.menuType == 'special') {
-                    mealName = '✨ Special $mealName';
-                  } else {
-                    mealName = "Today's $mealName";
-                  }
-                } else {
-                  dishes = '';
-                }
-
-                if (currentMinutes >= startMin && currentMinutes <= endMin) {
-                  isServingNow = true;
-                } else {
-                  isServingNow = false;
-                }
-
-                found = true;
-                break;
-              }
+        for (var slot in slotOrder) {
+          Map<String, String>? timing;
+          for (final entry in m.mealTimings.entries) {
+            if (entry.key.toLowerCase().trim() == slot) {
+              timing = entry.value;
+              break;
             }
           }
+          timing ??= m.mealTimings[slot];
 
-          if (!found) {
-            for (var slot in slotOrder) {
-              final timing = m.mealTimings[slot];
-              if (timing != null && timing['enabled'] == 'true') {
-                slotType = slot == 'morning'
-                    ? 'Morning'
-                    : slot == 'noon'
-                        ? 'Noon'
-                        : slot == 'evening'
-                            ? 'Evening'
-                            : 'Night';
-                mealName = 'Tomorrow $slotType';
+          final rawEnabled = timing?['enabled']?.toString().toLowerCase().trim();
+          final isEnabled = timing != null &&
+              (rawEnabled == 'true' || rawEnabled == '1' || rawEnabled == 'yes');
+
+          if (isEnabled) {
+            final startStr = timing['start'] ?? '00:00';
+            final endStr = timing['end'] ?? '00:00';
+            final startMin = _parseTime(startStr);
+            final endMin = _parseTime(endStr);
+
+            final bool isWithinTime = endMin >= startMin
+                ? (currentMinutes >= startMin && currentMinutes <= endMin)
+                : (currentMinutes >= startMin || currentMinutes <= endMin);
+
+            final bool isCurrentOrUpcoming = endMin >= startMin
+                ? (currentMinutes <= endMin)
+                : (currentMinutes <= endMin || currentMinutes >= startMin);
+
+            if (isCurrentOrUpcoming) {
+              final matchingMenu = menus
+                  .where((menu) => menu.mealSlot.toLowerCase() == slot)
+                  .firstOrNull;
+
+              slotType = slot == 'morning'
+                  ? 'Morning'
+                  : slot == 'noon'
+                      ? 'Noon'
+                      : slot == 'evening'
+                          ? 'Evening'
+                          : 'Night';
+              mealName = slot == 'morning'
+                  ? 'Breakfast'
+                  : slot == 'noon'
+                      ? 'Lunch'
+                      : slot == 'evening'
+                          ? 'Snacks'
+                          : 'Dinner';
+
+              final isPosted = matchingMenu != null &&
+                  matchingMenu.isPublished &&
+                  (matchingMenu.menuType == 'special' ||
+                      matchingMenu.menuType == 'regular') &&
+                  matchingMenu.dishes.isNotEmpty;
+
+              if (isPosted) {
+                activePosted = matchingMenu;
+                dishes = matchingMenu.dishes.map((d) => d.name).join(' • ');
+                if (matchingMenu.menuType == 'special') {
+                  mealName = '✨ Special $mealName';
+                } else {
+                  mealName = "Today's $mealName";
+                }
+              } else {
                 dishes = '';
-                isServingNow = false;
+              }
+
+              isServingNow = isWithinTime;
+              found = true;
+              break;
+            }
+          }
+        }
+
+        if (!found) {
+          for (var slot in slotOrder) {
+            Map<String, String>? timing;
+            for (final entry in m.mealTimings.entries) {
+              if (entry.key.toLowerCase().trim() == slot) {
+                timing = entry.value;
                 break;
               }
             }
+            timing ??= m.mealTimings[slot];
+
+            final rawEnabled = timing?['enabled']?.toString().toLowerCase().trim();
+            final isEnabled = timing != null &&
+                (rawEnabled == 'true' || rawEnabled == '1' || rawEnabled == 'yes');
+
+            if (isEnabled) {
+              slotType = slot == 'morning'
+                  ? 'Morning'
+                  : slot == 'noon'
+                      ? 'Noon'
+                      : slot == 'evening'
+                          ? 'Evening'
+                          : 'Night';
+              mealName = 'Tomorrow $slotType';
+              dishes = '';
+              isServingNow = false;
+              break;
+            }
           }
+        }
+
+        final isClosed = !m.isOpen;
+        if (isClosed) {
+          isServingNow = false;
         }
 
         return _MessItem(
@@ -277,12 +307,24 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
   }
 
   int _parseTime(String timeStr) {
-    final parts = timeStr.split(':');
-    if (parts.length != 2) return 0;
-    return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    if (timeStr.isEmpty) return 0;
+    final clean = timeStr.trim().toLowerCase();
+    final isPm = clean.contains('pm');
+    final isAm = clean.contains('am');
+    final digitsOnly = clean.replaceAll(RegExp(r'[^0-9:]'), '');
+    final parts = digitsOnly.split(':');
+    if (parts.isEmpty || parts[0].isEmpty) return 0;
+    int h = int.tryParse(parts[0]) ?? 0;
+    int m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    if (isPm && h < 12) h += 12;
+    if (isAm && h == 12) h = 0;
+    return h * 60 + m;
   }
 
   void _filterItems() {
+    final anyServingNow =
+        _allItems.any((it) => it.isServingNow && it.mess.isOpen);
+
     List<_MessItem> filtered = _allItems.where((item) {
       final matchesSearch = item.mess.name.toLowerCase().contains(
             _searchQuery.toLowerCase(),
@@ -293,7 +335,13 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       if (!matchesSearch) return false;
 
       if (_selectedFilter == 'Open Now') {
-        return item.isServingNow;
+        if (anyServingNow) {
+          return item.isServingNow && item.mess.isOpen;
+        } else {
+          // If no mess is in active meal serving window right now (e.g. between lunch & dinner),
+          // show all operational messes that are open today (exclude temporarily closed)
+          return item.mess.isOpen;
+        }
       }
       if (_selectedFilter == 'Veg Only') {
         return item.mess.foodType == 'pure_veg';
@@ -305,6 +353,13 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       filtered.sort((a, b) {
         final cmp = b.mess.rating.compareTo(a.mess.rating);
         if (cmp != 0) return cmp;
+        return (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999);
+      });
+    } else if (_selectedFilter == 'Open Now') {
+      filtered.sort((a, b) {
+        if (a.isServingNow != b.isServingNow) {
+          return a.isServingNow ? -1 : 1;
+        }
         return (a.distanceKm ?? 999).compareTo(b.distanceKm ?? 999);
       });
     } else {
@@ -653,6 +708,8 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                   itemBuilder: (context, index) {
                     final filter = _filters[index];
                     final isSelected = _selectedFilter == filter;
+                    final anyServing = _allItems.any((it) => it.isServingNow && it.mess.isOpen);
+                    final isOpenNowFilter = filter == 'Open Now';
 
                     return GestureDetector(
                       onTap: () {
@@ -676,16 +733,34 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                                 : StudentColors.borderSubtle,
                           ),
                         ),
-                        child: Text(
-                          filter,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected
-                                ? Colors.white
-                                : StudentColors.textDark,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isOpenNowFilter) ...[
+                              Container(
+                                width: 6,
+                                height: 6,
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: anyServing
+                                      ? const Color(0xFF22C55E)
+                                      : const Color(0xFFF59E0B),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                            Text(
+                              filter,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight:
+                                    isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : StudentColors.textDark,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -693,6 +768,65 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 ),
               ),
               const SizedBox(height: 12),
+
+              // ── Status Banner for Open Now ──
+              if (_selectedFilter == 'Open Now') ...[
+                Builder(
+                  builder: (context) {
+                    final anyServing =
+                        _allItems.any((it) => it.isServingNow && it.mess.isOpen);
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: anyServing
+                              ? StudentColors.sageLight
+                              : StudentColors.amberLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: anyServing
+                                ? StudentColors.sageBorder
+                                : StudentColors.amberPill,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: anyServing
+                                    ? StudentColors.sage
+                                    : StudentColors.amber,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                anyServing
+                                    ? 'Messes actively serving meals right now'
+                                    : 'Currently between meal hours • Showing messes open today',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: anyServing
+                                      ? StudentColors.sageText
+                                      : StudentColors.amberText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
 
               // ── Mess List / Empty State / Loading ──
               Expanded(
@@ -770,8 +904,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
 
   // ── Mess Card with Left Accent Strip & Editorial Hierarchy ─────────────────
   Widget _buildMessCard(_MessItem item) {
-    bool isClosed = item.mess.temporarilyClosedUntil != null &&
-        item.mess.temporarilyClosedUntil!.isAfter(DateTime.now());
+    bool isClosed = !item.mess.isOpen;
 
     final accentColor = isClosed
         ? StudentColors.brickRed
@@ -956,7 +1089,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                                         ? '${item.currentOrNextMealName} • ${item.currentOrNextMealDishes}'
                                         : (item.isServingNow
                                             ? 'Serving ${item.currentOrNextMealName}'
-                                            : 'Next up: ${item.currentOrNextMealName}')),
+                                            : 'Next up: ${item.currentOrNextMealName} • Open Today')),
                                 style: GoogleFonts.inter(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,

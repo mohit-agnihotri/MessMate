@@ -537,7 +537,8 @@ class _MessDiscoveryDetailsSheetState
             child: Column(
               children: ['morning', 'noon', 'evening', 'night'].map((slot) {
                 final timing = mess.mealTimings[slot];
-                final isEnabled = timing?['enabled'] == 'true';
+                final rawEnabled = timing?['enabled']?.toString().toLowerCase().trim();
+                final isEnabled = timing != null && (rawEnabled == 'true' || rawEnabled == '1' || rawEnabled == 'yes');
                 final start = timing?['start'] ?? '--:--';
                 final end = timing?['end'] ?? '--:--';
                 final label = '${slot[0].toUpperCase()}${slot.substring(1)}';

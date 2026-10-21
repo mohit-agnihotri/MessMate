@@ -330,220 +330,267 @@ class StudentHomePage extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: StudentColors.elevated,
       ),
-      child: Stack(
-        children: [
-          // Ambient Warm Glow Behind Content
-          Positioned(
-            top: -40,
-            right: -40,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: StudentColors.amber.withOpacity(0.12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // ── Background Slot Illustration with Smooth Gradient Blend ──
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 230,
+              child: ShaderMask(
+                shaderCallback: (rect) {
+                  return const LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [Colors.black, Colors.transparent],
+                    stops: [0.35, 1.0],
+                  ).createShader(rect);
+                },
+                blendMode: BlendMode.dstIn,
+                child: Image.asset(
+                  'assets/images/slot_$slot.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Tag & Timings
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+            // Subtle dark overlay to ensure 100% text contrast and readability
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      StudentColors.walnut,
+                      StudentColors.walnut.withValues(alpha: 0.92),
+                      StudentColors.walnut.withValues(alpha: 0.35),
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            // Ambient Warm Glow Behind Content
+            Positioned(
+              top: -40,
+              right: -40,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: StudentColors.amber.withValues(alpha: 0.12),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Tag & Timings
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Text(
+                          '${slot.toUpperCase()} MEAL',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                            color: StudentColors.amber,
+                          ),
+                        ),
+                      ),
+                      if (timeRange.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 13,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                timeRange,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Main Heading
+                  Text(
+                    mealTitle,
+                    style: StudentTypography.serifHeading(
+                      fontSize: 24,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  if (isSpecial) ...[
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: StudentColors.amber.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: StudentColors.amberPill),
                       ),
                       child: Text(
-                        '${slot.toUpperCase()} MEAL',
+                        '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast Today"}',
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
-                          color: StudentColors.amber,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: StudentColors.amberLight,
                         ),
-                      ),
-                    ),
-                    if (timeRange.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 13,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            timeRange,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Main Heading
-                Text(
-                  mealTitle,
-                  style: StudentTypography.serifHeading(
-                    fontSize: 24,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-
-                // Cutoff Status Row
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 14,
-                      color: hasCutoff ? StudentColors.amber : const Color(0xFFF87171),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        hasCutoff
-                            ? 'Cancellation closes in: $cutoffStr'
-                            : 'Cutoff passed ($cutoffStr)',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: hasCutoff
-                              ? StudentColors.amberLight
-                              : const Color(0xFFFCA5A5),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
 
-                // Aesthetic Slot Banner Illustration (Replaces cluttered template chips)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 972 / 196,
-                    child: Image.asset(
-                      'assets/images/slot_$slot.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 70,
-                        color: Colors.white.withValues(alpha: 0.08),
-                        child: Center(
-                          child: Text(
-                            'Homestyle $slotDisplayName Meal',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (isSpecial) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
+
+                  // ── Inset Action Card ──
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: StudentColors.amber.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: StudentColors.amberPill),
-                    ),
-                    child: Text(
-                      '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast Today"}',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: StudentColors.amberLight,
+                      color: Colors.black.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Cutoff Status Row
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 14,
+                              color: hasCutoff ? StudentColors.amber : const Color(0xFFF87171),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                hasCutoff
+                                    ? 'Cancellation closes in: $cutoffStr'
+                                    : 'Cutoff passed ($cutoffStr)',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: hasCutoff
+                                      ? StudentColors.amberLight
+                                      : const Color(0xFFFCA5A5),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Action Buttons Row
+                        if (!hasCutoff)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle_outline, size: 16, color: StudentColors.amber),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Cutoff closed • Enjoy your meal!',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (state.hasSelfSkipped)
+                          _UndoButton(ref: ref)
+                        else
+                          Row(
+                            children: [
+                              if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
+                                Expanded(
+                                  flex: 3,
+                                  child: _SkipButton(
+                                    ref: ref,
+                                    mealSlot: slot,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                              ],
+                              Expanded(
+                                flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
+                                child: _GuestButton(
+                                  onAddGuest: () => _showAddGuestDialog(
+                                    context,
+                                    ref,
+                                    state,
+                                    slot,
+                                    DateTime.now(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
                 ],
-
-                const SizedBox(height: 20),
-
-                // Action Buttons Row
-                if (!hasCutoff)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.check_circle_outline, size: 16, color: StudentColors.amber),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Cutoff closed • Enjoy your meal!',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else if (state.hasSelfSkipped)
-                  _UndoButton(ref: ref)
-                else
-                  Row(
-                    children: [
-                      if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
-                        Expanded(
-                          flex: 3,
-                          child: _SkipButton(
-                            ref: ref,
-                            mealSlot: slot,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      Expanded(
-                        flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
-                        child: _GuestButton(
-                          onAddGuest: () => _showAddGuestDialog(
-                            context,
-                            ref,
-                            state,
-                            slot,
-                            DateTime.now(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
