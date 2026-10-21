@@ -348,13 +348,42 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
     if (sanitized.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Phone number not available.')),
+          const SnackBar(
+            content: Text('Owner phone number is not available for this mess.'),
+            backgroundColor: Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       return;
     }
     final uri = Uri.parse('tel:$sanitized');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        final launched = await launchUrl(uri);
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open phone dialer for $sanitized'),
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open phone dialer: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showMessDetails(BuildContext context, _MessItem item) {

@@ -7,6 +7,7 @@ import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
 import 'auth/login_page.dart';
 import 'auth/role_selection_page.dart';
+import 'auth/student_setup_page.dart';
 import 'owner/owner_main_page.dart';
 import 'student/student_main_page.dart';
 import 'student/student_pending_approval_page.dart';
@@ -63,6 +64,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            );
+          } else if (student.status == 'left' || student.messId.isEmpty) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentSetupPage()),
             );
           } else {
             Navigator.pushReplacement(

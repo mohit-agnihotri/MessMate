@@ -324,8 +324,6 @@ class StudentHomePage extends ConsumerWidget {
       mealTitle = 'Homestyle Mess Meal';
     }
 
-    final dishes = menu?.dishes ?? [];
-
     return Container(
       decoration: BoxDecoration(
         color: StudentColors.walnut,
@@ -437,49 +435,49 @@ class StudentHomePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Dishes Chips
-                if (dishes.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: dishes.map((dish) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.15),
-                            width: 1,
+                // Aesthetic Slot Banner Illustration (Replaces cluttered template chips)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AspectRatio(
+                    aspectRatio: 972 / 196,
+                    child: Image.asset(
+                      'assets/images/slot_$slot.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 70,
+                        color: Colors.white.withValues(alpha: 0.08),
+                        child: Center(
+                          child: Text(
+                            'Homestyle $slotDisplayName Meal',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          dish.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.92),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Standard homestyle seasonal meal will be served',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
-                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ),
+                ),
+                if (isSpecial) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: StudentColors.amber.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: StudentColors.amberPill),
+                    ),
+                    child: Text(
+                      '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast Today"}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: StudentColors.amberLight,
+                      ),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 20),
 
@@ -1892,12 +1890,16 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        group.name.isNotEmpty ? group.name : 'Flexi Plan Choice',
-                        style: StudentTypography.bold(fontSize: 14),
+                      Expanded(
+                        child: Text(
+                          group.name.isNotEmpty ? group.name : 'Flexi Plan Choice',
+                          style: StudentTypography.bold(fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(

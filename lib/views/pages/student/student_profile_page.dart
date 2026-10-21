@@ -8,6 +8,7 @@ import '../../../models/app_models.dart';
 import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/login_page.dart';
+import '../auth/student_setup_page.dart';
 import '../common/user_feedback_sheet.dart';
 import 'theme/student_inspired_theme.dart';
 import 'widgets/rate_mess_sheet.dart';
@@ -1287,6 +1288,10 @@ class StudentProfilePage extends ConsumerWidget {
                     content: Text(isHindi ? 'आपने सफलतापूर्वक मेस छोड़ दिया।' : 'You have left the mess successfully.'),
                     backgroundColor: StudentColors.brickRed,
                   ),
+                );
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+                  (route) => false,
                 );
               }
             },

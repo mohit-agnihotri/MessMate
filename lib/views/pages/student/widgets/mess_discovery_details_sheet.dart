@@ -377,7 +377,19 @@ class _MessDiscoveryDetailsSheetState
                 child: _buildActionTile(
                   icon: Icons.phone_outlined,
                   label: 'Call Owner',
-                  onTap: () => widget.onCallOwner(mess.ownerPhone),
+                  onTap: () {
+                    if (mess.ownerPhone.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Owner contact number is not provided for this mess.'),
+                          backgroundColor: StudentColors.brickRed,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
+                    widget.onCallOwner(mess.ownerPhone);
+                  },
                   bgColor: StudentColors.surfaceLight,
                   iconColor: StudentColors.walnut,
                 ),
