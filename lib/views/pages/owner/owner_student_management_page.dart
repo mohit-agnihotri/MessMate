@@ -1462,26 +1462,47 @@ class _OwnerStudentManagementPageState
   ) async {
     final service = ref.read(appServiceProvider);
     final now = selectedMonthDate;
-    final bill = await service.getBill(student.studentId, now.month, now.year);
+
+    BillModel? bill;
+    try {
+      bill = await service.getBill(student.studentId, now.month, now.year);
+    } catch (e) {
+      debugPrint('[BillingData] getBill error: $e');
+    }
+
     final mess = await service.getMessById(student.messId);
     if (mess == null) throw Exception("Mess not found");
 
     MealPlanModel? plan;
     if (student.assignedPlanId != null && student.assignedPlanId!.isNotEmpty) {
-      plan = await service.getMealPlanById(student.messId, student.assignedPlanId!);
+      try {
+        plan = await service.getMealPlanById(student.messId, student.assignedPlanId!);
+      } catch (e) {
+        debugPrint('[BillingData] getMealPlanById error: $e');
+      }
     }
 
-    final records = await service.getMealRecords(
-      student.studentId,
-      now.month,
-      now.year,
-    );
+    List<MealRecordModel> records = [];
+    try {
+      records = await service.getMealRecords(
+        student.studentId,
+        now.month,
+        now.year,
+      );
+    } catch (e) {
+      debugPrint('[BillingData] getMealRecords error: $e');
+    }
 
-    final previousDues = await service.getPreviousUnpaidDues(
-      student.studentId,
-      now.month,
-      now.year,
-    );
+    double previousDues = 0.0;
+    try {
+      previousDues = await service.getPreviousUnpaidDues(
+        student.studentId,
+        now.month,
+        now.year,
+      );
+    } catch (e) {
+      debugPrint('[BillingData] getPreviousUnpaidDues error: $e');
+    }
 
     return {
       'bill': bill,
@@ -2495,11 +2516,16 @@ class _OwnerStudentManagementPageState
                           int targetMonth = expenseDate.month;
                           int targetYear = expenseDate.year;
 
-                          final bill = await appService.getBill(
-                            student.studentId,
-                            expenseDate.month,
-                            expenseDate.year,
-                          );
+                          BillModel? bill;
+                          try {
+                            bill = await appService.getBill(
+                              student.studentId,
+                              expenseDate.month,
+                              expenseDate.year,
+                            );
+                          } catch (e) {
+                            debugPrint('[ExtraFee] getBill error: $e');
+                          }
 
                           if (bill != null && bill.isPaid) {
                             targetMonth =

@@ -20,13 +20,15 @@ service cloud.firestore {
           request.auth.token.email == 'mohit.developer@gmail.com' ||
           request.auth.token.email == 'admin@messmate.app' ||
           request.auth.token.email == 'agnihotrimohit185@gmail.com' ||
-          request.auth.token.email == 'mohitagnihotri1320@gmail.com'
+          request.auth.token.email == 'mohitagnihotri1320@gmail.com' ||
+          request.auth.token.email == 'mohitagnihotri1305@gmail.com'
         ))
       );
     }
 
     function isMessOwner(messId) {
-      return isAuthenticated() && (
+      return isAuthenticated() && messId != null && messId != '' && (
+        exists(/databases/$(database)/documents/messes/$(messId)) &&
         get(/databases/$(database)/documents/messes/$(messId)).data.ownerId == request.auth.uid
       );
     }
@@ -165,19 +167,13 @@ service cloud.firestore {
     }
 
     // ─── Bills ────────────────────────────────────────────────────────
-    // Student can only read their own bills. Only Mess Owner or Admin can create/update bills!
+    // All authenticated users can read bills (student reads own, owner reads mess diner bills).
+    // Only Mess Owner or Admin can create/update bills!
     match /bills/{billId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.studentId ||
-        isMessOwner(resource.data.messId) ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        isMessOwner(request.resource.data.messId) ||
-        isAdmin()
-      );
-      allow update: if isAuthenticated() && (
-        isMessOwner(resource.data.messId) ||
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (
+        (request.resource.data.messId != null && isMessOwner(request.resource.data.messId)) ||
+        (resource != null && resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
       );
       allow delete: if isAdmin();
