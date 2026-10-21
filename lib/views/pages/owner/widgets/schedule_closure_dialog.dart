@@ -8,105 +8,106 @@ import '../theme/owner_inspired_theme.dart';
 
 void showScheduleClosureDialog(
   BuildContext context,
-  WidgetRef ref, {
+  WidgetRef? ref, {
   MessModel? mess,
 }) {
   showDialog(
     context: context,
-    builder: (_) => ScheduleClosureDialog(ref: ref, mess: mess),
+    builder: (_) => ScheduleClosureDialog(mess: mess),
   );
 }
 
 void showReopenMessDialog(
   BuildContext context,
-  WidgetRef ref, {
+  WidgetRef? ref, {
   required String messId,
 }) {
   showDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: OwnerColors.surfaceWarm,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFDCFCE7),
-              shape: BoxShape.circle,
+    builder: (ctx) => Consumer(
+      builder: (dialogCtx, dialogRef, _) => AlertDialog(
+        backgroundColor: OwnerColors.surfaceWarm,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFDCFCE7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Color(0xFF16A34A),
+                size: 24,
+              ),
             ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: Color(0xFF16A34A),
-              size: 24,
+            const SizedBox(width: 12),
+            Text(
+              'Re-open Mess?',
+              style: OwnerTypography.serifHeading(fontSize: 20),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Re-open Mess?',
-            style: OwnerTypography.serifHeading(fontSize: 20),
-          ),
-        ],
-      ),
-      content: Text(
-        'This will cancel active schedule closures, open your mess for service immediately, and notify all active students.',
-        style: OwnerTypography.body(fontSize: 13, color: OwnerColors.textMuted),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text(
-            'Cancel',
-            style: GoogleFonts.inter(color: OwnerColors.textMuted),
-          ),
+          ],
         ),
-        ElevatedButton(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            await ref.read(ownerDashboardProvider.notifier).reopenMess();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+        content: Text(
+          'This will cancel active schedule closures, open your mess for service immediately, and notify all active students.',
+          style: OwnerTypography.body(fontSize: 13, color: OwnerColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: OwnerColors.textMuted),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.maybeOf(context);
+              Navigator.pop(ctx);
+              await dialogRef.read(ownerDashboardProvider.notifier).reopenMess();
+              messenger?.showSnackBar(
                 const SnackBar(
                   content: Text('🎉 Mess is now open for service! Students notified.'),
                   backgroundColor: Color(0xFF16A34A),
                 ),
               );
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF16A34A),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            child: const Text(
+              'Re-open Now',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
-          child: const Text(
-            'Re-open Now',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
 
-class ScheduleClosureDialog extends StatefulWidget {
-  final WidgetRef ref;
+class ScheduleClosureDialog extends ConsumerStatefulWidget {
+  final WidgetRef? ref;
   final MessModel? mess;
 
   const ScheduleClosureDialog({
     super.key,
-    required this.ref,
+    this.ref,
     this.mess,
   });
 
   @override
-  State<ScheduleClosureDialog> createState() => _ScheduleClosureDialogState();
+  ConsumerState<ScheduleClosureDialog> createState() => _ScheduleClosureDialogState();
 }
 
-class _ScheduleClosureDialogState extends State<ScheduleClosureDialog> {
+class _ScheduleClosureDialogState extends ConsumerState<ScheduleClosureDialog> {
   late DateTime _startDate;
   late String _startSlot;
   late DateTime _endDate;
@@ -337,7 +338,7 @@ class _ScheduleClosureDialogState extends State<ScheduleClosureDialog> {
               : () async {
                   setState(() => _isLoading = true);
                   try {
-                    await widget.ref
+                    await ref
                         .read(ownerDashboardProvider.notifier)
                         .emergencyClose(
                           _startDate,
@@ -347,8 +348,9 @@ class _ScheduleClosureDialogState extends State<ScheduleClosureDialog> {
                           "Scheduled Closure",
                         );
                     if (context.mounted) {
+                      final messenger = ScaffoldMessenger.maybeOf(context);
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger?.showSnackBar(
                         const SnackBar(
                           content: Text('Mess closure scheduled successfully. Students notified.'),
                           backgroundColor: Color(0xFFC2410C),

@@ -164,11 +164,12 @@ class OwnerDrawer extends ConsumerWidget {
                         const SizedBox(height: 4),
                         GestureDetector(
                           onTap: () {
-                            Navigator.pop(context);
+                            final nav = Navigator.of(context);
+                            nav.pop();
                             if (isOpen) {
-                              showScheduleClosureDialog(context, ref, mess: mess);
-                            } else if (mess != null) {
-                              showReopenMessDialog(context, ref, messId: mess.messId);
+                              showScheduleClosureDialog(nav.context, ref, mess: mess);
+                            } else {
+                              showReopenMessDialog(nav.context, ref, messId: mess!.messId);
                             }
                           },
                           child: Text(
@@ -189,11 +190,12 @@ class OwnerDrawer extends ConsumerWidget {
                     value: isOpen,
                     activeTrackColor: OwnerColors.sage,
                     onChanged: (val) {
-                      Navigator.pop(context);
+                      final nav = Navigator.of(context);
+                      nav.pop();
                       if (val == false) {
-                        showScheduleClosureDialog(context, ref, mess: mess);
-                      } else if (mess != null) {
-                        showReopenMessDialog(context, ref, messId: mess.messId);
+                        showScheduleClosureDialog(nav.context, ref, mess: mess);
+                      } else {
+                        showReopenMessDialog(nav.context, ref, messId: mess!.messId);
                       }
                     },
                   ),
@@ -226,8 +228,9 @@ class OwnerDrawer extends ConsumerWidget {
             _buildDrawerItem(
               title: 'Send announcement',
               onTap: () {
-                Navigator.pop(context);
-                _showSendAnnouncementDialog(context, ref);
+                final nav = Navigator.of(context);
+                nav.pop();
+                _showSendAnnouncementDialog(nav.context, ref);
               },
             ),
             const SizedBox(height: 16),
@@ -542,68 +545,70 @@ class OwnerDrawer extends ConsumerWidget {
     final textController = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: OwnerColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          'Send announcement',
-          style: OwnerTypography.serifHeading(fontSize: 20),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Goes to every active student instantly.',
-              style: OwnerTypography.body(
-                  fontSize: 12, color: OwnerColors.textMuted),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: textController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'Type your message...',
-                hintStyle: GoogleFonts.inter(
-                    color: OwnerColors.textMuted, fontSize: 13),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: OwnerColors.cardBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: OwnerColors.cardBorder),
+      builder: (ctx) => Consumer(
+        builder: (dialogCtx, dialogRef, _) => AlertDialog(
+          backgroundColor: OwnerColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            'Send announcement',
+            style: OwnerTypography.serifHeading(fontSize: 20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Goes to every active student instantly.',
+                style: OwnerTypography.body(
+                    fontSize: 12, color: OwnerColors.textMuted),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: GoogleFonts.inter(
+                      color: OwnerColors.textMuted, fontSize: 13),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: OwnerColors.cardBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: OwnerColors.cardBorder),
+                  ),
                 ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel',
+                  style: GoogleFonts.inter(color: OwnerColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (textController.text.trim().isNotEmpty) {
+                  dialogRef
+                      .read(ownerDashboardProvider.notifier)
+                      .sendAnnouncement(textController.text.trim());
+                }
+                Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: OwnerColors.amber,
+                foregroundColor: OwnerColors.textDark,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
+              ),
+              child: const Text('Send'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.inter(color: OwnerColors.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (textController.text.trim().isNotEmpty) {
-                ref
-                    .read(ownerDashboardProvider.notifier)
-                    .sendAnnouncement(textController.text.trim());
-              }
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: OwnerColors.amber,
-              foregroundColor: OwnerColors.textDark,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
-            ),
-            child: const Text('Send'),
-          ),
-        ],
       ),
     );
   }
@@ -611,36 +616,38 @@ class OwnerDrawer extends ConsumerWidget {
   void _confirmSignOut(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: OwnerColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title:
-            Text('Sign Out', style: OwnerTypography.serifHeading(fontSize: 20)),
-        content: Text('Are you sure you want to sign out?',
-            style: OwnerTypography.body()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref.read(authProvider.notifier).signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                  (route) => false,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
+      builder: (ctx) => Consumer(
+        builder: (dialogCtx, dialogRef, _) => AlertDialog(
+          backgroundColor: OwnerColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title:
+              Text('Sign Out', style: OwnerTypography.serifHeading(fontSize: 20)),
+          content: Text('Are you sure you want to sign out?',
+              style: OwnerTypography.body()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
             ),
-            child: const Text('Sign Out'),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await dialogRef.read(authProvider.notifier).signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        ),
       ),
     );
   }
