@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/onesignal_config.dart';
 
@@ -28,15 +26,8 @@ class NotificationService {
   static String _appId = defaultAppId;
   static String? _restApiKey;
   static bool _initialized = false;
-  static bool _dialogShown = false;
 
-  /// Strongly-retained push subscription observer to prevent premature garbage collection.
-  static OnPushSubscriptionChangeObserver? _subscriptionObserver;
-
-  /// SharedPreferences key to guard the one-time verification dialog.
-  static const String _prefDialogShownKey = 'onesignal_verification_dialog_shown';
-
-  /// Initializes the OneSignal SDK and sets up the subscription observer.
+  /// Initializes the OneSignal SDK and sets up push notifications.
   ///
   /// Must be invoked in main() after [WidgetsFlutterBinding.ensureInitialized].
   static Future<void> initialize({
@@ -60,8 +51,8 @@ class NotificationService {
       _initialized = true;
       debugPrint('[NotificationService] OneSignal initialized successfully with App ID: $_appId');
 
-      // 3. Register retained push subscription observer & evaluate initial state
-      await _registerPushSubscriptionObserver();
+      // 3. Request native system push permission directly (clean OS prompt, no popup)
+      await requestPermission();
     } catch (e, st) {
       debugPrint('[NotificationService] Failed to initialize OneSignal: $e\n$st');
     }
@@ -79,106 +70,6 @@ class NotificationService {
   /// Sets the OneSignal REST API key used for sending notifications directly from the app.
   static void setRestApiKey(String key) {
     _restApiKey = key;
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Push Subscription Verification Dialog (OneSignal AI Requirement)
-  // ───────────────────────────────────────────────────────────────────────────
-
-  /// Registers the push subscription observer and checks if the device is already
-  /// registered with a valid server-assigned subscription ID.
-  static Future<void> _registerPushSubscriptionObserver() async {
-    // Check if dialog was already presented in a prior session
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _dialogShown = prefs.getBool(_prefDialogShownKey) ?? false;
-    } catch (_) {}
-
-    // Retain observer in a static field
-    _subscriptionObserver = (OSPushSubscriptionChangedState stateChanges) {
-      final currentId = stateChanges.current.id;
-      debugPrint('[NotificationService] Push subscription state changed. ID: $currentId');
-      if (_isValidSubscriptionId(currentId)) {
-        _showVerificationDialogIfNeeded();
-      }
-    };
-
-    OneSignal.User.pushSubscription.addObserver(_subscriptionObserver!);
-
-    // Evaluate current subscription ID immediately (may already be server-assigned)
-    final currentId = OneSignal.User.pushSubscription.id;
-    debugPrint('[NotificationService] Current push subscription ID at registration: $currentId');
-    if (_isValidSubscriptionId(currentId)) {
-      _showVerificationDialogIfNeeded();
-    }
-  }
-
-  /// A subscription ID is valid only when non-empty and NOT a "local-" placeholder.
-  static bool _isValidSubscriptionId(String? id) {
-    if (id == null) return false;
-    final trimmed = id.trim();
-    if (trimmed.isEmpty) return false;
-    if (trimmed.startsWith('local-')) return false;
-    return true;
-  }
-
-  /// Displays the required Push Subscription Verification Dialog exactly once.
-  static void _showVerificationDialogIfNeeded() {
-    if (_dialogShown && hasPushPermission) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (_dialogShown && hasPushPermission) return;
-
-      final context = navigatorKey.currentContext;
-      if (context == null) {
-        // Navigator not mounted yet, retry after short delay
-        Future.delayed(
-          const Duration(milliseconds: 600),
-          _showVerificationDialogIfNeeded,
-        );
-        return;
-      }
-
-      if (!context.mounted) return;
-
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-            title: const Text(
-              'Your OneSignal SDK integration is complete!',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            content: const Text(
-              'You can now send Push Notifications & In-App Messages through OneSignal. Tap below to enable push notifications.',
-              style: TextStyle(fontSize: 14, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(ctx).pop();
-                  _dialogShown = true;
-                  try {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool(_prefDialogShownKey, true);
-                  } catch (_) {}
-                  // Required: On button tap, request push permission
-                  await requestPermission();
-                },
-                child: const Text(
-                  'Got it',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
