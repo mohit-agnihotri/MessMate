@@ -453,5 +453,158 @@ class AdminService {
 
     await _db.collection(_messesCollection).doc(demoMess.messId).set(demoMess.toMap());
   }
+
+  /// Convenience: Updates developer UPI address globally with audit log
+  Future<void> updateDeveloperUpiId(String upi) async {
+    await updateGlobalToggles(developerUpiId: upi);
+    await logAuditAction(action: 'UPDATE_UPI', details: 'Remittance UPI updated to $upi');
+  }
+
+  /// Convenience: Broadcasts push notification
+  Future<void> broadcastNotification({
+    required String title,
+    required String body,
+    required String targetAudience,
+  }) async {
+    try {
+      await NotificationService.sendBroadcastNotification(
+        title: title,
+        message: body,
+      );
+    } catch (_) {}
+    await logAuditAction(
+      action: 'BROADCAST',
+      details: 'Target: $targetAudience | Title: $title',
+    );
+  }
+
+  /// Convenience: Log immutable admin audit trail in Firestore
+  Future<void> logAuditAction({
+    required String action,
+    required String details,
+    String adminEmail = 'superadmin@messmate.in',
+  }) async {
+    try {
+      await _db.collection('admin_audit_logs').add({
+        'action': action,
+        'details': details,
+        'adminEmail': adminEmail,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('[AdminService] logAuditAction notice: $e');
+    }
+  }
+
+  /// Stream of real-time audit logs
+  Stream<List<AdminAuditLogModel>> streamAuditLogs() {
+    return _db
+        .collection('admin_audit_logs')
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => AdminAuditLogModel.fromMap(doc.data(), doc.id))
+            .toList())
+        .handleError((e) {
+      debugPrint('[AdminService] streamAuditLogs error: $e');
+      return <AdminAuditLogModel>[];
+    });
+  }
+
+  /// Convenience: Grants lifetime VIP to mess
+  Future<void> grantLifetimeVip(String messId, {String? reason}) async {
+    await setMessLifetimeVip(messId, true);
+    await logAuditAction(
+      action: 'GRANT_VIP',
+      details: 'Granted Lifetime VIP to mess $messId. ${reason ?? ''}',
+    );
+  }
+
+  /// Convenience: Freeze mess with audit log
+  Future<void> freezeMess(String messId, {String? reason}) async {
+    await toggleMessFreeze(messId, true);
+    await logAuditAction(
+      action: 'FREEZE_MESS',
+      details: 'Frozen mess $messId. Reason: ${reason ?? 'Admin freeze'}',
+    );
+  }
+
+  /// Convenience: Unfreeze mess with audit log
+  Future<void> unfreezeMess(String messId, {String? reason}) async {
+    await toggleMessFreeze(messId, false);
+    await logAuditAction(
+      action: 'UNFREEZE_MESS',
+      details: 'Unfrozen mess $messId. Reason: ${reason ?? 'Admin unfreeze'}',
+    );
+  }
+
+  /// Convenience: Reply to ticket with auto lookup
+  Future<void> replyToTicket({
+    required String ticketId,
+    required String replyMessage,
+  }) async {
+    try {
+      final ticketDoc = await _db.collection(_ticketsCollection).doc(ticketId).get();
+      if (ticketDoc.exists && ticketDoc.data() != null) {
+        final data = ticketDoc.data()!;
+        await replyToTicketAndNotifyUser(
+          ticketId: ticketId,
+          reply: replyMessage,
+          userId: data['userId'] ?? '',
+          userRole: data['userRole'] ?? 'student',
+          ticketCategory: data['category'] ?? 'suggestion',
+        );
+      } else {
+        await updateTicketStatus(ticketId, 'resolved');
+      }
+    } catch (_) {
+      await updateTicketStatus(ticketId, 'resolved');
+    }
+  }
+}
+
+/// Model representing an immutable admin audit log entry.
+class AdminAuditLogModel {
+  final String logId;
+  final String action;
+  final String details;
+  final String adminEmail;
+  final DateTime timestamp;
+
+  AdminAuditLogModel({
+    required this.logId,
+    required this.action,
+    required this.details,
+    required this.adminEmail,
+    required this.timestamp,
+  });
+
+  factory AdminAuditLogModel.fromMap(Map<String, dynamic> map, [String? id]) {
+    DateTime time = DateTime.now();
+    if (map['timestamp'] != null) {
+      if (map['timestamp'] is String) {
+        time = DateTime.tryParse(map['timestamp']) ?? DateTime.now();
+      } else {
+        try {
+          time = (map['timestamp'] as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+    }
+    return AdminAuditLogModel(
+      logId: id ?? map['logId'] ?? '',
+      action: map['action'] ?? '',
+      details: map['details'] ?? '',
+      adminEmail: map['adminEmail'] ?? 'superadmin@messmate.in',
+      timestamp: time,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'action': action,
+    'details': details,
+    'adminEmail': adminEmail,
+    'timestamp': timestamp.toIso8601String(),
+  };
 }
 

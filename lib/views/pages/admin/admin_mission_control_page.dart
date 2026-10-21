@@ -13,7 +13,11 @@ import 'tabs/admin_monetization_tab.dart';
 import 'tabs/admin_ops_tab.dart';
 import 'tabs/admin_support_tab.dart';
 
+/// Global provider to switch tabs seamlessly from any child component.
+final adminActiveTabProvider = StateProvider<int>((ref) => 0);
+
 /// The central Mission Control Dashboard for the Founder / Super Admin.
+/// Redesigned with the Executive Dark Luxury Obsidian & Amber aesthetic.
 class AdminMissionControlPage extends ConsumerStatefulWidget {
   const AdminMissionControlPage({super.key});
 
@@ -24,8 +28,6 @@ class AdminMissionControlPage extends ConsumerStatefulWidget {
 
 class _AdminMissionControlPageState
     extends ConsumerState<AdminMissionControlPage> {
-  int _currentIndex = 0;
-
   final List<Widget> _tabs = const [
     AdminCockpitTab(),
     AdminMessesTab(),
@@ -36,179 +38,251 @@ class _AdminMissionControlPageState
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(adminActiveTabProvider);
+
     return Scaffold(
       backgroundColor: AdminCyberTheme.bgObsidian,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(64),
         child: Container(
-          decoration: BoxDecoration(
-            color: AdminCyberTheme.bgObsidian,
-            border: Border(
-              bottom: BorderSide(
-                color: AdminCyberTheme.borderSubtle,
-                width: 1.0,
-              ),
-            ),
-          ),
+          color: AdminCyberTheme.bgObsidian,
           child: SafeArea(
+            bottom: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: Row(
                 children: [
-                  // Brand & Status (Expanded to prevent any overflow)
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            gradient: AdminCyberTheme.emeraldCyanGradient,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.dashboard_customize_rounded,
-                              color: Color(0xFF04202C), size: 17),
+                  // App Icon Squircle (Sage green with bar chart equalizer glyph)
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4E654F),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4E654F).withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'MISSION CONTROL',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: 0.8,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Row(
-                                children: [
-                                  const PulsingBeacon(
-                                    color: AdminCyberTheme.neonEmerald,
-                                    size: 6,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                    child: Text(
-                                      'SUPER ADMIN • LIVE',
-                                      style: GoogleFonts.jetBrainsMono(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: AdminCyberTheme.neonEmerald,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                      ],
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            width: 3.2,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F0E9),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
+                          const SizedBox(width: 2.8),
+                          Container(
+                            width: 3.2,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F0E9),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 2.8),
+                          Container(
+                            width: 3.2,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F0E9),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Brand Titles
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Mission control',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          'SUPER ADMIN  •  LIVE',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AdminCyberTheme.textMuted,
+                            letterSpacing: 0.8,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
 
-                  // Actions: Sandbox Switcher & Logout
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      PopupMenuButton<String>(
-                        icon: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AdminCyberTheme.cardSurface,
-                            borderRadius: BorderRadius.circular(20),
-                            border:
-                                Border.all(color: AdminCyberTheme.borderSubtle),
+                  // Sandbox Dropdown Pill (Matching Inspired UI)
+                  PopupMenuButton<String>(
+                    tooltip: 'Sandbox Environment',
+                    color: const Color(0xFF221C16),
+                    elevation: 12,
+                    offset: const Offset(0, 42),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: Color(0xFF382F25),
+                        width: 1.0,
+                      ),
+                    ),
+                    onSelected: (val) {
+                      if (val == 'owner') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+                        );
+                      } else if (val == 'student') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const StudentMainPage()),
+                        );
+                      } else if (val == 'exit_sandbox') {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Exited sandbox mode. You are in Super Admin Live mode.'),
+                            backgroundColor: Color(0xFF221C16),
+                            duration: Duration(seconds: 2),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.visibility_outlined,
-                                  size: 13, color: AdminCyberTheme.neonCyan),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Sandbox',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
+                        );
+                      } else if (val == 'logout') {
+                        ref.read(authProvider.notifier).signOut();
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                          (route) => false,
+                        );
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'owner',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.crop_square_rounded,
+                                size: 16, color: Color(0xFFFAF7F2)),
+                            const SizedBox(width: 12),
+                            Text(
+                              'View as mess owner',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFFAF7F2),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'student',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.diamond_outlined,
+                                size: 16, color: Color(0xFFFAF7F2)),
+                            const SizedBox(width: 12),
+                            Text(
+                              'View as student',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFFAF7F2),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(height: 1),
+                      PopupMenuItem(
+                        value: 'exit_sandbox',
+                        child: Text(
+                          'Exit sandbox',
+                          style: GoogleFonts.inter(
+                            color: AdminCyberTheme.textMuted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        color: const Color(0xFF0F172A),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.logout_rounded,
+                                size: 16, color: AdminCyberTheme.neonRose),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Sign out',
+                              style: GoogleFonts.inter(
+                                color: AdminCyberTheme.neonRose,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        onSelected: (val) {
-                          if (val == 'owner') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const OwnerMainPage()),
-                            );
-                          } else if (val == 'student') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const StudentMainPage()),
-                            );
-                          }
-                        },
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'owner',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.storefront_rounded,
-                                    size: 16,
-                                    color: AdminCyberTheme.neonEmerald),
-                                const SizedBox(width: 10),
-                                Text('View as Mess Owner',
-                                    style: GoogleFonts.inter(
-                                        color: Colors.white, fontSize: 13)),
-                              ],
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2217),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFF4A3824),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF59E0B),
+                              shape: BoxShape.circle,
                             ),
                           ),
-                          PopupMenuItem(
-                            value: 'student',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.school_rounded,
-                                    size: 16, color: AdminCyberTheme.neonCyan),
-                                const SizedBox(width: 10),
-                                Text('View as Student',
-                                    style: GoogleFonts.inter(
-                                        color: Colors.white, fontSize: 13)),
-                              ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'Sandbox',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFFAF7F2),
                             ),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 14,
+                            color: Color(0xFFFAF7F2),
                           ),
                         ],
                       ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: const Icon(Icons.logout_rounded,
-                            size: 19, color: AdminCyberTheme.textMuted),
-                        tooltip: 'Exit Mission Control',
-                        onPressed: () {
-                          ref.read(authProvider.notifier).signOut();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const LoginPage()),
-                            (route) => false,
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -217,30 +291,31 @@ class _AdminMissionControlPageState
         ),
       ),
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _tabs,
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AdminCyberTheme.bgObsidian,
+        decoration: const BoxDecoration(
+          color: Color(0xFF13100D),
           border: Border(
             top: BorderSide(
-              color: AdminCyberTheme.borderSubtle,
+              color: Color(0xFF241D17),
               width: 1.0,
             ),
           ),
         ),
         child: SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.speed_rounded, 'Pulse'),
-                _buildNavItem(1, Icons.storefront_rounded, 'Messes'),
-                _buildNavItem(2, Icons.support_agent_rounded, 'Inbox'),
-                _buildNavItem(3, Icons.account_balance_wallet_rounded, 'Kamai'),
-                _buildNavItem(4, Icons.tune_rounded, 'Ops Deck'),
+                _buildNavItem(0, Icons.bar_chart_rounded, 'Pulse', currentIndex),
+                _buildNavItem(1, Icons.storefront_outlined, 'Messes', currentIndex),
+                _buildNavItem(2, Icons.all_inbox_rounded, 'Inbox', currentIndex),
+                _buildNavItem(3, Icons.currency_rupee_rounded, 'Money', currentIndex),
+                _buildNavItem(4, Icons.tune_rounded, 'Ops', currentIndex),
               ],
             ),
           ),
@@ -249,53 +324,37 @@ class _AdminMissionControlPageState
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    final activeColor = index == 3
-        ? AdminCyberTheme.neonEmerald
-        : index == 2
-            ? AdminCyberTheme.neonViolet
-            : AdminCyberTheme.neonCyan;
+  Widget _buildNavItem(int index, IconData icon, String label, int selectedIndex) {
+    final isSelected = selectedIndex == index;
+    final activeColor = AdminCyberTheme.neonAmber;
+    final inactiveColor = const Color(0xFF7D7267);
 
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 8,
-          vertical: 6,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? activeColor.withValues(alpha: 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected
-              ? Border.all(
-                  color: activeColor.withValues(alpha: 0.35), width: 1.0)
-              : null,
-        ),
-        child: Row(
+      onTap: () {
+        ref.read(adminActiveTabProvider.notifier).state = index;
+      },
+      borderRadius: BorderRadius.circular(12),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: 19,
-              color: isSelected ? activeColor : AdminCyberTheme.textMuted,
+              size: 22,
+              color: isSelected ? activeColor : inactiveColor,
             ),
-            if (isSelected) ...[
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: activeColor,
-                  letterSpacing: 0.3,
-                ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
               ),
-            ],
+            ),
           ],
         ),
       ),

@@ -15,6 +15,7 @@ import 'student_setup_page.dart';
 import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
 import '../student/student_pending_approval_page.dart';
+import 'widgets/mess_account_chooser_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   final AuthRole? initialRole;
@@ -432,6 +433,69 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ),
                     ),
+
+                    if (FirebaseAuth.instance.currentUser != null) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: InkWell(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              isScrollControlled: true,
+                              builder: (_) => MessAccountChooserSheet(
+                                onAccountSelected: (uid) {
+                                  _handlePostSignIn(uid);
+                                },
+                                onAddAnotherAccount: () async {
+                                  await ref
+                                      .read(authProvider.notifier)
+                                      .signInWithGoogle();
+                                  final currentUid =
+                                      FirebaseAuth.instance.currentUser?.uid;
+                                  if (currentUid != null && mounted) {
+                                    await _handlePostSignIn(currentUid);
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF241D17),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFF382F25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.switch_account_rounded,
+                                  size: 15,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  isHindi
+                                      ? 'खाता चुनें या बदलें'
+                                      : 'Choose or switch account',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFFFAF7F2),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 

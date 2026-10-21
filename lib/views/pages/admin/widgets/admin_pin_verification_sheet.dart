@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../services/admin_service.dart';
 import '../admin_cyber_theme.dart';
 
-/// Layer 1: Frosted-glass Master Security Verification Sheet.
-/// Prompted when an authorized Admin Gmail is detected during login.
+/// Layer 1: Master Security PIN Verification Sheet.
+/// Prompted when an authorized Admin Google account signs in.
 class AdminPinVerificationSheet extends ConsumerStatefulWidget {
   final VoidCallback onSuccess;
 
@@ -22,16 +23,36 @@ class AdminPinVerificationSheet extends ConsumerStatefulWidget {
 
 class _AdminPinVerificationSheetState
     extends ConsumerState<AdminPinVerificationSheet> {
-  final TextEditingController _pinController = TextEditingController();
+  String _enteredPin = '';
   bool _isLoading = false;
   String? _errorMessage;
 
-  Future<void> _verifyPin() async {
-    final pin = _pinController.text.trim();
-    if (pin.length < 4) {
+  void _onDigitTap(String digit) {
+    if (_enteredPin.length < 6) {
+      HapticFeedback.selectionClick();
       setState(() {
-        _errorMessage = 'PIN must be at least 4 digits';
+        _enteredPin += digit;
+        _errorMessage = null;
       });
+      if (_enteredPin.length == 6) {
+        _verifyPin();
+      }
+    }
+  }
+
+  void _onBackspaceTap() {
+    if (_enteredPin.isNotEmpty) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
+        _errorMessage = null;
+      });
+    }
+  }
+
+  Future<void> _verifyPin() async {
+    if (_enteredPin.length < 4) {
+      setState(() => _errorMessage = 'Enter at least 4 digits');
       return;
     }
 
@@ -42,201 +63,288 @@ class _AdminPinVerificationSheetState
 
     try {
       final isValid =
-          await ref.read(adminServiceProvider).verifyMasterPin(pin);
+          await ref.read(adminServiceProvider).verifyMasterPin(_enteredPin);
       if (!mounted) return;
 
       if (isValid) {
+        HapticFeedback.mediumImpact();
         Navigator.pop(context);
         widget.onSuccess();
       } else {
+        HapticFeedback.vibrate();
         setState(() {
           _isLoading = false;
           _errorMessage = 'Invalid Master PIN. Access Denied.';
+          _enteredPin = '';
         });
       }
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceAll('Exception: ', '').trim();
       setState(() {
         _isLoading = false;
-        _errorMessage = msg;
+        _errorMessage = e.toString().replaceAll('Exception: ', '').trim();
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _pinController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF070B14),
+        color: Color(0xFF16120E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: Color(0xFF10B981), width: 1.5),
+          top: BorderSide(color: Color(0xFF382F25), width: 1.5),
         ),
       ),
       child: SafeArea(
+        top: false,
         child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            left: 24,
-            right: 24,
-            top: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const PulsingBeacon(
-                      color: AdminCyberTheme.neonEmerald,
-                      size: 8,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'SECURITY VERIFICATION',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AdminCyberTheme.neonEmerald,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Super Admin Detected',
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Enter your 6-digit Master Security Passcode to unlock Mission Control.',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AdminCyberTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  autofocus: true,
-                  maxLength: 8,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AdminCyberTheme.neonEmerald,
-                    letterSpacing: 8,
-                  ),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '••••••',
-                    hintStyle: GoogleFonts.jetBrainsMono(
-                      fontSize: 24,
-                      color: Colors.white.withValues(alpha: 0.2),
-                      letterSpacing: 8,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.12),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: AdminCyberTheme.neonEmerald,
-                        width: 1.5,
-                      ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title: Security Verification
+              Text(
+                'Security verification',
+                style: AdminCyberTheme.serifTitle(fontSize: 26),
+              ),
+              const SizedBox(height: 4),
+
+              Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF59E0B),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  onSubmitted: (_) => _verifyPin(),
-                ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: AdminCyberTheme.neonRose,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AdminCyberTheme.neonRose,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  Text(
+                    'SUPER ADMIN 2FA GATEWAY',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AdminCyberTheme.textMuted,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AdminCyberTheme.neonEmerald,
-                      foregroundColor: const Color(0xFF041E15),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Enter the 6-digit master PIN to unlock Mission Control.',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: AdminCyberTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 6 PIN Dots
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(6, (index) {
+                    final isFilled = index < _enteredPin.length;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: isFilled
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF241D17),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isFilled
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFF382F25),
+                          width: 1.5,
+                        ),
                       ),
+                    );
+                  }),
+                ),
+              ),
+
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF87171),
                     ),
-                    onPressed: _isLoading ? null : _verifyPin,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF041E15),
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : Text(
-                            'UNLOCK MISSION CONTROL 🚀',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
                   ),
                 ),
               ],
+              const SizedBox(height: 20),
+
+              // Keypad
+              _buildKeypad(),
+              const SizedBox(height: 18),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: const Color(0xFF140F09),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: _isLoading ? null : _verifyPin,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Color(0xFF140F09),
+                          ),
+                        )
+                      : Text(
+                          'Unlock mission control',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeypad() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            _buildKeypadTile('1'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('2'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('3'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildKeypadTile('4'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('5'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('6'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildKeypadTile('7'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('8'),
+            const SizedBox(width: 12),
+            _buildKeypadTile('9'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildKeypadActionTile(
+              icon: Icons.backspace_outlined,
+              onTap: _onBackspaceTap,
+            ),
+            const SizedBox(width: 12),
+            _buildKeypadTile('0'),
+            const SizedBox(width: 12),
+            _buildKeypadActionTile(
+              icon: Icons.check_rounded,
+              onTap: _verifyPin,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeypadTile(String digit) {
+    return Expanded(
+      child: Material(
+        color: const Color(0xFF241D17),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () => _onDigitTap(digit),
+          borderRadius: BorderRadius.circular(16),
+          splashColor: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF382F25), width: 1.0),
+            ),
+            child: Text(
+              digit,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFFAF7F2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeypadActionTile({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: const Color(0xFF241D17),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF382F25), width: 1.0),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: const Color(0xFFFAF7F2),
             ),
           ),
         ),
