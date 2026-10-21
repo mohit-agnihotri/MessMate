@@ -1,16 +1,16 @@
-﻿const admin = require('firebase-admin');
+const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json');
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 const auth = admin.auth();
 
-const PRESERVED_COLLECTIONS = new Set(['global_dishes']);
+const PRESERVED_COLLECTIONS = new Set(['global_dishes', 'system_config']);
 
 const KNOWN_COLLECTIONS = [
   'messes', 'students', 'meal_records', 'bills', 'announcements',
   'feedbacks', 'leaves', 'menus', 'closed_slots', 'weekly_templates',
-  'mess_photos', 'meal_plans', 'extra_fees', 'users', 'preferences', 'dishes'
+  'mess_photos', 'meal_plans', 'extra_fees', 'users', 'preferences', 'dishes', 'support_tickets'
 ];
 
 async function deleteAllAuthUsers() {
