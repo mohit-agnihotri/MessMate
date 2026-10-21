@@ -68,6 +68,7 @@ abstract class AppService {
     String reason,
   );
   Future<void> emergencyCloseMess(String messId, DateTime date);
+  Future<void> reopenMess(String messId);
   
   // FEEDBACK & RATINGS
   Future<void> submitFeedback(FeedbackModel feedback);

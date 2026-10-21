@@ -180,10 +180,17 @@ BillModel generateAdvancedBill({
   }
 
   // Owner closure per-meal compensation rate:
-  // Owner closures are compensated regardless of student skip limits
-  final double ownerClosureRate = dynamicPerMealRate > 0
-      ? dynamicPerMealRate
-      : (plan?.deductionPolicy.flatRate ?? mess.perMealRate);
+  // Owner closures are compensated regardless of student skip limits.
+  // Prioritize the owner-configured rate (from plan flatRate or mess.perMealRate).
+  // If no flat rate was configured, fall back to the dynamic prorated rate.
+  final double ownerSetRate = (plan?.deductionPolicy.policyType == 'flat_fixed_rate' &&
+          (plan?.deductionPolicy.flatRate ?? 0) > 0)
+      ? plan!.deductionPolicy.flatRate!
+      : (mess.perMealRate > 0 ? mess.perMealRate : 0.0);
+
+  final double ownerClosureRate = ownerSetRate > 0
+      ? ownerSetRate
+      : (dynamicPerMealRate > 0 ? dynamicPerMealRate : 0.0);
 
   int totalValidSkips = 0;
   int totalOwnerClosures = 0;

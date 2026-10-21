@@ -14,6 +14,7 @@ import '../owner_plan_builder_page.dart';
 import '../owner_settings_page.dart';
 import '../theme/owner_inspired_theme.dart';
 import 'owner_launch_partner_sheet.dart';
+import 'schedule_closure_dialog.dart';
 
 class OwnerDrawer extends ConsumerWidget {
   const OwnerDrawer({super.key});
@@ -164,13 +165,19 @@ class OwnerDrawer extends ConsumerWidget {
                         GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
-                            _showScheduleClosureDialog(context, ref, mess);
+                            if (isOpen) {
+                              showScheduleClosureDialog(context, ref, mess: mess);
+                            } else if (mess != null) {
+                              showReopenMessDialog(context, ref, messId: mess.messId);
+                            }
                           },
                           child: Text(
-                            'Schedule closure ›',
+                            isOpen ? 'Schedule closure ›' : 'Re-open mess ›',
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: OwnerColors.amber,
+                              color: isOpen
+                                  ? OwnerColors.amber
+                                  : const Color(0xFF4ADE80),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -182,13 +189,11 @@ class OwnerDrawer extends ConsumerWidget {
                     value: isOpen,
                     activeTrackColor: OwnerColors.sage,
                     onChanged: (val) {
-                      if (mess != null) {
-                        final updated = mess.copyWith(
-                          temporarilyClosedUntil: val
-                              ? null
-                              : DateTime.now().add(const Duration(days: 1)),
-                        );
-                        ref.read(ownerSettingsProvider.notifier).save(updated);
+                      Navigator.pop(context);
+                      if (val == false) {
+                        showScheduleClosureDialog(context, ref, mess: mess);
+                      } else if (mess != null) {
+                        showReopenMessDialog(context, ref, messId: mess.messId);
                       }
                     },
                   ),
@@ -532,50 +537,6 @@ class OwnerDrawer extends ConsumerWidget {
     );
   }
 
-  void _showScheduleClosureDialog(
-      BuildContext context, WidgetRef ref, MessModel? mess) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: OwnerColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          'Schedule closure',
-          style: OwnerTypography.serifHeading(fontSize: 20),
-        ),
-        content: Text(
-          'Closes your mess for 24 hours and updates status on student discovery map.',
-          style: OwnerTypography.body(fontSize: 13, color: OwnerColors.textMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.inter(color: OwnerColors.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (mess != null) {
-                final updated = mess.copyWith(
-                  temporarilyClosedUntil:
-                      DateTime.now().add(const Duration(days: 1)),
-                );
-                ref.read(ownerSettingsProvider.notifier).save(updated);
-              }
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC2410C),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
-            ),
-            child: const Text('Confirm closure'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showSendAnnouncementDialog(BuildContext context, WidgetRef ref) {
     final textController = TextEditingController();

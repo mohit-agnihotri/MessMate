@@ -322,6 +322,8 @@ class StubService implements AppService {
   @override
   Future<void> emergencyCloseMess(String messId, DateTime date) async {}
   @override
+  Future<void> reopenMess(String messId) async {}
+  @override
   Future<void> applyLeave(LeaveModel leave) async {}
   @override
   Future<void> cancelLeave(String leaveId, DateTime cancelledAt) async {}

@@ -604,6 +604,15 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
       endSlot,
       reason,
     );
+    await _init();
+  }
+
+  Future<void> reopenMess() async {
+    if (state.mess == null) return;
+    await _service.reopenMess(state.mess!.messId);
+    final updated = state.mess!.copyWith(temporarilyClosedUntil: null);
+    state = state.copyWith(mess: updated);
+    await _init();
   }
 
   Future<void> reload() async {

@@ -10,6 +10,7 @@ import '../../../services/admin_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
+import 'login_page.dart';
 import 'role_selection_page.dart';
 
 /// OwnerSetupPage:
@@ -801,6 +802,19 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
   }
 
+  Future<void> _handleBackToLogin() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      ref.read(authProvider.notifier).signOut();
+    } catch (_) {}
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    }
+  }
+
   void _adjustCtrl(TextEditingController ctrl, double delta) {
     final current = double.tryParse(ctrl.text) ?? 0.0;
     final next = (current + delta).clamp(0.0, 99999.0);
@@ -998,21 +1012,31 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F3EC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header Bar with Back Button & Serif Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: _currentStep > 0
-                        ? _prevPage
-                        : () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(20),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_currentStep > 0) {
+          _prevPage();
+        } else {
+          _handleBackToLogin();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F3EC),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header Bar with Back Button & Serif Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: _currentStep > 0
+                          ? _prevPage
+                          : _handleBackToLogin,
+                      borderRadius: BorderRadius.circular(20),
                     child: Container(
                       width: 38,
                       height: 38,
@@ -1072,6 +1096,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -1704,7 +1729,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _buildRoundStepBtn('-', () => _adjustCtrl(feeCtrl, -100)),
+                                  _buildRoundStepBtn(
+                                    '-',
+                                    () => _adjustCtrl(feeCtrl, -50),
+                                    onLongPress: () => _adjustCtrl(feeCtrl, -200),
+                                  ),
                                   Container(
                                     width: 76,
                                     height: 38,
@@ -1725,7 +1754,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                   ),
-                                  _buildRoundStepBtn('+', () => _adjustCtrl(feeCtrl, 100)),
+                                  _buildRoundStepBtn(
+                                    '+',
+                                    () => _adjustCtrl(feeCtrl, 50),
+                                    onLongPress: () => _adjustCtrl(feeCtrl, 200),
+                                  ),
                                 ],
                               ),
                             ],
@@ -1763,7 +1796,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _buildRoundStepBtn('-', () => _adjustCtrl(skipCtrl, -5)),
+                                  _buildRoundStepBtn(
+                                    '-',
+                                    () => _adjustCtrl(skipCtrl, -1),
+                                    onLongPress: () => _adjustCtrl(skipCtrl, -5),
+                                  ),
                                   Container(
                                     width: 76,
                                     height: 38,
@@ -1784,7 +1821,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                       ),
                                     ),
                                   ),
-                                  _buildRoundStepBtn('+', () => _adjustCtrl(skipCtrl, 5)),
+                                  _buildRoundStepBtn(
+                                    '+',
+                                    () => _adjustCtrl(skipCtrl, 1),
+                                    onLongPress: () => _adjustCtrl(skipCtrl, 5),
+                                  ),
                                 ],
                               ),
                             ],
@@ -2292,9 +2333,19 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     );
   }
 
-  Widget _buildRoundStepBtn(String symbol, VoidCallback onTap) {
+  Widget _buildRoundStepBtn(
+    String symbol,
+    VoidCallback onTap, {
+    VoidCallback? onLongPress,
+  }) {
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress != null
+          ? () {
+              HapticFeedback.lightImpact();
+              onLongPress();
+            }
+          : null,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 32,

@@ -46,7 +46,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
         final service = ref.read(appServiceProvider);
 
         // 1. Check if user is an owner
-        final mess = await service.getMessByOwnerId(user.uid);
+        final mess = await service
+            .getMessByOwnerId(user.uid)
+            .timeout(const Duration(seconds: 4), onTimeout: () => null);
         if (mess != null && mounted) {
           ref.read(authProvider.notifier).setRole(AuthRole.owner);
           Navigator.pushReplacement(
@@ -57,7 +59,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
         }
 
         // Check if user is a student
-        final student = await service.getStudentById(user.uid);
+        final student = await service
+            .getStudentById(user.uid)
+            .timeout(const Duration(seconds: 4), onTimeout: () => null);
         if (student != null && mounted) {
           ref.read(authProvider.notifier).setRole(AuthRole.student);
           if (student.status == 'active' || student.status == 'approved') {

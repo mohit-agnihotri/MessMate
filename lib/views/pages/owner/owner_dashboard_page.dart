@@ -8,6 +8,7 @@ import '../../../viewmodels/all_viewmodels.dart';
 import 'owner_absentee_tracker_page.dart';
 import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
+import 'widgets/schedule_closure_dialog.dart';
 import 'theme/owner_inspired_theme.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -186,7 +187,7 @@ class OwnerDashboardPage extends ConsumerWidget {
 
               // Open · Close status pill
               GestureDetector(
-                onTap: () => _showEmergencyCloseDialog(context, ref),
+                onTap: () => _showEmergencyCloseDialog(context, ref, isOpen, state.mess),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -960,11 +961,12 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
-  void _showEmergencyCloseDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (_) => _ScheduleClosureDialog(ref: ref),
-    );
+  void _showEmergencyCloseDialog(BuildContext context, WidgetRef ref, bool isOpen, MessModel? mess) {
+    if (isOpen) {
+      showScheduleClosureDialog(context, ref, mess: mess);
+    } else if (mess != null) {
+      showReopenMessDialog(context, ref, messId: mess.messId);
+    }
   }
 
   void _showAnnouncementDialog(BuildContext context, WidgetRef ref) {
@@ -1205,214 +1207,6 @@ class OwnerDashboardPage extends ConsumerWidget {
   }
 }
 
-class _ScheduleClosureDialog extends StatefulWidget {
-  final WidgetRef ref;
-  const _ScheduleClosureDialog({required this.ref});
-  @override
-  State<_ScheduleClosureDialog> createState() => _ScheduleClosureDialogState();
-}
-
-class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
-  DateTime _startDate = DateTime.now();
-  String _startSlot = 'night';
-  DateTime _endDate = DateTime.now().add(const Duration(days: 1));
-  String _endSlot = 'morning';
-  bool _isLoading = false;
-
-  final List<String> _slots = ['morning', 'noon', 'evening', 'night'];
-
-  Future<void> _pickDate(bool isStart) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: isStart ? _startDate : _endDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: OwnerColors.amber),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (date != null) {
-      setState(() {
-        if (isStart) {
-          _startDate = date;
-          if (_endDate.isBefore(_startDate)) _endDate = _startDate;
-        } else {
-          _endDate = date;
-          if (_endDate.isBefore(_startDate)) _startDate = _endDate;
-        }
-      });
-    }
-  }
-
-  Widget _buildDropdown(String value, bool isStart) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: OwnerColors.cardBorder),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: OwnerColors.textMuted),
-          items: _slots
-              .map(
-                (s) => DropdownMenuItem(
-                  value: s,
-                  child: Text(
-                    s.toUpperCase(),
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (val) {
-            if (val != null) {
-              setState(() {
-                if (isStart) {
-                  _startSlot = val;
-                } else {
-                  _endSlot = val;
-                }
-              });
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDatePickerBtn(DateTime date, bool isStart) {
-    return GestureDetector(
-      onTap: () => _pickDate(isStart),
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: OwnerColors.cardBorder),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${date.day}/${date.month}/${date.year}',
-              style: GoogleFonts.inter(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: OwnerColors.textDark,
-              ),
-            ),
-            const Icon(
-              Icons.calendar_month_rounded,
-              color: OwnerColors.textMuted,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: OwnerColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Text(
-        'Schedule closure',
-        style: OwnerTypography.serifHeading(fontSize: 20),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'FROM',
-              style: OwnerTypography.overline(color: OwnerColors.textOverline),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(child: _buildDatePickerBtn(_startDate, true)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildDropdown(_startSlot, true)),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'TO',
-              style: OwnerTypography.overline(color: OwnerColors.textOverline),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(child: _buildDatePickerBtn(_endDate, false)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildDropdown(_endSlot, false)),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Closes every meal between these slots and notifies your students automatically.',
-              style: OwnerTypography.body(fontSize: 12, color: OwnerColors.textMuted),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text('Cancel', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading
-              ? null
-              : () async {
-                  setState(() => _isLoading = true);
-                  await widget.ref
-                      .read(ownerDashboardProvider.notifier)
-                      .emergencyClose(
-                        _startDate,
-                        _startSlot,
-                        _endDate,
-                        _endSlot,
-                        "Emergency Closure",
-                      );
-                  if (context.mounted) Navigator.pop(context);
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFC2410C),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                )
-              : const Text(
-                  'Confirm closure',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-        ),
-      ],
-    );
-  }
-}
 
 class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
   final List<StudentModel> students;

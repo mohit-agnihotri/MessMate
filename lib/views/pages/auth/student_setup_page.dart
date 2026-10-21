@@ -9,6 +9,7 @@ import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../student/student_discovery_page.dart';
 import '../student/student_pending_approval_page.dart';
+import 'login_page.dart';
 import 'role_selection_page.dart';
 
 class StudentSetupPage extends ConsumerStatefulWidget {
@@ -59,6 +60,19 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       _phoneCtrl.text = user.phoneNumber!.replaceFirst('+91', '').trim();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkRoleConflict());
+  }
+
+  Future<void> _handleBackToLogin() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      ref.read(authProvider.notifier).signOut();
+    } catch (_) {}
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _checkRoleConflict() async {
@@ -462,7 +476,12 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
         phoneText.isNotEmpty &&
         !_isPhoneValid(phoneText);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBackToLogin();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F3EC),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -475,7 +494,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
               Row(
                 children: [
                   InkWell(
-                    onTap: () => Navigator.pop(context),
+                    onTap: _handleBackToLogin,
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       width: 38,
@@ -869,6 +888,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
           ),
         ),
       ),
+    ),
     );
   }
 

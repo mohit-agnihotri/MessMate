@@ -799,6 +799,19 @@ class FirebaseService implements AppService {
   ) async {
     final batch = _db.batch();
 
+    // 0. Clean up previous upcoming closed_slots so modified ranges take full effect
+    final startDayStr = startDate.toIso8601String().substring(0, 10);
+    final existingClosed = await _db
+        .collection('messes')
+        .doc(mess.messId)
+        .collection('closed_slots')
+        .where('date', isGreaterThanOrEqualTo: startDayStr)
+        .get();
+
+    for (var doc in existingClosed.docs) {
+      batch.delete(doc.reference);
+    }
+
     // 1. Update MessModel
     final messRef = _db.collection('messes').doc(mess.messId);
     batch.update(messRef, {
@@ -858,6 +871,41 @@ class FirebaseService implements AppService {
       'messId': mess.messId,
       'message':
           '🚨 UPDATE: Mess is closed from ${startDate.toIso8601String().substring(0, 10)} ($startSlot) to ${endDate.toIso8601String().substring(0, 10)} ($endSlot).',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+  }
+
+  @override
+  Future<void> reopenMess(String messId) async {
+    final batch = _db.batch();
+
+    // 1. Clear temporarilyClosedUntil on mess
+    final messRef = _db.collection('messes').doc(messId);
+    batch.update(messRef, {
+      'temporarilyClosedUntil': null,
+    });
+
+    // 2. Remove upcoming closed_slots from today onwards
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final closedDocs = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('closed_slots')
+        .where('date', isGreaterThanOrEqualTo: todayStr)
+        .get();
+
+    for (var doc in closedDocs.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // 3. Post Announcement
+    final annRef = _db.collection('announcements').doc();
+    batch.set(annRef, {
+      'messId': messId,
+      'message':
+          '🎉 UPDATE: Mess is open for service! Normal meal schedules have resumed.',
       'timestamp': FieldValue.serverTimestamp(),
     });
 
