@@ -14,9 +14,9 @@ import '../student/student_main_page.dart';
 import '../student/student_pending_approval_page.dart';
 
 /// Complete High-Aesthetic Onboarding Experience:
-/// Stage 0: 3-Slide Vibrant 3D Feature Showcase Carousel
-/// Stage 1: Frosted Glass Bilingual Language Selection (English / हिंदी)
-/// Stage 2: 3D Role Selection (Mess Owner vs Diner/Member) with Instant Demo Access
+/// Stage 0: 3-Slide Vibrant Editorial Feature Showcase Carousel
+/// Stage 1: Warm Walnut Bilingual Language Selection (English / हिंदी)
+/// Stage 2: Editorial Role Selection (Mess Owner vs Diner/Student Member)
 class RoleSelectionPage extends ConsumerStatefulWidget {
   const RoleSelectionPage({super.key});
 
@@ -60,39 +60,59 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF090D16),
+        backgroundColor: const Color(0xFF140F0C),
         body: Stack(
           children: [
-            // Ambient Radial Glow 1 (Emerald top-left)
+            // Dark Walnut Gradient Canvas
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF1E1712),
+                      Color(0xFF120E0B),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Top-Left Warm Amber Ambient Glow
             Positioned(
-              top: -80,
-              left: -80,
+              top: -60,
+              left: -60,
               child: Container(
                 width: 260,
                 height: 260,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  color: const Color(0xFFF09E38).withValues(alpha: 0.16),
                 ),
               ),
             ),
-            // Ambient Radial Glow 2 (Warm Amber bottom-right)
+
+            // Bottom-Right Ambient Warm Glow
             Positioned(
-              bottom: -100,
-              right: -100,
+              bottom: -60,
+              right: -60,
               child: Container(
-                width: 300,
-                height: 300,
+                width: 280,
+                height: 280,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  color: const Color(0xFFD97706).withValues(alpha: 0.12),
                 ),
               ),
             ),
-            // Backdrop Blur to diffuse ambient lights
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-              child: const SizedBox.expand(),
+
+            // Backdrop Blur
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: const SizedBox.expand(),
+              ),
             ),
 
             SafeArea(
@@ -104,7 +124,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                   // Stage Content
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
+                      duration: const Duration(milliseconds: 320),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
                       child: _currentStep == 0
@@ -130,37 +150,55 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _currentStep > 0
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                  onPressed: _prevStep,
+              ? InkWell(
+                  onTap: _prevStep,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Color(0xFFFAF8F3),
+                      size: 18,
+                    ),
+                  ),
                 )
               : Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        ),
+                        color: const Color(0xFFF09E38),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                            color: const Color(0xFFF09E38)
+                                .withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.restaurant_rounded, color: Colors.white, size: 18),
+                      child: const Center(
+                        child: Icon(
+                          Icons.restaurant_rounded,
+                          color: Color(0xFF1E1510),
+                          size: 20,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Text(
                       'MessMate',
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFFAF8F3),
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ],
@@ -168,33 +206,31 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
 
           Row(
             children: [
-              // Persistent Language Switcher Pill
+              // Language Switcher Pill
               InkWell(
                 onTap: () {
-                  ref.read(localizationProvider.notifier).toggleLanguage(isHindi ? 'en' : 'hi');
+                  ref
+                      .read(localizationProvider.notifier)
+                      .toggleLanguage(isHindi ? 'en' : 'hi');
                 },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: const Color(0xFF2C221B),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.language_rounded, size: 15, color: Color(0xFF34D399)),
-                      const SizedBox(width: 6),
-                      Text(
-                        isHindi ? 'हिंदी' : 'English',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    isHindi ? 'हिंदी' : 'English',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFFAF8F3),
+                    ),
                   ),
                 ),
               ),
@@ -202,12 +238,15 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => setState(() => _currentStep = 1),
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        const Color(0xFFFAF8F3).withValues(alpha: 0.7),
+                  ),
                   child: Text(
                     isHindi ? 'छोड़ें' : 'Skip',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF94A3B8),
                     ),
                   ),
                 ),
@@ -220,45 +259,42 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
   }
 
   // ============================================================
-  // STAGE 0: Vibrant 3D Feature Showcase Carousel
+  // STAGE 0: Vibrant Editorial Feature Showcase Carousel
   // ============================================================
   Widget _buildCarouselStage(bool isHindi) {
     final slides = [
       _SlideData(
-        badge: isHindi ? '✨ स्मार्ट व फ्लेक्सिबल' : '✨ SMART & FLEXIBLE',
-        title: isHindi ? 'खाने में पूरी आज़ादी' : 'Smart Meals & Instant Skip',
+        badge: isHindi ? 'स्मार्ट व फ्लेक्सिबल' : 'SMART & FLEXIBLE',
+        title: isHindi ? 'स्मार्ट मील्स और तुरंत स्किप' : 'Smart meals & instant skip',
         description: isHindi
-            ? 'अपनी पसंद का मील चुनें (ब्रेकफ़ास्ट या लंच), और जब खाना न खाना हो तो समय से पहले स्किप करें।'
-            : 'Personalize daily meal choices (Breakfast vs Lunch) and easily skip ahead of time.',
+            ? 'अपनी पसंद का मील चुनें (नाश्ता या लंच) और समय से पहले स्किप करें।'
+            : 'Personalize daily meal choices (Breakfast vs Lunch) and skip ahead of time.',
         imageAsset: 'assets/images/onboard_smart_meals.jpg',
-        glowColor: const Color(0xFF10B981),
         highlights: isHindi
             ? ['चॉइस ग्रुप मील्स', 'कटऑफ टाइमर सुरक्षा', 'फेयर बिलिंग रिबेट']
-            : ['Choice Group Meals', 'Cutoff Timer Security', 'Fair Billing Rebates'],
+            : ['Choice group meals', 'Cutoff timer security', 'Fair billing rebates'],
       ),
       _SlideData(
-        badge: isHindi ? '📊 लाइव हेडकाउंट व हिसाब' : '📊 LIVE HEADCOUNT & BILLING',
-        title: isHindi ? 'सटीक हिसाब, ज़ीरो बर्बादी' : 'Live Kitchen & Fair Passbook',
+        badge: isHindi ? 'लाइव हेडकाउंट व बिलिंग' : 'LIVE HEADCOUNT & BILLING',
+        title: isHindi ? 'लाइव किचन और पारदर्शी पासबुक' : 'Live kitchen & fair passbook',
         description: isHindi
-            ? 'मेस संचालक के लिए किचन का सटीक लाइव खाना काउंट, और मेंबर्स के लिए पारदर्शी डिजिटल पासबुक।'
-            : 'Real-time kitchen cooking counts for owners, and fully transparent digital ledger passbooks for diners.',
+            ? 'मेस संचालक के लिए सटीक कुकिंग हेडकाउंट, और मेंबर्स के लिए डिजिटल पासबुक।'
+            : 'Real-time cooking counts for owners, and a transparent digital ledger for diners.',
         imageAsset: 'assets/images/onboard_live_headcount.jpg',
-        glowColor: const Color(0xFFF59E0B),
         highlights: isHindi
             ? ['रियल-टाइम कुकिंग काउंट', 'पारदर्शी पासबुक', 'ऑटोमैटिक मंथली बिल']
-            : ['Real-Time Cooking Count', 'Transparent Passbook', 'Automated Monthly Bills'],
+            : ['Real-time cooking count', 'Transparent passbook', 'Automated monthly bills'],
       ),
       _SlideData(
-        badge: isHindi ? '🧭 टॉप मेस खोजें' : '🧭 DISCOVER TOP MESSES',
-        title: isHindi ? 'आस-पास के बेस्ट मेस खोजें' : 'Discover & Join Verified Messes',
+        badge: isHindi ? 'टॉप मेस खोजें' : 'DISCOVER TOP MESSES',
+        title: isHindi ? 'वेरिफाइड मेस खोजें व जुड़ें' : 'Discover & join verified messes',
         description: isHindi
-            ? 'दूरी, रेटिंग, वेज/नॉन-वेज बैज और मास्टर मेनू डिशेज़ देखकर आसानी से अपनी मनपसंद मेस से जुड़ें।'
-            : 'Explore nearby verified messes by distance, ratings, Pure Veg badges, dishes, and join with one tap.',
+            ? 'दूरी, रेटिंग, वेज बैज और डिशेज़ देखकर आसानी से अपनी मनपसंद मेस से जुड़ें।'
+            : 'Explore nearby messes by distance, ratings, Veg badges and dishes. Join with one tap.',
         imageAsset: 'assets/images/onboard_discover_messes.jpg',
-        glowColor: const Color(0xFF8B5CF6),
         highlights: isHindi
-            ? ['दूरी व स्टार रेटिंग', 'प्योर वेज बैज', 'एक टैप में जॉइन']
-            : ['Distance & Star Rating', 'Pure Veg Badges', 'One-Tap Join Requests'],
+            ? ['दूरी व स्टार रेटिंग', 'प्योर वेज बैज', 'एक टैप में जॉइन रिक्वेस्ट']
+            : ['Distance & star rating', 'Pure Veg badges', 'One-tap join requests'],
       ),
     ];
 
@@ -273,21 +309,22 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
             itemBuilder: (context, i) {
               final s = slides[i];
               return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF131B2B).withValues(alpha: 0.85),
+                    color: const Color(0xFF221A15),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: s.glowColor.withValues(alpha: 0.35),
-                      width: 1.5,
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
                     ),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
-                        color: s.glowColor.withValues(alpha: 0.18),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
+                        color: Color(0x33000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
                       ),
                     ],
                   ),
@@ -296,129 +333,118 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Top 3D Visual Scene with bottom gradient fade
-                        Stack(
-                          children: [
-                            AspectRatio(
-                              aspectRatio: 1.25,
+                        // Top Illustration Card Area with 16:9 Aspect Ratio
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: AspectRatio(
+                              aspectRatio: 16 / 9,
                               child: Image.asset(
                                 s.imageAsset,
                                 fit: BoxFit.cover,
-                              ),
-                            ),
-                            // Gradient shadow fade over the image bottom
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              height: 90,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      const Color(0xFF131B2B).withValues(alpha: 0.95),
-                                    ],
+                                errorBuilder: (_, _, _) => Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Color(0xFF38483B),
+                                        Color(0xFF243026),
+                                      ],
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.restaurant_rounded,
+                                      color: Color(0xFFF09E38),
+                                      size: 40,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                            // Top badge
-                            Positioned(
-                              top: 14,
-                              left: 14,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                        ),
+
+                        // Card Body
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Cream Pill Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.65),
+                                  color: const Color(0xFFFAF8F3),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: s.glowColor.withValues(alpha: 0.6),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: s.glowColor.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
                                 ),
                                 child: Text(
                                   s.badge,
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
-                                    color: Colors.white,
+                                    color: const Color(0xFF231A14),
                                     letterSpacing: 0.6,
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
 
-                        // Card Body
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(22, 10, 22, 22),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                              const SizedBox(height: 14),
+
+                              // Serif Title
                               Text(
                                 s.title,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
+                                style: GoogleFonts.newsreader(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFFAF8F3),
+                                  height: 1.2,
+                                  letterSpacing: -0.3,
                                 ),
                               ),
+
                               const SizedBox(height: 8),
+
+                              // Subtitle
                               Text(
                                 s.description,
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
-                                  color: const Color(0xFF94A3B8),
-                                  height: 1.5,
+                                  color: const Color(0xFFD6CEB8)
+                                      .withValues(alpha: 0.85),
+                                  height: 1.45,
                                 ),
                               ),
-                              const SizedBox(height: 18),
-                              // Highlight Pills
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: s.highlights.map((h) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.06),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: s.glowColor.withValues(alpha: 0.25),
+
+                              const SizedBox(height: 16),
+
+                              // Checkmark Points
+                              ...s.highlights.map((h) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: Color(0xFFF09E38),
                                       ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.check_circle_rounded,
-                                          size: 14,
-                                          color: s.glowColor,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
                                           h,
                                           style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFFE2E8F0),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFFFAF8F3),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                         ),
@@ -431,12 +457,12 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
           ),
         ),
 
-        // Bottom Controls: Animated Dots & Action Button
+        // Bottom Controls: Animated Dots & Amber Button
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
           child: Column(
             children: [
-              // Animated Page Indicators
+              // 3-Dot Indicator
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(slides.length, (idx) {
@@ -444,75 +470,56 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: isActive ? 28 : 8,
+                    width: isActive ? 26 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF10B981) : Colors.white.withValues(alpha: 0.2),
+                      color: isActive
+                          ? const Color(0xFFF09E38)
+                          : const Color(0xFF382B21),
                       borderRadius: BorderRadius.circular(4),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                                blurRadius: 10,
-                              ),
-                            ]
-                          : null,
                     ),
                   );
                 }),
               ),
               const SizedBox(height: 16),
-              // Gradient CTA Button
+
+              // Golden Amber Next Button
               SizedBox(
                 width: double.infinity,
                 height: 54,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF09E38),
+                    foregroundColor: const Color(0xFF231A14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(27),
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                  ),
+                  onPressed: () {
+                    if (_carouselIndex < slides.length - 1) {
+                      _carouselCtrl.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    } else {
+                      _nextStep();
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _carouselIndex == slides.length - 1
+                            ? (isHindi ? 'शुरू करें! →' : "Let's get started! →")
+                            : (isHindi ? 'अगला →' : 'Next →'),
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF231A14),
+                        ),
                       ),
                     ],
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onPressed: () {
-                      if (_carouselIndex < slides.length - 1) {
-                        _carouselCtrl.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        _nextStep();
-                      }
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _carouselIndex == slides.length - 1
-                              ? (isHindi ? 'शुरू करें' : "Let's Get Started!")
-                              : (isHindi ? 'अगला' : 'Next'),
-                          style: GoogleFonts.outfit(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
-                      ],
-                    ),
                   ),
                 ),
               ),
@@ -524,115 +531,65 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
   }
 
   // ============================================================
-  // STAGE 1: Frosted Glass Bilingual Language Selection
+  // STAGE 1: Bilingual Language Selection
   // ============================================================
   Widget _buildLanguageStage(bool isHindi) {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcoming Visual Banner
+          // Top Intro Card
           Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
+              color: const Color(0xFF221A15),
               borderRadius: BorderRadius.circular(24),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF8F3),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isHindi ? 'MessMate में स्वागत है' : 'Welcome to MessMate',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF231A14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isHindi ? 'अपनी भाषा चुनें' : 'Choose your\nlanguage',
+                  style: GoogleFonts.newsreader(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFAF8F3),
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isHindi
+                      ? 'भारत में मेस संचालकों और भोजनकर्ताओं के लिए विशेष रूप से तैयार।'
+                      : 'Tailored for mess owners and diners in India.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: const Color(0xFFD6CEB8).withValues(alpha: 0.85),
+                  ),
                 ),
               ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                children: [
-                  // Subtle hospitality backdrop
-                  Opacity(
-                    opacity: 0.25,
-                    child: Image.asset(
-                      'assets/images/onboard_discover_messes.jpg',
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF0F172A).withValues(alpha: 0.95),
-                            const Color(0xFF0F172A).withValues(alpha: 0.6),
-                          ],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('🇮🇳', style: TextStyle(fontSize: 12)),
-                              const SizedBox(width: 6),
-                              Text(
-                                isHindi ? 'नमस्ते एवं स्वागतम्' : 'Welcome to MessMate',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFFBBF24),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          isHindi ? 'अपनी पसंदीदा भाषा चुनें' : 'Choose Your Language',
-                          style: GoogleFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isHindi
-                              ? 'मेस संचालक और छात्र दोनों के लिए आसान और पारदर्शी।'
-                              : 'Tailored for both mess owners and diners in India.',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
 
@@ -642,13 +599,13 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
             subtitle: 'Default language across all menus, reports and billing',
             badgeText: 'Global',
             iconText: 'EN',
-            accentGradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+            iconBgColor: const Color(0xFF4E654F),
             isSelected: !isHindi,
             onTap: () {
               ref.read(localizationProvider.notifier).toggleLanguage('en');
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Hindi Card
           _buildLanguageOptionCard(
@@ -656,7 +613,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
             subtitle: 'मेन्यू, दैनिक उपस्थिति, प्लान और बिलिंग सब अपनी भाषा में',
             badgeText: 'देसी व सरल',
             iconText: 'अ',
-            accentGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+            iconBgColor: const Color(0xFFF09E38),
             isSelected: isHindi,
             onTap: () {
               ref.read(localizationProvider.notifier).toggleLanguage('hi');
@@ -665,68 +622,54 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
 
           const SizedBox(height: 20),
 
-          // Helpful Note Box
+          // Note Card
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8), size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    isHindi
-                        ? 'चिंता न करें, आप ऐप के अंदर कभी भी 1 टैप में भाषा बदल सकते हैं।'
-                        : 'Don\'t worry, you can switch language anytime with one tap.',
-                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8), height: 1.4),
-                  ),
-                ),
-              ],
+            child: Text(
+              isHindi
+                  ? 'चिंता न करें, आप ऐप में कभी भी एक टैप से भाषा बदल सकते हैं।'
+                  : "Don't worry, you can switch language anytime with one tap.",
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: const Color(0xFFD6CEB8).withValues(alpha: 0.75),
+                height: 1.4,
+              ),
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
 
-          // Continue Button
+          // Golden Amber Continue Button
           SizedBox(
             width: double.infinity,
             height: 54,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF09E38),
+                foregroundColor: const Color(0xFF231A14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(27),
                 ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+              ),
+              onPressed: _nextStep,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isHindi ? 'आगे बढ़ें →' : 'Continue →',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF231A14),
+                    ),
                   ),
                 ],
-              ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: _nextStep,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isHindi ? 'आगे बढ़ें' : 'Continue',
-                      style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
-                  ],
-                ),
               ),
             ),
           ),
@@ -741,7 +684,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
     required String subtitle,
     required String badgeText,
     required String iconText,
-    required List<Color> accentGradient,
+    required Color iconBgColor,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -749,59 +692,47 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF10B981).withValues(alpha: 0.12)
-              : const Color(0xFF131B2B).withValues(alpha: 0.7),
+          color: const Color(0xFF221A15),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isSelected ? const Color(0xFF10B981) : Colors.white.withValues(alpha: 0.12),
+            color: isSelected
+                ? const Color(0xFFF09E38)
+                : Colors.white.withValues(alpha: 0.08),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
+                    color: const Color(0xFFF09E38).withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
                   ),
                 ]
-              : const [
-                  BoxShadow(
-                    color: Color(0x14000000),
-                    blurRadius: 10,
-                  ),
-                ],
+              : null,
         ),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: accentGradient),
+                color: iconBgColor,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: accentGradient.first.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Center(
                 child: Text(
                   iconText,
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: const Color(0xFFFAF8F3),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,17 +741,18 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: const Color(0xFFFAF8F3),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -828,7 +760,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF94A3B8),
+                            color: const Color(0xFFFAF8F3),
                           ),
                         ),
                       ),
@@ -838,18 +770,42 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                   Text(
                     subtitle,
                     style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF94A3B8),
+                      fontSize: 12,
+                      color: const Color(0xFFD6CEB8).withValues(alpha: 0.75),
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? const Color(0xFF10B981) : const Color(0xFF64748B),
-              size: 26,
-            ),
+            const SizedBox(width: 8),
+            if (isSelected)
+              Container(
+                width: 26,
+                height: 26,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFAF8F3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.check_rounded,
+                    color: Color(0xFF231A14),
+                    size: 18,
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -857,76 +813,78 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
   }
 
   // ============================================================
-  // STAGE 2: 3D Role Selection & Instant Demo Access Bar
+  // STAGE 2: Editorial Role Selection
   // ============================================================
   Widget _buildRoleStage(bool isHindi) {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            isHindi ? 'आप ऐप कैसे इस्तेमाल करेंगे?' : 'Choose Your Role',
-            style: GoogleFonts.outfit(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: -0.5,
+            isHindi ? 'अपना रोल चुनें' : 'Choose your role',
+            style: GoogleFonts.newsreader(
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFAF8F3),
+              letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             isHindi
-                ? 'अपने हिसाब से सही प्रोफाइल चुनें ताकि आपको ज़रूरत के अनुसार फीचर्स मिलें।'
-                : 'Select your role to access features tailored for your everyday mess routine.',
-            style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF94A3B8), height: 1.45),
+                ? 'वह रोल चुनें जो आपके रोज़मर्रा के मेस रूटीन के लिए उपयुक्त हो।'
+                : 'Pick the role that fits your everyday mess routine.',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: const Color(0xFFD6CEB8).withValues(alpha: 0.85),
+            ),
           ),
           const SizedBox(height: 20),
 
-          // Option 1: Mess & Tiffin Owner (मेस संचालक) with 3D Chef Art
-          _buildVibrantRoleCard(
-            badge: isHindi ? '👑 संचालक / वेंडर' : '👑 OWNER / VENDOR',
+          // Card 1: Mess & Tiffin Owner
+          _buildRoleCard(
+            badge: isHindi ? 'संचालक / वेंडर' : 'OWNER / VENDOR',
             title: isHindi ? 'मेस व टिफिन संचालक' : 'Mess & Tiffin Owner',
             subtitle: isHindi
-                ? 'मेस संचालक, कुक और टिफिन सर्विसेज के लिए। समय, लाइव हेडकाउंट, मेनू और बिलिंग मैनेज करें।'
-                : 'For mess owners, cooks, and tiffin services. Manage timings, headcount & bills.',
+                ? 'मेस संचालक, कुक और टिफिन सेवाओं के लिए। समय, हेडकाउंट और बिल संभालें।'
+                : 'For mess owners, cooks and tiffin services. Manage timings, headcount & bills.',
             imageAsset: 'assets/images/role_owner_chef.jpg',
-            accentColor: const Color(0xFF10B981),
             features: isHindi
-                ? ['🍲 लाइव कुकिंग हेडकाउंट', '📋 फ्लेक्सिबल मील प्लान्स', '💰 मंथली बिलिंग व एक्स्ट्रा फीस']
-                : ['🍲 Live Cooking Headcount', '📋 Custom Meal Plans', '💰 Monthly Billing & Extra Fees'],
+                ? ['लाइव कुकिंग हेडकाउंट', 'कस्टम मील प्लान्स', 'मंथली बिलिंग व एक्स्ट्रा फीस']
+                : ['Live cooking headcount', 'Custom meal plans', 'Monthly billing & extra fees'],
             onTap: () => _handleRoleSelection(context, ref, AuthRole.owner),
           ),
 
           const SizedBox(height: 18),
 
-          // Option 2: Diner / Member (भोजन सदस्य) with 3D Student Art
-          _buildVibrantRoleCard(
-            badge: isHindi ? '🎓 विद्यार्थी / कामकाजी' : '🎓 DINER / STUDENT',
-            title: isHindi ? 'भोजन सदस्य / मेस मेंबर' : 'Diner & Student Member',
+          // Card 2: Diner & Student Member
+          _buildRoleCard(
+            badge: isHindi ? 'भोजनकर्ता / छात्र' : 'DINER / STUDENT',
+            title: isHindi ? 'भोजनकर्ता व छात्र मेंबर' : 'Diner & Student Member',
             subtitle: isHindi
-                ? 'विद्यार्थी, कामकाजी और पीजी में रहने वालों के लिए। रोज़ाना खाना, छुट्टियां और हिसाब देखें।'
-                : 'For students, working professionals, and PG residents. Track daily meals & leaves.',
+                ? 'छात्रों, कामकाजी प्रोफेशनल्स और पीजी निवासियों के लिए। दैनिक भोजन और छुट्टियां ट्रैक करें।'
+                : 'For students, working professionals and PG residents. Track daily meals & leaves.',
             imageAsset: 'assets/images/role_student_diner.jpg',
-            accentColor: const Color(0xFFF59E0B),
             features: isHindi
-                ? ['🍱 रोज़ाना मील चॉइस व स्किप', '📖 डिजिटल पासबुक पारदर्शकता', '🌴 छुट्टी व गेस्ट मील']
-                : ['🍱 Daily Choice & Skips', '📖 Digital Passbook', '🌴 Leaves & Guest Meals'],
+                ? ['दैनिक चयन व स्किप', 'डिजिटल पासबुक', 'छुट्टियां व गेस्ट मील्स']
+                : ['Daily choice & skips', 'Digital passbook', 'Leaves & guest meals'],
             onTap: () => _handleRoleSelection(context, ref, AuthRole.student),
           ),
 
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildVibrantRoleCard({
+  Widget _buildRoleCard({
     required String badge,
     required String title,
     required String subtitle,
     required String imageAsset,
-    required Color accentColor,
     required List<String> features,
     required VoidCallback onTap,
   }) {
@@ -934,17 +892,16 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF131B2B).withValues(alpha: 0.85),
+          color: const Color(0xFF221A15),
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
-            color: accentColor.withValues(alpha: 0.4),
-            width: 1.5,
+            color: Colors.white.withValues(alpha: 0.1),
           ),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: accentColor.withValues(alpha: 0.2),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+              color: Color(0x33000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -953,99 +910,101 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top 3D Character Illustration Scene
-              Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1.45,
+              // 16:9 Illustration Banner
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
                     child: Image.asset(
                       imageAsset,
                       fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 70,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            const Color(0xFF131B2B).withValues(alpha: 0.95),
-                          ],
+                      errorBuilder: (_, _, _) => Container(
+                        color: const Color(0xFF2D231C),
+                        child: const Center(
+                          child: Icon(
+                            Icons.restaurant_rounded,
+                            color: Color(0xFFF09E38),
+                            size: 40,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+
+              // Content Details
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Pill Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
+                        color: const Color(0xFFFAF8F3),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: accentColor.withValues(alpha: 0.6)),
                       ),
                       child: Text(
                         badge,
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: const Color(0xFF231A14),
                           letterSpacing: 0.6,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
 
-              // Content Details
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    const SizedBox(height: 12),
+
+                    // Title
                     Text(
                       title,
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFFAF8F3),
+                        letterSpacing: -0.3,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
+                    // Subtitle
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFFD6CEB8).withValues(alpha: 0.85),
                         height: 1.45,
                       ),
                     ),
+
                     const SizedBox(height: 14),
+
+                    // Feature Pill Tags
                     Wrap(
                       spacing: 8,
-                      runSpacing: 6,
+                      runSpacing: 8,
                       children: features.map((f) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
+                            color: Colors.white.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: accentColor.withValues(alpha: 0.25)),
                           ),
                           child: Text(
                             f,
                             style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFE2E8F0),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFFFAF8F3),
                             ),
                           ),
                         );
@@ -1086,11 +1045,16 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: const Color(0xFF221A15),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 20)],
+            boxShadow: const [
+              BoxShadow(color: Color(0x33000000), blurRadius: 20)
+            ],
           ),
-          child: const CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF10B981)),
+          child: const CircularProgressIndicator(
+            strokeWidth: 3,
+            color: Color(0xFFF09E38),
+          ),
         ),
       ),
     );
@@ -1121,7 +1085,8 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(builder: (_) => const StudentSetupPage()),
             );
-          } else if (student.status == 'active' || student.status == 'approved') {
+          } else if (student.status == 'active' ||
+              student.status == 'approved') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),
@@ -1131,7 +1096,11 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => StudentPendingApprovalPage(
-                  initialMessName: student.messId.isNotEmpty ? (ref.read(localizationProvider) == 'hi' ? 'मेस' : 'Mess') : null,
+                  initialMessName: student.messId.isNotEmpty
+                      ? (ref.read(localizationProvider) == 'hi'
+                          ? 'मेस'
+                          : 'Mess')
+                      : null,
                 ),
               ),
             );
@@ -1154,7 +1123,6 @@ class _SlideData {
   final String title;
   final String description;
   final String imageAsset;
-  final Color glowColor;
   final List<String> highlights;
 
   const _SlideData({
@@ -1162,7 +1130,6 @@ class _SlideData {
     required this.title,
     required this.description,
     required this.imageAsset,
-    required this.glowColor,
     required this.highlights,
   });
 }

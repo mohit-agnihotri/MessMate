@@ -14,8 +14,8 @@ import 'role_selection_page.dart';
 
 /// OwnerSetupPage:
 /// 3-step setup wizard for mess owners.
-/// Step 0: Meal Timings & Cut-off (Interactive TimePickers)
-/// Step 1: Dynamic Meal Plans & Pricing (Adapts dynamically to enabled Step 0 slots, allows any decimal skip refund / monthly fee)
+/// Step 0: Meal Timings & Cut-off (Interactive Editorial TimePickers)
+/// Step 1: Dynamic Meal Plans & Pricing (Adapts dynamically to enabled Step 0 slots)
 /// Step 2: Mess Profile & Launch
 class OwnerSetupPage extends ConsumerStatefulWidget {
   const OwnerSetupPage({super.key});
@@ -34,44 +34,44 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   // STEP 0: Meal Timings & Cutoff
   final Map<String, Map<String, dynamic>> _timings = {
     'morning': {
-      'name': 'Breakfast', 'nameHi': 'सुबह का नाश्ता',
-      'slotName': 'नाश्ता', 'slotNameEn': 'Breakfast',
+      'name': 'Breakfast',
+      'nameHi': 'सुबह का नाश्ता',
+      'slotName': 'नाश्ता',
+      'slotNameEn': 'Breakfast',
       'enabled': true,
       'start': '08:00',
       'end': '10:00',
-      'time': '8:00 AM - 10:00 AM',
-      'icon': '☀️',
-      'color': const Color(0xFFF59E0B),
+      'color': const Color(0xFFF09E38),
     },
     'noon': {
-      'name': 'Lunch', 'nameHi': 'दोपहर का खाना',
-      'slotName': 'दोपहर खाना', 'slotNameEn': 'Lunch',
+      'name': 'Lunch',
+      'nameHi': 'दोपहर का खाना',
+      'slotName': 'दोपहर खाना',
+      'slotNameEn': 'Lunch',
       'enabled': true,
       'start': '12:30',
       'end': '14:30',
-      'time': '12:30 PM - 2:30 PM',
-      'icon': '🍲',
-      'color': const Color(0xFFEF4444),
+      'color': const Color(0xFF4E654F),
     },
     'evening': {
-      'name': 'Evening Snacks', 'nameHi': 'शाम का नाश्ता',
-      'slotName': 'शाम नाश्ता', 'slotNameEn': 'Evening Snacks',
+      'name': 'Evening snacks',
+      'nameHi': 'शाम का नाश्ता',
+      'slotName': 'शाम नाश्ता',
+      'slotNameEn': 'Evening Snacks',
       'enabled': false,
       'start': '17:00',
       'end': '18:30',
-      'time': '5:00 PM - 6:30 PM',
-      'icon': '☕',
-      'color': const Color(0xFFD97706),
+      'color': const Color(0xFF8C7A6B),
     },
     'night': {
-      'name': 'Dinner', 'nameHi': 'रात का खाना',
-      'slotName': 'रात खाना', 'slotNameEn': 'Dinner',
+      'name': 'Dinner',
+      'nameHi': 'रात का खाना',
+      'slotName': 'रात खाना',
+      'slotNameEn': 'Dinner',
       'enabled': true,
       'start': '19:30',
       'end': '22:00',
-      'time': '7:30 PM - 10:00 PM',
-      'icon': '🌙',
-      'color': const Color(0xFF6366F1),
+      'color': const Color(0xFF231A14),
     },
   };
   int _cutoffLeadHours = 2;
@@ -94,7 +94,6 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkRoleConflict());
   }
 
-
   Future<void> _checkRoleConflict() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -106,15 +105,22 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: const Color(0xFFFAF8F3),
             title: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 28),
+                const Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFFB93822), size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     isHindi ? 'खाता टकराव' : 'Role Conflict',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18),
+                    style: GoogleFonts.newsreader(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      color: const Color(0xFF231A14),
+                    ),
                   ),
                 ),
               ],
@@ -123,7 +129,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               isHindi
                   ? 'यह ईमेल (${user.email ?? ""}) पहले से ही एक छात्र (${existingStudent.name}) के रूप में पंजीकृत है।\n\nमेस संचालक बनने के लिए कृपया दूसरी ईमेल ID से लॉगिन करें।'
                   : 'This email (${user.email ?? ""}) is already registered as a student (${existingStudent.name}).\n\nPlease log in with a different email to create a mess as owner.',
-              style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF475569)),
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: const Color(0xFF5E6D59),
+                height: 1.45,
+              ),
             ),
             actions: [
               TextButton(
@@ -133,14 +143,18 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   if (mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const RoleSelectionPage()),
                       (r) => false,
                     );
                   }
                 },
                 child: Text(
                   isHindi ? 'दूसरा खाता चुनें' : 'Switch Account',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFB93822),
+                  ),
                 ),
               ),
             ],
@@ -188,6 +202,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
   }
 
+  /// Custom Editorial Time Picker Modal
+  /// Matching Screenshot WhatsApp Image 2026-10-21 at 17.01.05 (1).jpeg
   Future<String?> _showAlarmClockTimePicker({
     required BuildContext context,
     required String title,
@@ -210,109 +226,120 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
             return Container(
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: Color(0xFFFAF8F3),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               padding: EdgeInsets.only(
-                top: 20,
+                top: 14,
                 left: 20,
                 right: 20,
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(10),
+                  // Top Drag Handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD6C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
-                        onPressed: () => Navigator.pop(modalCtx),
-                      ),
-                    ],
+
+                  // Title (Newsreader Serif)
+                  Text(
+                    title,
+                    style: GoogleFonts.newsreader(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF231A14),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+
+                  // Display Card (Big Serif Time + AM/PM Segmented Switch)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: const Color(0xFFF5F3EC),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                      border: Border.all(
+                        color: const Color(0x1A2D231C),
+                      ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2,
-                            color: const Color(0xFFE11D48),
+                          style: GoogleFonts.newsreader(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1,
+                            color: const Color(0xFF231A14),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        // AM / PM Pill Segment
                         Container(
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFE2E8DE),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             children: [
                               GestureDetector(
                                 onTap: () => setModalState(() => isPm = false),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: !isPm ? const Color(0xFFE11D48) : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: !isPm
+                                        ? const Color(0xFF231A14)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Text(
                                     'AM',
                                     style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: !isPm ? Colors.white : const Color(0xFF475569),
+                                      color: !isPm
+                                          ? const Color(0xFFF09E38)
+                                          : const Color(0xFF4E654F),
                                     ),
                                   ),
                                 ),
                               ),
                               GestureDetector(
                                 onTap: () => setModalState(() => isPm = true),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: isPm ? const Color(0xFFE11D48) : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: isPm
+                                        ? const Color(0xFF231A14)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Text(
                                     'PM',
                                     style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: isPm ? Colors.white : const Color(0xFF475569),
+                                      color: isPm
+                                          ? const Color(0xFFF09E38)
+                                          : const Color(0xFF4E654F),
                                     ),
                                   ),
                                 ),
@@ -323,114 +350,157 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      isHindi ? 'घंटा चुनें' : 'Select Hour',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+
+                  // SELECT HOUR (Uppercase Sage Label)
+                  Text(
+                    isHindi ? 'घंटा चुनें' : 'SELECT HOUR',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: const Color(0xFF4E654F),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: List.generate(12, (index) {
-                      final h = index + 1;
-                      final isSelected = selectedHour == h;
-                      return InkWell(
-                        onTap: () => setModalState(() => selectedHour = h),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 46,
-                          height: 40,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFF1F5F9),
+                  const SizedBox(height: 10),
+
+                  // Horizontal 1..12 Hour Row
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: List.generate(12, (i) {
+                        final hourVal = i + 1;
+                        final isSel = selectedHour == hourVal;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: InkWell(
+                            onTap: () =>
+                                setModalState(() => selectedHour = hourVal),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFE2E8F0),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 38,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: isSel
+                                    ? const Color(0xFF231A14)
+                                    : const Color(0xFFE2E8DE),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$hourVal',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: isSel
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isSel
+                                        ? const Color(0xFFF09E38)
+                                        : const Color(0xFF2B3B2C),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          child: Text(
-                            '$h',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 18),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      isHindi ? 'मिनट चुनें' : 'Select Minutes',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                        );
+                      }),
                     ),
                   ),
-                  const SizedBox(height: 8),
+
+                  const SizedBox(height: 20),
+
+                  // SELECT MINUTES (Uppercase Sage Label)
+                  Text(
+                    isHindi ? 'मिनट चुनें' : 'SELECT MINUTES',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: const Color(0xFF4E654F),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 4 Minute Pills (:00, :15, :30, :45)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [0, 15, 30, 45].map((m) {
-                      final isSelected = selectedMinute == m;
-                      return InkWell(
-                        onTap: () => setModalState(() => selectedMinute = m),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF10B981) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
-                            ),
-                          ),
-                          child: Text(
-                            ':${m.toString().padLeft(2, '0')}',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                      final isSel = selectedMinute == m;
+                      final label = ':${m.toString().padLeft(2, '0')}';
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: InkWell(
+                            onTap: () =>
+                                setModalState(() => selectedMinute = m),
+                            borderRadius: BorderRadius.circular(16),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: isSel
+                                    ? const Color(0xFF231A14)
+                                    : const Color(0xFFE2E8DE),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  label,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: isSel
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isSel
+                                        ? const Color(0xFFF09E38)
+                                        : const Color(0xFF2B3B2C),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       );
                     }).toList(),
                   ),
+
                   const SizedBox(height: 24),
+
+                  // Confirm Time Button
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE11D48),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        backgroundColor: const Color(0xFFF09E38),
+                        foregroundColor: const Color(0xFF231A14),
                         elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
                       onPressed: () {
                         int hour24 = selectedHour;
-                        if (isPm && selectedHour < 12) hour24 += 12;
-                        if (!isPm && selectedHour == 12) hour24 = 0;
-                        final result24 =
+                        if (isPm) {
+                          if (hour24 < 12) hour24 += 12;
+                        } else {
+                          if (hour24 == 12) hour24 = 0;
+                        }
+                        final formatted24 =
                             '${hour24.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
-                        Navigator.pop(modalCtx, result24);
+                        Navigator.pop(modalCtx, formatted24);
                       },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check_rounded, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            isHindi ? 'समय तय करें ($displayTime)' : 'Confirm Time ($displayTime)',
-                            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                      child: Text(
+                        isHindi
+                            ? 'समय पुष्टि करें ($displayTime)'
+                            : 'Confirm time ($displayTime)',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF231A14),
+                        ),
                       ),
                     ),
                   ),
@@ -443,57 +513,59 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     );
   }
 
-  Future<void> _pickTime(String slotKey, bool isStart) async {
-    final slot = _timings[slotKey];
-    if (slot == null) return;
-    final currentStr = (slot[isStart ? 'start' : 'end'] as String?) ?? '08:00';
-    final slotName = isHindi ? ((slot['slotName'] as String?) ?? 'भोजन') : ((slot['slotNameEn'] as String?) ?? 'Meal');
-    final title = isHindi ? '$slotName ${isStart ? 'शुरू होने का समय' : 'समाप्त होने का समय'}' : '$slotName ${isStart ? 'Start Time' : 'End Time'}';
+  Future<void> _pickTime(String key, bool isStart) async {
+    final current = isStart
+        ? (_timings[key]!['start'] as String)
+        : (_timings[key]!['end'] as String);
+    final slotName = isHindi
+        ? (_timings[key]!['slotName'] as String)
+        : (_timings[key]!['slotNameEn'] as String);
 
-    final picked24 = await _showAlarmClockTimePicker(
+    final title = isStart
+        ? (isHindi ? '$slotName शुरू समय' : '$slotName start time')
+        : (isHindi ? '$slotName समाप्ति समय' : '$slotName end time');
+
+    final result = await _showAlarmClockTimePicker(
       context: context,
       title: title,
-      initialTime24: currentStr,
+      initialTime24: current,
     );
 
-    if (picked24 != null) {
+    if (result != null) {
       setState(() {
-        slot[isStart ? 'start' : 'end'] = picked24;
-        final s = _formatTime12(slot['start'] as String);
-        final e = _formatTime12(slot['end'] as String);
-        slot['time'] = isHindi ? '$s से $e' : '$s to $e';
+        if (isStart) {
+          _timings[key]!['start'] = result;
+        } else {
+          _timings[key]!['end'] = result;
+        }
       });
+      _syncPlansToActiveSlots();
     }
   }
-  void _adjustCtrl(TextEditingController ctrl, double delta, {double min = 0, double max = 100000}) {
-    final current = double.tryParse(ctrl.text.trim()) ?? 0.0;
-    final updated = (current + delta).clamp(min, max);
-    if (updated == updated.roundToDouble()) {
-      ctrl.text = updated.toInt().toString();
-    } else {
-      ctrl.text = updated.toStringAsFixed(1);
-    }
-    setState(() {});
-  }
+
   void _syncPlansToActiveSlots({bool force = false}) {
     final activeSlots = _timings.entries
         .where((e) => e.value['enabled'] == true)
         .map((e) => e.key)
         .toList();
-    final activeKey = activeSlots.join(',');
 
+    final activeKey = activeSlots.join(',');
     if (!force && activeKey == _lastActiveSlotsKey) return;
     _lastActiveSlotsKey = activeKey;
 
+    final existingState = <String, Map<String, dynamic>>{};
     for (final p in _planConfigs) {
-      (p['feeCtrl'] as TextEditingController?)?.dispose();
-      (p['skipCtrl'] as TextEditingController?)?.dispose();
+      existingState[p['id'] as String] = {
+        'fee': (p['feeCtrl'] as TextEditingController?)?.text,
+        'skip': (p['skipCtrl'] as TextEditingController?)?.text,
+        'maxSkip': p['maxSkip'],
+        'enabled': p['enabled'],
+      };
     }
 
-    final List<Map<String, dynamic>> newConfigs = [];
+    final newConfigs = <Map<String, dynamic>>[];
     final hasMorning = activeSlots.contains('morning');
     final hasNoon = activeSlots.contains('noon');
-    //
     final hasNight = activeSlots.contains('night');
 
     if (activeSlots.length == 4) {
@@ -501,14 +573,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'id': 'full_4',
         'name': 'Full 4-Meal Plan',
         'nameHi': 'चारों वक्त का पूरा खाना',
-        'badge': 'Complete Diet',
-        'badgeHi': 'सर्वोत्तम व पूर्ण आहार',
+        'badge': 'MOST POPULAR',
         'desc': 'Breakfast + Lunch + Evening Snacks + Dinner',
-        'descHi': 'नाश्ता + दोपहर खाना + शाम नाश्ता + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'evening', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 3800.0,
         'skipRefund': 35.0,
         'maxSkip': 8,
@@ -517,16 +586,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'regular_3',
-        'name': '3-Meal Regular Plan',
+        'name': 'Full 3-Meal Plan',
         'nameHi': 'तीनों वक्त का खाना',
-        'badge': 'Most Popular',
-        'badgeHi': 'सबसे लोकप्रिय',
+        'badge': 'POPULAR CHOICE',
         'desc': 'Breakfast + Lunch + Dinner',
-        'descHi': 'नाश्ता + दोपहर का खाना + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 3000.0,
         'skipRefund': 40.0,
         'maxSkip': 6,
@@ -537,14 +603,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'id': 'core_2',
         'name': 'Lunch & Dinner Plan',
         'nameHi': 'दोपहर + रात का खाना',
-        'badge': 'Popular Choice',
-        'badgeHi': 'छात्रों की पसंद',
-        'desc': 'Lunch and Dinner daily',
-        'descHi': 'दोपहर का खाना और रात का खाना',
+        'badge': 'POPULAR CHOICE',
+        'desc': 'Lunch and dinner daily',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 2400.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -553,17 +616,14 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'choice_flex',
-        'name': 'Flexi 3-Meal Plan (Breakfast/Snacks)',
-        'nameHi': 'फ्लेक्सिबल प्लान (नाश्ता या शाम नाश्ता)',
-        'badge': 'Super Flexible',
-        'badgeHi': 'सुपर फ्लेक्सिबल',
+        'name': 'Flexi Choice Plan',
+        'nameHi': 'फ्लेक्सी चॉइस प्लान',
+        'badge': 'FLEXI CHOICE',
         'desc': 'Lunch & Dinner + Choice between Breakfast or Snacks',
-        'descHi': 'दोपहर व रात अनिवार्य, सुबह का नाश्ता या शाम का नाश्ता में से कोई 1',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': true,
         'choiceSlots': ['morning', 'evening'],
-        'choiceDesc': 'Choice between Breakfast or Evening Snacks',
-        'choiceDescHi': 'नाश्ता या शाम नाश्ता में से कोई 1',
+        'choiceDesc': 'Student picks 1: Breakfast or Snacks',
         'monthlyFee': 2800.0,
         'skipRefund': 40.0,
         'maxSkip': 6,
@@ -573,16 +633,13 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       newConfigs.add({
         'id': 'single_choice',
         'name': 'Single Meal Choice Plan',
-        'nameHi': 'सिंगल मील प्लान (दोपहर या रात)',
-        'badge': 'Budget Friendly',
-        'badgeHi': 'किफायती प्लान',
-        'desc': 'Single meal (Lunch or Dinner)',
-        'descHi': 'छात्र केवल दोपहर या रात का भोजन चुन सकते हैं',
+        'nameHi': 'सिंगल मील प्लान',
+        'badge': 'BUDGET FRIENDLY',
+        'desc': 'Single meal: Lunch or Dinner',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': ['noon', 'night'],
-        'choiceDesc': 'Choice between Lunch or Dinner',
-        'choiceDescHi': 'दोपहर या रात में से कोई 1',
+        'choiceDesc': 'Student picks 1: Lunch or Dinner',
         'monthlyFee': 1500.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
@@ -593,14 +650,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'id': 'full_3',
         'name': 'Full 3-Meal Plan',
         'nameHi': 'तीनों वक्त का खाना',
-        'badge': 'Most Popular',
-        'badgeHi': 'सबसे लोकप्रिय',
+        'badge': 'MOST POPULAR',
         'desc': 'Breakfast + Lunch + Dinner',
-        'descHi': 'सुबह का नाश्ता + दोपहर का खाना + रात का खाना',
         'fixedMeals': ['morning', 'noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 3000.0,
         'skipRefund': 40.0,
         'maxSkip': 6,
@@ -611,14 +665,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'id': 'core_2',
         'name': 'Lunch & Dinner Plan',
         'nameHi': 'दोपहर + रात का खाना',
-        'badge': 'Popular Choice',
-        'badgeHi': 'छात्रों की पसंद',
-        'desc': 'Lunch and Dinner daily',
-        'descHi': 'दोपहर का खाना और रात का खाना',
+        'badge': 'POPULAR CHOICE',
+        'desc': 'Lunch and dinner daily',
         'fixedMeals': ['noon', 'night'],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 2400.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -627,17 +678,14 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       newConfigs.add({
         'id': 'choice_morning_or_noon',
-        'name': 'Flexi Choice Plan (Breakfast/Lunch + Dinner)',
+        'name': 'Flexi Choice Plan',
         'nameHi': 'फ्लेक्सी चॉइस प्लान',
-        'badge': 'Flexi Choice',
-        'badgeHi': 'फ्लेक्सी चॉइस',
-        'desc': 'Guaranteed Dinner + Choice between Breakfast or Lunch',
-        'descHi': 'रात का खाना पक्का + सुबह नाश्ता या दोपहर खाने में से कोई 1',
+        'badge': 'FLEXI CHOICE',
+        'desc': 'Guaranteed Dinner + choice of Breakfast or Lunch',
         'fixedMeals': ['night'],
         'hasChoice': true,
         'choiceSlots': ['morning', 'noon'],
-        'choiceDesc': 'Choice between Breakfast or Lunch',
-        'choiceDescHi': 'सुबह का नाश्ता या दोपहर खाना में से कोई 1',
+        'choiceDesc': 'Student picks 1: Breakfast or Lunch',
         'monthlyFee': 2200.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -647,89 +695,30 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       newConfigs.add({
         'id': 'single_choice',
         'name': 'Single Meal Choice Plan',
-        'nameHi': 'सिंगल मील प्लान (दोपहर या रात)',
-        'badge': 'Budget Friendly',
-        'badgeHi': 'बजट फ्रेंडली',
-        'desc': 'Single meal (Lunch or Dinner)',
-        'descHi': 'केवल एक वक्त का खाना (दोपहर या रात)',
+        'nameHi': 'सिंगल मील प्लान',
+        'badge': 'BUDGET FRIENDLY',
+        'desc': 'Single meal: Lunch or Dinner',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': ['noon', 'night'],
-        'choiceDesc': 'Choice between Lunch or Dinner',
-        'choiceDescHi': 'दोपहर या रात में से कोई 1',
+        'choiceDesc': 'Student picks 1: Lunch or Dinner',
         'monthlyFee': 1500.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
         'enabled': false,
       });
-    } else if (activeSlots.length == 3) {
-      newConfigs.add({
-        'id': 'full_active_3',
-        'name': 'Full 3-Meal Plan',
-        'nameHi': 'तीनों वक्त का खाना',
-        'badge': 'Full Plan',
-        'badgeHi': 'फुल प्लान',
-        'desc': activeSlots.map((s) => _timings[s]!['slotNameEn']).join(' + '),
-        'descHi': activeSlots.map((s) => _timings[s]!['slotName']).join(' + '),
-        'fixedMeals': List<String>.from(activeSlots),
-        'hasChoice': false,
-        'choiceSlots': <String>[],
-        'choiceDesc': '',
-        'monthlyFee': 3000.0,
-        'skipRefund': 40.0,
-        'maxSkip': 6,
-        'enabled': true,
-      });
-
-      newConfigs.add({
-        'id': 'core_2_custom',
-        'name': '2-Meal Core Plan',
-        'nameHi': 'दो वक्त का खाना',
-        'badge': 'Popular Plan',
-        'badgeHi': 'पॉपुलर प्लान',
-        'desc': '${_timings[activeSlots[1]]!['slotNameEn']} + ${_timings[activeSlots[2]]!['slotNameEn']}',
-        'descHi': '${_timings[activeSlots[1]]!['slotName']} + ${_timings[activeSlots[2]]!['slotName']}',
-        'fixedMeals': [activeSlots[1], activeSlots[2]],
-        'hasChoice': false,
-        'choiceSlots': <String>[],
-        'choiceDesc': '',
-        'monthlyFee': 2400.0,
-        'skipRefund': 45.0,
-        'maxSkip': 6,
-        'enabled': true,
-      });
-
-      newConfigs.add({
-        'id': 'choice_custom',
-        'name': 'Flexi Choice Plan',
-        'nameHi': 'फ्लेक्सी चॉइस प्लान',
-        'badge': 'Flexible',
-        'badgeHi': 'फ्लेक्सिबल',
-        'desc': '${_timings[activeSlots.last]!['slotNameEn']} + Choice',
-        'descHi': '${_timings[activeSlots.last]!['slotName']} + विकल्प',
-        'fixedMeals': [activeSlots.last],
-        'hasChoice': true,
-        'choiceSlots': [activeSlots[0], activeSlots[1]],
-        'choiceDesc': '${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
-        'choiceDescHi': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
-        'monthlyFee': 2200.0,
-        'skipRefund': 45.0,
-        'maxSkip': 6,
-        'enabled': true,
-      });
     } else if (activeSlots.length == 2) {
       newConfigs.add({
         'id': 'full_2',
-        'name': '${_timings[activeSlots[0]]!['slotNameEn']} + ${_timings[activeSlots[1]]!['slotNameEn']} Plan',
-        'nameHi': '${_timings[activeSlots[0]]!['slotName']} + ${_timings[activeSlots[1]]!['slotName']} प्लान',
-        'badge': 'Full Plan',
-        'badgeHi': 'फुल प्लान',
+        'name':
+            '${_timings[activeSlots[0]]!['slotNameEn']} + ${_timings[activeSlots[1]]!['slotNameEn']} Plan',
+        'nameHi':
+            '${_timings[activeSlots[0]]!['slotName']} + ${_timings[activeSlots[1]]!['slotName']} प्लान',
+        'badge': 'MOST POPULAR',
         'desc': 'Both meals daily',
-        'descHi': 'दोनों वक्त का नियमित खाना',
         'fixedMeals': List<String>.from(activeSlots),
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
         'monthlyFee': 2500.0,
         'skipRefund': 45.0,
         'maxSkip': 6,
@@ -740,35 +729,31 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'id': 'single_choice_2',
         'name': 'Single Meal Choice Plan',
         'nameHi': 'सिंगल मील प्लान',
-        'badge': 'Single Meal',
-        'badgeHi': 'सिंगल मील',
+        'badge': 'BUDGET FRIENDLY',
         'desc': 'Single meal daily',
-        'descHi': 'केवल एक वक्त का भोजन',
         'fixedMeals': <String>[],
         'hasChoice': true,
         'choiceSlots': List<String>.from(activeSlots),
-        'choiceDesc': '${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
-        'choiceDescHi': '${_timings[activeSlots[0]]!['slotName']} या ${_timings[activeSlots[1]]!['slotName']}',
-        'monthlyFee': 1500.0,
+        'choiceDesc':
+            'Student picks 1: ${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
+        'monthlyFee': 1400.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
         'enabled': true,
       });
-    } else if (activeSlots.length == 1) {
-      final slotKey = activeSlots.first;
+    } else {
       newConfigs.add({
-        'id': 'single_only',
-        'name': 'Daily ${_timings[slotKey]!['slotNameEn']} Plan',
-        'nameHi': 'केवल ${_timings[slotKey]!['slotName']} प्लान',
-        'badge': 'Single Meal',
-        'badgeHi': 'सिंगल मील',
-        'desc': 'Daily ${_timings[slotKey]!['slotNameEn']}',
-        'descHi': 'प्रतिदिन ${_timings[slotKey]!['slotName']}',
-        'fixedMeals': [slotKey],
+        'id': 'solo_1',
+        'name':
+            '${_timings[activeSlots.first]!['slotNameEn']} Only Plan',
+        'nameHi':
+            'केवल ${_timings[activeSlots.first]!['slotName']} प्लान',
+        'badge': 'STANDARD PLAN',
+        'desc': 'Single daily meal',
+        'fixedMeals': [activeSlots.first],
         'hasChoice': false,
         'choiceSlots': <String>[],
-        'choiceDesc': '',
-        'monthlyFee': 1500.0,
+        'monthlyFee': 1600.0,
         'skipRefund': 50.0,
         'maxSkip': 4,
         'enabled': true,
@@ -776,82 +761,93 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     }
 
     for (final p in newConfigs) {
-      final fee = p['monthlyFee'] as double;
-      final refund = p['skipRefund'] as double;
-      p['feeCtrl'] = TextEditingController(text: fee.toInt().toString());
-      p['skipCtrl'] = TextEditingController(
-        text: refund == refund.roundToDouble() ? refund.toInt().toString() : refund.toString(),
-      );
+      final pid = p['id'] as String;
+      final prev = existingState[pid];
+      if (prev != null) {
+        p['feeCtrl'] = TextEditingController(
+            text: prev['fee'] ?? (p['monthlyFee'] as double).toInt().toString());
+        p['skipCtrl'] = TextEditingController(
+            text: prev['skip'] ?? (p['skipRefund'] as double).toInt().toString());
+        p['maxSkip'] = prev['maxSkip'] ?? p['maxSkip'];
+        p['enabled'] = prev['enabled'] ?? p['enabled'];
+      } else {
+        p['feeCtrl'] = TextEditingController(
+            text: (p['monthlyFee'] as double).toInt().toString());
+        p['skipCtrl'] = TextEditingController(
+            text: (p['skipRefund'] as double).toInt().toString());
+      }
     }
 
-    _planConfigs = newConfigs;
+    setState(() => _planConfigs = newConfigs);
   }
-  void _nextPage() {
-    if (_currentStep == 0) {
-      final activeSlots = _timings.entries.where((e) => e.value['enabled'] == true).toList();
-      if (activeSlots.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isHindi ? 'कृपया कम से कम एक मील स्लॉट चालू रखें।' : 'Please keep at least one meal slot enabled.'),
-            backgroundColor: Color(0xFFEF4444),
-          ),
-        );
-        return;
-      }
-      _syncPlansToActiveSlots();
-    } else if (_currentStep == 1) {
-      final enabledPlans = _planConfigs.where((p) => p['enabled'] as bool).toList();
-      if (enabledPlans.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isHindi ? 'कृपया कम से कम एक मील प्लान ऑन रखें।' : 'Please enable at least one meal plan.'),
-            backgroundColor: Color(0xFFEF4444),
-          ),
-        );
-        return;
-      }
-    }
 
+  void _nextPage() {
     if (_currentStep < 2) {
-      setState(() => _currentStep++);
-      _pageController.animateToPage(
-        _currentStep,
+      _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      setState(() => _currentStep++);
     }
   }
 
   void _prevPage() {
     if (_currentStep > 0) {
-      setState(() => _currentStep--);
-      _pageController.animateToPage(
-        _currentStep,
+      _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      setState(() => _currentStep--);
     }
+  }
+
+  void _adjustCtrl(TextEditingController ctrl, double delta) {
+    final current = double.tryParse(ctrl.text) ?? 0.0;
+    final next = (current + delta).clamp(0.0, 99999.0);
+    ctrl.text = next == next.roundToDouble()
+        ? next.toInt().toString()
+        : next.toStringAsFixed(1);
+    setState(() {});
   }
 
   Future<void> _finishSetup() async {
     final messName = _messNameCtrl.text.trim();
-    if (messName.isEmpty) {
+    final ownerName = _ownerNameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (messName.isEmpty || ownerName.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isHindi ? 'कृपया मेस का नाम दर्ज करें।' : 'Please enter mess name.'),
-          backgroundColor: Color(0xFFEF4444),
+          content: Text(isHindi
+              ? 'कृपया सभी अनिवार्य फ़ील्ड्स (मेस का नाम, अपना नाम, मोबाइल नंबर) भरें।'
+              : 'Please fill all required fields (Mess Name, Owner Name, Phone).'),
+          backgroundColor: const Color(0xFFB93822),
         ),
       );
       return;
     }
 
-    final phone = _phoneCtrl.text.trim();
-    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
-    if (!phoneRegex.hasMatch(phone)) {
+    final phoneDigits = phone.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length != 10 || !RegExp(r'^[6-9]').hasMatch(phoneDigits)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isHindi ? 'कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.'),
-          backgroundColor: Color(0xFFEF4444),
+          content: Text(isHindi
+              ? 'कृपया 10 अंकों का मान्य भारतीय मोबाइल नंबर दर्ज करें।'
+              : 'Please enter a valid 10-digit mobile number.'),
+          backgroundColor: const Color(0xFFB93822),
+        ),
+      );
+      return;
+    }
+
+    final enabledPlans = _planConfigs.where((p) => p['enabled'] == true).toList();
+    if (enabledPlans.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isHindi
+              ? 'कम से कम एक मील प्लान चालू रखना आवश्यक है।'
+              : 'At least one meal plan must be enabled.'),
+          backgroundColor: const Color(0xFFB93822),
         ),
       );
       return;
@@ -860,51 +856,49 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     setState(() => _isSubmitting = true);
 
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      final effectiveOwnerId = currentUser?.uid ?? 'temp_owner';
       final appService = ref.read(appServiceProvider);
+      final user = FirebaseAuth.instance.currentUser;
+      final effectiveOwnerId =
+          user?.uid ?? 'owner_${DateTime.now().millisecondsSinceEpoch}';
 
-      final messId = 'mess_${effectiveOwnerId.substring(0, effectiveOwnerId.length > 8 ? 8 : effectiveOwnerId.length)}_${DateTime.now().millisecondsSinceEpoch % 10000}';
+      final adminConfig = await AdminService().getGlobalConfig();
+      final trialDays = adminConfig.defaultTrialDays;
+      final trialStart = DateTime.now();
+      final trialExpiry = trialStart.add(Duration(days: trialDays));
+
+      final messId = 'mess_${DateTime.now().millisecondsSinceEpoch}';
       final messCode = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
 
-      final Map<String, Map<String, String>> mealTimingsMap = {};
-      _timings.forEach((k, v) {
-        mealTimingsMap[k] = {
-          'start': v['start'] as String,
-          'end': v['end'] as String,
-          'enabled': (v['enabled'] as bool) ? 'true' : 'false',
+      final timingsMap = <String, Map<String, String>>{};
+      for (final entry in _timings.entries) {
+        timingsMap[entry.key] = {
+          'enabled': entry.value['enabled'].toString(),
+          'start': entry.value['start'].toString(),
+          'end': entry.value['end'].toString(),
+          'name': entry.value['name'].toString(),
         };
-      });
-
-      final enabledPlans = _planConfigs.where((p) => p['enabled'] as bool).toList();
-      double baseFee = 3000.0;
-      double perMealRefund = 40.0;
-
-      if (enabledPlans.isNotEmpty) {
-        final first = enabledPlans.first;
-        baseFee = double.tryParse((first['feeCtrl'] as TextEditingController?)?.text ?? first['monthlyFee'].toString()) ?? 3000.0;
-        perMealRefund = double.tryParse((first['skipCtrl'] as TextEditingController?)?.text ?? first['skipRefund'].toString()) ?? 40.0;
       }
 
-      final adminConfig = await ref.read(adminServiceProvider).getGlobalConfig();
-      final now = DateTime.now();
-      final trialStart = adminConfig.globalTrialEnabled ? now : null;
-      final trialExpiry = adminConfig.globalTrialEnabled
-          ? now.add(Duration(days: adminConfig.defaultTrialDays))
-          : null;
+      final firstPlan = enabledPlans.first;
+      final defaultMonthlyFee =
+          double.tryParse((firstPlan['feeCtrl'] as TextEditingController).text) ??
+              3000.0;
+      final defaultSkipRefund =
+          double.tryParse((firstPlan['skipCtrl'] as TextEditingController).text) ??
+              40.0;
 
       final newMess = MessModel(
         messId: messId,
-        ownerId: effectiveOwnerId,
         name: messName,
-        ownerName: _ownerNameCtrl.text.trim().isEmpty ? 'Owner' : _ownerNameCtrl.text.trim(),
+        ownerId: effectiveOwnerId,
+        ownerName: ownerName.isEmpty ? 'Owner' : ownerName,
         ownerPhone: phone,
         gpsLat: 0.0,
         gpsLng: 0.0,
         messCode: messCode,
-        monthlyFee: baseFee,
-        perMealRate: perMealRefund,
-        mealTimings: mealTimingsMap,
+        monthlyFee: defaultMonthlyFee,
+        perMealRate: defaultSkipRefund,
+        mealTimings: timingsMap,
         cutoffHours: _cutoffLeadHours,
         foodType: _foodType,
         capacity: int.tryParse(_capacityCtrl.text.trim()) ?? 50,
@@ -929,14 +923,19 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
       for (final planConfig in enabledPlans) {
         final planId = '${messId}_${planConfig['id']}';
-        final List<ChoiceGroupModel> choiceGroups = [];
+        final choiceGroups = <ChoiceGroupModel>[];
 
         if (planConfig['hasChoice'] as bool) {
-          final choiceSlots = List<String>.from(planConfig['choiceSlots'] as List);
+          final choiceSlots =
+              List<String>.from(planConfig['choiceSlots'] as List);
           choiceGroups.add(
             ChoiceGroupModel(
               groupId: 'cg_${planConfig['id']}',
-              name: isHindi ? (planConfig['choiceDescHi'] as String? ?? planConfig['choiceDesc'] as String) : (planConfig['choiceDesc'] as String),
+              name: isHindi
+                  ? (planConfig['choiceDescHi'] as String? ??
+                      planConfig['choiceDesc'] as String? ??
+                      'Meal Choice')
+                  : (planConfig['choiceDesc'] as String? ?? 'Meal Choice'),
               availableMeals: choiceSlots,
               minSelectable: 1,
               maxSelectable: 1,
@@ -944,13 +943,19 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           );
         }
 
-        final fee = double.tryParse((planConfig['feeCtrl'] as TextEditingController?)?.text ?? planConfig['monthlyFee'].toString()) ?? 3000.0;
-        final refund = double.tryParse((planConfig['skipCtrl'] as TextEditingController?)?.text ?? planConfig['skipRefund'].toString()) ?? 40.0;
+        final fee = double.tryParse(
+                (planConfig['feeCtrl'] as TextEditingController).text) ??
+            defaultMonthlyFee;
+        final refund = double.tryParse(
+                (planConfig['skipCtrl'] as TextEditingController).text) ??
+            defaultSkipRefund;
 
         final mealPlan = MealPlanModel(
           planId: planId,
           messId: messId,
-          name: isHindi ? (planConfig['nameHi'] as String? ?? planConfig['name'] as String) : (planConfig['name'] as String),
+          name: isHindi
+              ? (planConfig['nameHi'] as String? ?? planConfig['name'] as String)
+              : (planConfig['name'] as String),
           monthlyFee: fee,
           extraMealRate: refund,
           fixedMeals: List<String>.from(planConfig['fixedMeals'] as List),
@@ -965,7 +970,9 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         await appService.saveMealPlan(mealPlan);
       }
 
-      ref.read(authProvider.notifier).setDemoUser(userId: effectiveOwnerId, role: AuthRole.owner);
+      ref
+          .read(authProvider.notifier)
+          .setDemoUser(userId: effectiveOwnerId, role: AuthRole.owner);
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -977,8 +984,10 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isHindi ? 'मेस सेटअप करने में त्रुटि: $e' : 'Error setting up mess: $e'),
-            backgroundColor: const Color(0xFFEF4444),
+            content: Text(isHindi
+                ? 'मेस सेटअप करने में त्रुटि: $e'
+                : 'Error setting up mess: $e'),
+            backgroundColor: const Color(0xFFB93822),
           ),
         );
       }
@@ -989,40 +998,65 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-        return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          isHindi ? 'मेस सेटअप' : 'Mess Setup',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18, color: const Color(0xFF0F172A)),
-        ),
-        centerTitle: true,
-        leading: _currentStep > 0
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-                onPressed: _prevPage,
-              )
-            : null,
-      ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F3EC),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              color: Colors.white,
+            // Header Bar with Back Button & Serif Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 children: [
-                  _buildStepBubble(0, isHindi ? '1. समय' : '1. Timings'),
-                  _buildStepDivider(0),
-                  _buildStepBubble(1, isHindi ? '2. प्लान्स' : '2. Plans'),
-                  _buildStepDivider(1),
-                  _buildStepBubble(2, isHindi ? '3. प्रोफाइल' : '3. Profile'),
+                  InkWell(
+                    onTap: _currentStep > 0
+                        ? _prevPage
+                        : () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE2E8DE),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          size: 18,
+                          color: Color(0xFF231A14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    isHindi ? 'मेस सेटअप' : 'Mess setup',
+                    style: GoogleFonts.newsreader(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF231A14),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+
+            // Stepper Indicator (1 Timings, 2 Plans, 3 Profile)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+              child: Row(
+                children: [
+                  _buildStepBubble(0, isHindi ? 'समय' : 'Timings'),
+                  _buildStepDivider(0),
+                  _buildStepBubble(1, isHindi ? 'प्लान्स' : 'Plans'),
+                  _buildStepDivider(1),
+                  _buildStepBubble(2, isHindi ? 'प्रोफाइल' : 'Profile'),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
 
             Expanded(
               child: PageView(
@@ -1045,97 +1079,139 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     final isDone = _currentStep > stepIndex;
     final isActive = _currentStep == stepIndex;
 
-    Color bg = const Color(0xFFF1F5F9);
-    Color fg = const Color(0xFF64748B);
+    Color bg = const Color(0xFFCBD6C7);
+    Color fg = const Color(0xFF7A7971);
 
     if (isActive) {
-      bg = const Color(0xFFE11D48);
-      fg = Colors.white;
+      bg = const Color(0xFFF09E38);
+      fg = const Color(0xFF231A14);
     } else if (isDone) {
-      bg = const Color(0xFF10B981);
+      bg = const Color(0xFF4E654F);
       fg = Colors.white;
     }
 
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Center(
-              child: isDone
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : Text(
-                      '${stepIndex + 1}',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: fg),
+    return Column(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: isDone
+                ? const Icon(Icons.check_rounded, size: 20, color: Colors.white)
+                : Text(
+                    '${stepIndex + 1}',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: fg,
                     ),
-            ),
+                  ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? const Color(0xFFE11D48) : const Color(0xFF64748B),
-            ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            color: isActive
+                ? const Color(0xFF231A14)
+                : const Color(0xFF7A7971),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildStepDivider(int afterStep) {
     final isDone = _currentStep > afterStep;
-    return Container(
-      width: 24,
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      color: isDone ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 20),
+        color: isDone ? const Color(0xFF4E654F) : const Color(0x2B2D231C),
+      ),
     );
   }
 
+  // ============================================================
+  // STEP 0: Set Meal Timings
+  // Matching WhatsApp Image 2026-10-21 at 17.01.05 (2).jpeg
+  // ============================================================
   Widget _buildStep0Timings() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStepHeader(
-            1,
-            isHindi ? 'भोजन का समय तय करें' : 'Set Meal Timings',
-            isHindi ? 'आपकी मेस में कौन-कौन से वक्त खाना बनता है? चालू स्लॉट चुनें और समय सेट करें।' : 'Which meals do you serve? Enable the active slots and set daily timings.',
+          // Step 1 of 3 Pill Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE3BF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isHindi ? 'चरण 1 / 3' : 'Step 1 of 3',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF8F4700),
+              ),
+            ),
           ),
-          const SizedBox(height: 20),
 
+          const SizedBox(height: 8),
+
+          // Headline
+          Text(
+            isHindi ? 'भोजन का समय तय करें' : 'Set meal timings',
+            style: GoogleFonts.newsreader(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF231A14),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            isHindi
+                ? 'आप कौन-से भोजन परोसते हैं? सक्रिय स्लॉट चालू करें और दैनिक समय निर्धारित करें।'
+                : 'Which meals do you serve? Enable the active slots and set daily timings.',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: const Color(0xFF7A7971),
+              height: 1.4,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // 4 Meal Slot Cards
           ..._timings.entries.map((entry) {
             final key = entry.key;
             final data = entry.value;
             final isEnabled = data['enabled'] as bool;
             final color = data['color'] as Color;
+            final name = isHindi ? (data['nameHi'] as String) : (data['name'] as String);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFFAF8F3),
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: isEnabled ? color.withOpacity(0.5) : const Color(0xFFE2E8F0),
-                  width: isEnabled ? 1.5 : 1.0,
+                  color: isEnabled
+                      ? const Color(0x2B2D231C)
+                      : const Color(0x142D231C),
                 ),
-                boxShadow: isEnabled
-                    ? [
-                        BoxShadow(
-                          color: color.withOpacity(0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1143,36 +1219,37 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                   Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Text(data['icon'] as String, style: const TextStyle(fontSize: 20)),
+                          color: color,
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isHindi ? (data['nameHi'] as String? ?? data['name'] as String) : (data['name'] as String),
-                              style: GoogleFonts.outfit(
+                              name,
+                              style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: isEnabled ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                                color: const Color(0xFF231A14),
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              isEnabled ? (isHindi ? 'चालू है' : 'Active') : (isHindi ? 'बंद है' : 'Disabled'),
+                              isEnabled
+                                  ? (isHindi ? 'सक्रिय' : 'Active')
+                                  : (isHindi ? 'निष्क्रिय' : 'Disabled'),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isEnabled ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                                color: isEnabled
+                                    ? const Color(0xFF4E654F)
+                                    : const Color(0xFF9E9A90),
                               ),
                             ),
                           ],
@@ -1180,11 +1257,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                       ),
                       Switch.adaptive(
                         value: isEnabled,
-                        activeColor: color,
+                        activeTrackColor: const Color(0xFF4E654F),
+                        activeThumbColor: const Color(0xFFFAF8F3),
                         onChanged: (val) {
-                          setState(() {
-                            data['enabled'] = val;
-                          });
+                          setState(() => data['enabled'] = val);
+                          _syncPlansToActiveSlots();
                         },
                       ),
                     ],
@@ -1192,15 +1269,11 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
                   if (isEnabled) ...[
                     const SizedBox(height: 14),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    const SizedBox(height: 12),
-
                     Text(
-                      isHindi ? 'समय बदलें:' : 'Tap to change time:',
+                      isHindi ? 'समय बदलने के लिए टैप करें' : 'Tap to change time',
                       style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
+                        fontSize: 11,
+                        color: const Color(0xFF7A7971),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1210,68 +1283,82 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                         Expanded(
                           child: InkWell(
                             onTap: () => _pickTime(key, true),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                    color: const Color(0x1A2D231C)),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF64748B)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(isHindi ? 'शुरू' : 'From', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
-                                        Text(
-                                          _formatTime12(data['start'] as String),
-                                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-                                        ),
-                                      ],
+                                  Text(
+                                    isHindi ? 'से' : 'From',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      color: const Color(0xFF7A7971),
                                     ),
                                   ),
-                                  const Icon(Icons.edit, size: 14, color: Color(0xFF94A3B8)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatTime12(data['start'] as String),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF231A14),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(isHindi ? 'से' : 'to', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            isHindi ? 'से' : 'to',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF7A7971),
+                            ),
+                          ),
                         ),
                         Expanded(
                           child: InkWell(
                             onTap: () => _pickTime(key, false),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                    color: const Color(0x1A2D231C)),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.access_time_filled_rounded, size: 16, color: Color(0xFF64748B)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(isHindi ? 'समाप्त' : 'To', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
-                                        Text(
-                                          _formatTime12(data['end'] as String),
-                                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-                                        ),
-                                      ],
+                                  Text(
+                                    isHindi ? 'तक' : 'To',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      color: const Color(0xFF7A7971),
                                     ),
                                   ),
-                                  const Icon(Icons.edit, size: 14, color: Color(0xFF94A3B8)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatTime12(data['end'] as String),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF231A14),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1285,49 +1372,48 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
             );
           }),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
+          // Cut-Off Notice Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: const Color(0xFFFAF8F3),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0x1A2D231C)),
             ),
             child: Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B82F6).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.timer_outlined, color: Color(0xFF3B82F6)),
-                  ),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isHindi ? 'कटऑफ समय' : 'Cut-off Notice',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                        isHindi ? 'कट-ऑफ नोटिस' : 'Cut-off notice',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF231A14),
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isHindi ? 'खाना शुरू होने से कितने घंटे पहले छात्र मील स्किप कर सकता है?' : 'How many hours before meal start can a student skip?',
-                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                        isHindi
+                            ? 'भोजन शुरू होने से कितने घंटे पहले छात्र स्किप कर सकता है'
+                            : 'Hours before a meal starts that a student can skip',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF7A7971),
+                          height: 1.3,
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildMiniStepBtn('-', () {
+                    _buildRoundStepBtn('-', () {
                       if (_cutoffLeadHours > 1) {
                         setState(() => _cutoffLeadHours--);
                       }
@@ -1335,11 +1421,15 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
-                        isHindi ? '$_cutoffLeadHours घंटे' : '$_cutoffLeadHours hours',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
+                        '$_cutoffLeadHours h',
+                        style: GoogleFonts.newsreader(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF231A14),
+                        ),
                       ),
                     ),
-                    _buildMiniStepBtn('+', () {
+                    _buildRoundStepBtn('+', () {
                       if (_cutoffLeadHours < 6) {
                         setState(() => _cutoffLeadHours++);
                       }
@@ -1351,535 +1441,705 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           ),
 
           const SizedBox(height: 28),
-          _buildNextBtn(label: isHindi ? 'आगे बढ़ें: प्लान्स' : 'Next: Meal Plans', onTap: _nextPage),
+
+          // Next Button
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF09E38),
+                foregroundColor: const Color(0xFF231A14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: _nextPage,
+              child: Text(
+                isHindi ? 'आगे: मील प्लान्स →' : 'Next: meal plans →',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF231A14),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
+
+  // ============================================================
+  // STEP 1: Plans & Pricing
+  // Matching WhatsApp Image 2026-10-21 at 17.01.06 (2).jpeg
+  // ============================================================
   Widget _buildStep1Plans() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStepHeader(
-            2,
-            isHindi ? 'मील प्लान और शुल्क' : 'Plans & Pricing',
-            isHindi ? 'आपके द्वारा चुने गए समय अनुसार प्लान तैयार हैं। जो प्लान ऑफर करना चाहते हैं उसे चालू रखें।' : 'Plans are ready based on your timings. Keep the ones you want active.',
+          // Step 2 of 3 Pill Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE3BF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isHindi ? 'चरण 2 / 3' : 'Step 2 of 3',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF8F4700),
+              ),
+            ),
           ),
-          const SizedBox(height: 20),
 
+          const SizedBox(height: 8),
+
+          // Headline
+          Text(
+            isHindi ? 'प्लान्स और शुल्क' : 'Plans & pricing',
+            style: GoogleFonts.newsreader(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF231A14),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            isHindi
+                ? 'आपके समय के अनुसार प्लान तैयार हैं। जो आप ऑफर करना चाहते हैं उन्हें चालू रखें।'
+                : 'Plans are ready from your timings. Keep the ones you want active.',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: const Color(0xFF7A7971),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // Plan Cards
           ..._planConfigs.map((plan) {
             final isEnabled = plan['enabled'] as bool;
             final feeCtrl = plan['feeCtrl'] as TextEditingController;
             final skipCtrl = plan['skipCtrl'] as TextEditingController;
             final fixedMeals = List<String>.from(plan['fixedMeals'] as List);
             final hasChoice = plan['hasChoice'] as bool;
-            final choiceSlots = List<String>.from(plan['choiceSlots'] as List);
+            final choiceDesc = plan['choiceDesc'] as String? ?? '';
+            final badge = plan['badge'] as String? ?? 'POPULAR';
 
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isEnabled ? const Color(0xFFE11D48) : const Color(0xFFE2E8F0),
-                  width: isEnabled ? 1.8 : 1.0,
+                color: const Color(0xFFFAF8F3),
+                borderRadius: BorderRadius.circular(22),
+                border: Border(
+                  left: BorderSide(
+                    color: isEnabled
+                        ? const Color(0xFFF09E38)
+                        : const Color(0x142D231C),
+                    width: 5,
+                  ),
+                  top: const BorderSide(color: Color(0x142D231C)),
+                  right: const BorderSide(color: Color(0x142D231C)),
+                  bottom: const BorderSide(color: Color(0x142D231C)),
                 ),
-                boxShadow: isEnabled
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFFE11D48).withOpacity(0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 12, 10),
-                    child: Row(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Row: Badge & Switch
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      isHindi ? (plan['nameHi'] as String? ?? plan['name'] as String) : (plan['name'] as String),
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: isEnabled ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: isEnabled ? const Color(0xFFFFF1F2) : const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      isHindi ? (plan['badgeHi'] as String? ?? plan['badge'] as String) : (plan['badge'] as String),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: isEnabled ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                badge,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.1,
+                                  color: const Color(0xFF4E654F),
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                isHindi ? (plan['descHi'] as String? ?? plan['desc'] as String) : (plan['desc'] as String),
-                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                                isHindi
+                                    ? (plan['nameHi'] as String? ??
+                                        plan['name'] as String)
+                                    : (plan['name'] as String),
+                                style: GoogleFonts.newsreader(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF231A14),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                plan['desc'] as String,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF7A7971),
+                                ),
                               ),
                             ],
                           ),
                         ),
                         Switch.adaptive(
                           value: isEnabled,
-                          activeColor: const Color(0xFFE11D48),
+                          activeTrackColor: const Color(0xFF4E654F),
+                          activeThumbColor: const Color(0xFFFAF8F3),
                           onChanged: (val) {
                             setState(() => plan['enabled'] = val);
                           },
                         ),
                       ],
                     ),
-                  ),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (fixedMeals.isNotEmpty) ...[
-                          _buildMealChipsRow(fixedMeals, active: isEnabled),
-                          const SizedBox(height: 6),
-                        ],
-                        if (hasChoice) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isEnabled ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isEnabled ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.swap_horiz_rounded,
-                                  size: 16,
-                                  color: isEnabled ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isHindi ? 'छात्र की पसंद: ${choiceSlots.map((s) => _timings[s]?['slotName'] ?? s).join(' या ')} (कोई 1)' : 'Student Choice: ${choiceSlots.map((s) => _timings[s]?['slotNameEn'] ?? s).join(' or ')} (Any 1)',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: isEnabled ? const Color(0xFF1D4ED8) : const Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                        ],
-                      ],
-                    ),
-                  ),
+                    if (isEnabled) ...[
+                      const SizedBox(height: 12),
 
-                  if (isEnabled) ...[
-                    const Divider(height: 16, thickness: 1, color: Color(0xFFF1F5F9)),
-
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                      child: Column(
+                      // Meal Chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      isHindi ? 'महीने की फीस' : 'Monthly Fee',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF334155),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(isHindi ? 'छात्र से मासिक शुल्क' : 'Monthly fee per student', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
-                                  ],
+                          ...fixedMeals.map((m) {
+                            final slotName =
+                                _timings[m]?['slotNameEn'] ?? m;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE2E8DE),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                slotName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF2B3B2C),
                                 ),
                               ),
-                              Row(
-                                children: [
-                                  _buildMiniStepBtn('-', () => _adjustCtrl(feeCtrl, -100, min: 500)),
-                                  Container(
-                                    width: 88,
-                                    height: 38,
-                                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    ),
-                                    child: Center(
-                                      child: TextField(
-                                        controller: feeCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0F172A),
-                                        ),
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          prefixText: '₹',
-                                          prefixStyle: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE11D48)),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  _buildMiniStepBtn('+', () => _adjustCtrl(feeCtrl, 100)),
-                                ],
+                            );
+                          }),
+                          if (hasChoice && choiceDesc.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE2E8DE),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      isHindi ? 'मील स्किप रिफंड' : 'Skip Refund (Per Meal)',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF334155),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(isHindi ? 'प्रति मील छूट (जैसे ₹45)' : 'Discount per valid skip (e.g. ₹45)', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
-                                  ],
+                              child: Text(
+                                choiceDesc,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF2B3B2C),
                                 ),
-                              ),
-                              Row(
-                                children: [
-                                  _buildMiniStepBtn('-', () => _adjustCtrl(skipCtrl, -1, min: 0), onLongPress: () => _adjustCtrl(skipCtrl, -5, min: 0)),
-                                  Container(
-                                    width: 88,
-                                    height: 38,
-                                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    ),
-                                    child: Center(
-                                      child: TextField(
-                                        controller: skipCtrl,
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0F172A),
-                                        ),
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          prefixText: '₹',
-                                          prefixStyle: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  _buildMiniStepBtn('+', () => _adjustCtrl(skipCtrl, 1), onLongPress: () => _adjustCtrl(skipCtrl, 5)),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      isHindi ? 'अधिकतम स्किप सीमा' : 'Max Skips Limit',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                  Text(isHindi ? 'महीने में अधिकतम स्वीकार्य रिफंड' : 'Allowed monthly skip refund limit', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8))),
-                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            if ((plan['maxSkip'] as int) == -1) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDCFCE7),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFF86EFAC)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.all_inclusive_rounded, size: 15, color: Color(0xFF16A34A)),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        isHindi ? 'असीमित' : 'Unlimited Skips',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF15803D),
-                                        ),
-                                      ),
-                                    ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: Color(0x142D231C)),
+                      const SizedBox(height: 14),
+
+                      // Monthly Fee Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHindi ? 'महीने का शुल्क' : 'Monthly fee',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF231A14),
+                                ),
+                              ),
+                              Text(
+                                isHindi ? 'प्रति छात्र' : 'per student',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: const Color(0xFF7A7971),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              _buildRoundStepBtn('-', () => _adjustCtrl(feeCtrl, -100)),
+                              Container(
+                                width: 85,
+                                height: 38,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0x1A2D231C)),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '₹${feeCtrl.text}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF231A14),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                InkWell(
-                                  onTap: () => setState(() => plan['maxSkip'] = 6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      isHindi ? 'सीमा तय करें' : 'Set Limit',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF2563EB),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ] else ...[
-                                Row(
-                                  children: [
-                                    _buildMiniStepBtn('-', () {
-                                      final current = plan['maxSkip'] as int;
-                                      if (current > 0) {
-                                        setState(() => plan['maxSkip'] = current - 1);
-                                      }
-                                    }),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text(
-                                        '${plan['maxSkip']} ${isHindi ? 'मील' : 'meals'}',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                    ),
-                                    _buildMiniStepBtn('+', () {
-                                      final current = plan['maxSkip'] as int;
-                                      if (current < 30) {
-                                        setState(() => plan['maxSkip'] = current + 1);
-                                      }
-                                    }),
-                                    const SizedBox(width: 6),
-                                    InkWell(
-                                      onTap: () => setState(() => plan['maxSkip'] = -1),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          isHindi ? 'असीमित' : 'Unlimited',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF16A34A),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              ),
+                              _buildRoundStepBtn('+', () => _adjustCtrl(feeCtrl, 100)),
                             ],
                           ),
                         ],
                       ),
-                    ),
+
+                      const SizedBox(height: 12),
+
+                      // Skip Refund Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHindi ? 'स्किप रिफंड' : 'Skip refund',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF231A14),
+                                ),
+                              ),
+                              Text(
+                                isHindi ? 'प्रति वैध स्किप' : 'per valid skip',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: const Color(0xFF7A7971),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              _buildRoundStepBtn('-', () => _adjustCtrl(skipCtrl, -5)),
+                              Container(
+                                width: 85,
+                                height: 38,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0x1A2D231C)),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '₹${skipCtrl.text}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF231A14),
+                                  ),
+                                ),
+                              ),
+                              _buildRoundStepBtn('+', () => _adjustCtrl(skipCtrl, 5)),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Max Skips Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHindi ? 'अधिकतम स्किप' : 'Max skips',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF231A14),
+                                ),
+                              ),
+                              Text(
+                                isHindi ? 'प्रति माह' : 'per month',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: const Color(0xFF7A7971),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if ((plan['maxSkip'] as int) != -1) ...[
+                                _buildRoundStepBtn('-', () {
+                                  final cur = plan['maxSkip'] as int;
+                                  if (cur > 1) setState(() => plan['maxSkip'] = cur - 1);
+                                }),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8),
+                                  child: Text(
+                                    '${plan['maxSkip']} meals',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF231A14),
+                                    ),
+                                  ),
+                                ),
+                                _buildRoundStepBtn('+', () {
+                                  final cur = plan['maxSkip'] as int;
+                                  if (cur < 30) setState(() => plan['maxSkip'] = cur + 1);
+                                }),
+                                const SizedBox(width: 8),
+                              ],
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    if ((plan['maxSkip'] as int) == -1) {
+                                      plan['maxSkip'] = 6;
+                                    } else {
+                                      plan['maxSkip'] = -1;
+                                    }
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: (plan['maxSkip'] as int) == -1
+                                        ? const Color(0xFFFCE3BF)
+                                        : const Color(0xFFE2E8DE),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    isHindi ? 'असीमित' : 'Unlimited',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: (plan['maxSkip'] as int) == -1
+                                          ? const Color(0xFF8F4700)
+                                          : const Color(0xFF2B3B2C),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             );
           }),
 
           const SizedBox(height: 20),
-          _buildNextBtn(label: isHindi ? 'आगे बढ़ें: मेस प्रोफाइल' : 'Next: Mess Profile', onTap: _nextPage),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton.icon(
-              onPressed: _prevPage,
-              icon: const Icon(Icons.arrow_back, size: 16),
-              label: Text(isHindi ? 'समय बदलें' : 'Back to Timings', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+
+          // Next Button
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF09E38),
+                foregroundColor: const Color(0xFF231A14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: _nextPage,
+              child: Text(
+                isHindi ? 'आगे: मेस प्रोफाइल →' : 'Next: mess profile →',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF231A14),
+                ),
+              ),
             ),
           ),
+
+          const SizedBox(height: 12),
+
+          Center(
+            child: TextButton(
+              onPressed: _prevPage,
+              child: Text(
+                isHindi ? '← समय पर वापस जाएं' : '← Back to timings',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF7A7971),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
+  // ============================================================
+  // STEP 2: Mess Profile
+  // Matching WhatsApp Image 2026-10-21 at 17.01.06 (1).jpeg
+  // ============================================================
   Widget _buildStep2Profile() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStepHeader(
-            3,
-            isHindi ? 'मेस की जानकारी' : 'Mess Profile',
-            isHindi ? 'अंतिम चरण: मेस का नाम, अपना नाम और संपर्क नंबर भरें।' : 'Final step: Enter mess name, owner name and contact details.',
+          // Step 3 of 3 Pill Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE3BF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isHindi ? 'चरण 3 / 3' : 'Step 3 of 3',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF8F4700),
+              ),
+            ),
           ),
+
+          const SizedBox(height: 8),
+
+          // Headline
+          Text(
+            isHindi ? 'मेस प्रोफाइल' : 'Mess profile',
+            style: GoogleFonts.newsreader(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF231A14),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            isHindi
+                ? 'अंतिम चरण: मेस का नाम, अपना नाम और संपर्क विवरण भरें।'
+                : 'Final step: mess name, owner and contact details.',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: const Color(0xFF7A7971),
+            ),
+          ),
+
           const SizedBox(height: 20),
 
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInputField(
-                  label: isHindi ? 'मेस का नाम *' : 'Mess Name *',
-                  hint: isHindi ? 'जैसे: श्री अन्नपूर्णा मेस' : 'e.g. Annapurna Mess',
-                  ctrl: _messNameCtrl,
-                  prefixIcon: Icons.storefront_rounded,
-                ),
-                const SizedBox(height: 16),
+          // MESS NAME *
+          _buildFieldLabel(isHindi ? 'मेस का नाम *' : 'MESS NAME *'),
+          const SizedBox(height: 8),
+          _buildInputBox(
+            controller: _messNameCtrl,
+            hint: isHindi ? 'जैसे: श्री अन्नपूर्णा मेस' : 'e.g. Annapurna Mess',
+          ),
 
-                _buildInputField(
-                  label: isHindi ? 'मालिक का नाम *' : 'Owner Name *',
-                  hint: isHindi ? 'जैसे: रोहित शर्मा' : 'e.g. Rohit Sharma',
-                  ctrl: _ownerNameCtrl,
-                  prefixIcon: Icons.person_rounded,
-                ),
-                const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-                _buildInputField(
-                  label: isHindi ? 'मोबाइल नंबर *' : 'Phone Number *',
-                  hint: isHindi ? '10 अंकों का मोबाइल नंबर' : '10-digit mobile number',
-                  ctrl: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: Icons.phone_rounded,
-                ),
-                const SizedBox(height: 16),
+          // OWNER NAME *
+          _buildFieldLabel(isHindi ? 'संचालक का नाम *' : 'OWNER NAME *'),
+          const SizedBox(height: 8),
+          _buildInputBox(
+            controller: _ownerNameCtrl,
+            hint: isHindi ? 'जैसे: रोहित शर्मा' : 'e.g. Rohit Sharma',
+          ),
 
-                _buildInputField(
-                  label: isHindi ? 'बैठने की क्षमता' : 'Seating Capacity',
-                  hint: isHindi ? 'जैसे: 50' : 'e.g. 50',
-                  ctrl: _capacityCtrl,
-                  keyboardType: TextInputType.number,
-                  prefixIcon: Icons.event_seat_rounded,
-                ),
-                const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-                Text(
-                  isHindi ? 'भोजन का प्रकार' : 'Food Type',
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildFoodOption(
-                        'pure_veg',
-                        Icons.eco_rounded,
-                        const Color(0xFF10B981),
-                        isHindi ? 'शुद्ध शाकाहारी' : 'Pure Veg',
+          // PHONE NUMBER *
+          _buildFieldLabel(isHindi ? 'फोन नंबर *' : 'PHONE NUMBER *'),
+          const SizedBox(height: 8),
+          _buildInputBox(
+            controller: _phoneCtrl,
+            hint: '9876543210',
+            keyboardType: TextInputType.phone,
+            prefixText: '+91 ',
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // SEATING CAPACITY
+          _buildFieldLabel(isHindi ? 'बैठने की क्षमता' : 'SEATING CAPACITY'),
+          const SizedBox(height: 8),
+          _buildInputBox(
+            controller: _capacityCtrl,
+            hint: '50',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+
+          const SizedBox(height: 18),
+
+          // FOOD TYPE
+          _buildFieldLabel(isHindi ? 'भोजन प्रकार' : 'FOOD TYPE'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _foodType = 'pure_veg'),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _foodType == 'pure_veg'
+                          ? const Color(0xFFE2E8DE)
+                          : const Color(0xFFFAF8F3),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _foodType == 'pure_veg'
+                            ? const Color(0xFF4E654F)
+                            : const Color(0x142D231C),
+                        width: _foodType == 'pure_veg' ? 1.5 : 1,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildFoodOption(
-                        'both',
-                        Icons.restaurant_rounded,
-                        const Color(0xFFF59E0B),
-                        isHindi ? 'शाकाहारी + मांसाहारी' : 'Both Veg & Non-Veg',
+                    child: Center(
+                      child: Text(
+                        _foodType == 'pure_veg'
+                            ? (isHindi ? '✓ शुद्ध शाकाहारी' : '✓ Pure veg')
+                            : (isHindi ? 'शुद्ध शाकाहारी' : 'Pure veg'),
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: _foodType == 'pure_veg'
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: _foodType == 'pure_veg'
+                              ? const Color(0xFF2B3B2C)
+                              : const Color(0xFF231A14),
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _foodType = 'both'),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _foodType == 'both'
+                          ? const Color(0xFFE2E8DE)
+                          : const Color(0xFFFAF8F3),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _foodType == 'both'
+                            ? const Color(0xFF4E654F)
+                            : const Color(0x142D231C),
+                        width: _foodType == 'both' ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _foodType == 'both'
+                            ? (isHindi ? '✓ वेज व नॉन-वेज' : '✓ Both veg & non-veg')
+                            : (isHindi ? 'वेज व नॉन-वेज' : 'Both veg & non-veg'),
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: _foodType == 'both'
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: _foodType == 'both'
+                              ? const Color(0xFF2B3B2C)
+                              : const Color(0xFF231A14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 24),
 
+          // Ready Info Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: const Color(0xFFE2E8DE),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 28),
+                const Icon(
+                  Icons.check_rounded,
+                  color: Color(0xFF4E654F),
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isHindi ? 'मेस सेटअप पूरा होने को तैयार है' : 'Ready to Launch Mess',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF0F172A)),
+                        isHindi
+                            ? 'अपनी मेस लॉन्च करने के लिए तैयार'
+                            : 'Ready to launch your mess',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF2B3B2C),
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isHindi ? 'लांच के बाद आप सेटिंग्स में कभी भी समय या प्लान्स बदल सकते हैं।' : 'You can adjust timings and plans anytime in Settings later.',
-                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                        isHindi
+                            ? 'आप सेटिंग्स में कभी भी समय और प्लान्स बदल सकते हैं।'
+                            : 'You can adjust timings and plans anytime in Settings.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF4E654F),
+                        ),
                       ),
                     ],
                   ),
@@ -1888,231 +2148,146 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
-          _buildNextBtn(
-            label: isHindi ? 'मेस शुरू करें' : 'Launch Mess',
-            onTap: _finishSetup,
-            isLoading: _isSubmitting,
-            color: const Color(0xFFE11D48),
+          // Launch Mess Button
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF09E38),
+                foregroundColor: const Color(0xFF231A14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: _isSubmitting ? null : _finishSetup,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF231A14),
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          isHindi ? 'मेस शुरू करें →' : 'Launch mess →',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF231A14),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
 
           const SizedBox(height: 12),
+
           Center(
-            child: TextButton.icon(
+            child: TextButton(
               onPressed: _prevPage,
-              icon: const Icon(Icons.arrow_back, size: 16),
-              label: Text(isHindi ? 'प्लान्स बदलें' : 'Back to Plans', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              child: Text(
+                isHindi ? '← प्लान्स पर वापस जाएं' : '← Back to plans',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF7A7971),
+                ),
+              ),
             ),
           ),
+
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildStepHeader(int step, String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                isHindi ? 'चरण $step / 3' : 'Step $step of 3',
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: const Color(0xFF64748B)),
-        ),
-      ],
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: const Color(0xFF4E654F),
+      ),
     );
   }
 
-  Widget _buildMealChipsRow(List<String> meals, {bool active = true}) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: meals.map((m) {
-        final slot = _timings[m];
-        final name = isHindi ? (slot?['slotName'] ?? m) : (slot?['slotNameEn'] ?? slot?['name'] ?? m);
-        final icon = slot?['icon'] ?? '🍽️';
-        final color = (slot?['color'] as Color?) ?? const Color(0xFFE11D48);
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: active ? color.withOpacity(0.12) : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildInputBox({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+    String? prefixText,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0x1A2D231C),
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF231A14),
+        ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          prefixText: prefixText,
+          prefixStyle: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF231A14),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
-              Text(
-                name,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: active ? color : const Color(0xFF94A3B8),
-                ),
-              ),
-            ],
+          hintText: hint,
+          hintStyle: GoogleFonts.inter(
+            fontSize: 14,
+            color: const Color(0xFF9E9A90),
           ),
-        );
-      }).toList(),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        ),
+      ),
     );
   }
 
-  Widget _buildMiniStepBtn(String icon, VoidCallback onTap, {VoidCallback? onLongPress}) {
+  Widget _buildRoundStepBtn(String symbol, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 32,
         height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFCBD5E1)),
+        decoration: const BoxDecoration(
+          color: Color(0xFFE2E8DE),
+          shape: BoxShape.circle,
         ),
         child: Center(
           child: Text(
-            icon,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFoodOption(String type, IconData icon, Color color, String label) {
-    final isSelected = _foodType == type;
-    return InkWell(
-      onTap: () => setState(() => _foodType = type),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.08) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : const Color(0xFFCBD5E1),
-            width: isSelected ? 2.0 : 1.0,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? color : const Color(0xFF94A3B8), size: 24),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? color : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputField({
-    required String label,
-    required String hint,
-    required TextEditingController ctrl,
-    TextInputType? keyboardType,
-    IconData? prefixIcon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFCBD5E1)),
-          ),
-          child: TextField(
-            controller: ctrl,
-            keyboardType: keyboardType,
-            inputFormatters: keyboardType == TextInputType.phone
-                ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]
-                : null,
-            style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F172A)),
-            decoration: InputDecoration(
-              prefixText: keyboardType == TextInputType.phone ? '+91 ' : null,
-              prefixStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
-              hintText: hint,
-              hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
-              prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: const Color(0xFF64748B)) : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            symbol,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2B3B2C),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildNextBtn({
-    required String label,
-    required VoidCallback onTap,
-    bool isLoading = false,
-    Color? color,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color ?? const Color(0xFFE11D48),
-          elevation: 2,
-          shadowColor: (color ?? const Color(0xFFE11D48)).withOpacity(0.4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                ],
-              ),
       ),
     );
   }
