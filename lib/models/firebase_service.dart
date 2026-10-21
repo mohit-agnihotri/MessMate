@@ -886,23 +886,21 @@ class FirebaseService implements AppService {
   Future<void> reopenMess(String messId) async {
     final batch = _db.batch();
 
-    // 1. Clear closure fields on mess
+    // 1. Delete closure fields from mess document
     final messRef = _db.collection('messes').doc(messId);
     batch.update(messRef, {
-      'temporarilyClosedUntil': null,
-      'closureStartDate': null,
-      'closureStartSlot': null,
-      'closureEndSlot': null,
-      'closureReason': null,
+      'temporarilyClosedUntil': FieldValue.delete(),
+      'closureStartDate': FieldValue.delete(),
+      'closureStartSlot': FieldValue.delete(),
+      'closureEndSlot': FieldValue.delete(),
+      'closureReason': FieldValue.delete(),
     });
 
-    // 2. Remove upcoming closed_slots from today onwards
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    // 2. Remove all closed_slots
     final closedDocs = await _db
         .collection('messes')
         .doc(messId)
         .collection('closed_slots')
-        .where('date', isGreaterThanOrEqualTo: todayStr)
         .get();
 
     for (var doc in closedDocs.docs) {

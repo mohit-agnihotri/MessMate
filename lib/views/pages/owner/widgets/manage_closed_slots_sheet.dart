@@ -141,6 +141,93 @@ class _ManageClosedSlotsSheetState
     }
   }
 
+  Future<void> _handleReopenAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: OwnerColors.surfaceWarm,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFDCFCE7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Color(0xFF16A34A),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Re-open Mess?',
+              style: OwnerTypography.serifHeading(fontSize: 20),
+            ),
+          ],
+        ),
+        content: Text(
+          'This will cancel active schedule closures, open your mess for service immediately, and notify all active students.',
+          style: OwnerTypography.body(fontSize: 13, color: OwnerColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: OwnerColors.textMuted),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: const Text(
+              'Re-open Now',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      final nav = Navigator.of(context);
+
+      try {
+        await ref
+            .read(ownerDashboardProvider.notifier)
+            .reopenMess(widget.mess.messId);
+
+        if (mounted) nav.pop();
+
+        messenger?.showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Mess is now open for service! Students notified.'),
+            backgroundColor: Color(0xFF16A34A),
+          ),
+        );
+      } catch (e) {
+        messenger?.showSnackBar(
+          SnackBar(
+            content: Text('Failed to re-open: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(ownerDashboardProvider);
@@ -473,10 +560,7 @@ class _ManageClosedSlotsSheetState
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      showReopenMessDialog(context, null, messId: mess.messId);
-                    },
+                    onPressed: _handleReopenAll,
                     icon: const Icon(Icons.storefront_rounded, size: 17),
                     label: const Text('Re-open All'),
                     style: ElevatedButton.styleFrom(

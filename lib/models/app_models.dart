@@ -517,11 +517,11 @@ class MessModel {
     List<String>? messPhotos,
     int? mealsIncludedPerDay,
     Map<String, Map<String, String>>? mealTimings,
-    DateTime? temporarilyClosedUntil,
-    DateTime? closureStartDate,
-    String? closureStartSlot,
-    String? closureEndSlot,
-    String? closureReason,
+    Object? temporarilyClosedUntil = const _Sentinel(),
+    Object? closureStartDate = const _Sentinel(),
+    Object? closureStartSlot = const _Sentinel(),
+    Object? closureEndSlot = const _Sentinel(),
+    Object? closureReason = const _Sentinel(),
     bool? allowMealSkipping,
     Map<String, bool>? ownerNotificationPrefs,
     Object? aboutContent = const _Sentinel(),
@@ -556,12 +556,21 @@ class MessModel {
       messPhotos: messPhotos ?? this.messPhotos,
       mealsIncludedPerDay: mealsIncludedPerDay ?? this.mealsIncludedPerDay,
       mealTimings: mealTimings ?? this.mealTimings,
-      temporarilyClosedUntil:
-          temporarilyClosedUntil ?? this.temporarilyClosedUntil,
-      closureStartDate: closureStartDate ?? this.closureStartDate,
-      closureStartSlot: closureStartSlot ?? this.closureStartSlot,
-      closureEndSlot: closureEndSlot ?? this.closureEndSlot,
-      closureReason: closureReason ?? this.closureReason,
+      temporarilyClosedUntil: temporarilyClosedUntil is _Sentinel
+          ? this.temporarilyClosedUntil
+          : temporarilyClosedUntil as DateTime?,
+      closureStartDate: closureStartDate is _Sentinel
+          ? this.closureStartDate
+          : closureStartDate as DateTime?,
+      closureStartSlot: closureStartSlot is _Sentinel
+          ? this.closureStartSlot
+          : closureStartSlot as String?,
+      closureEndSlot: closureEndSlot is _Sentinel
+          ? this.closureEndSlot
+          : closureEndSlot as String?,
+      closureReason: closureReason is _Sentinel
+          ? this.closureReason
+          : closureReason as String?,
       allowMealSkipping: allowMealSkipping ?? this.allowMealSkipping,
       ownerNotificationPrefs:
           ownerNotificationPrefs ?? this.ownerNotificationPrefs,
@@ -577,6 +586,48 @@ class MessModel {
       isVerified: isVerified ?? this.isVerified,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
+    );
+  }
+
+  MessModel clearClosure() {
+    return MessModel(
+      messId: messId,
+      name: name,
+      ownerId: ownerId,
+      ownerName: ownerName,
+      ownerPhone: ownerPhone,
+      gpsLat: gpsLat,
+      gpsLng: gpsLng,
+      capacity: capacity,
+      monthlyFee: monthlyFee,
+      perMealRate: perMealRate,
+      cutoffHours: cutoffHours,
+      messCode: messCode,
+      isListedOnMap: isListedOnMap,
+      showMenuToOutsiders: showMenuToOutsiders,
+      showMenuToStudents: showMenuToStudents,
+      language: language,
+      ownerPhotoUrl: ownerPhotoUrl,
+      messPhotos: messPhotos,
+      mealsIncludedPerDay: mealsIncludedPerDay,
+      mealTimings: mealTimings,
+      temporarilyClosedUntil: null,
+      closureStartDate: null,
+      closureStartSlot: null,
+      closureEndSlot: null,
+      closureReason: null,
+      allowMealSkipping: allowMealSkipping,
+      ownerNotificationPrefs: ownerNotificationPrefs,
+      aboutContent: aboutContent,
+      foodType: foodType,
+      masterDishNames: masterDishNames,
+      trialStartDate: trialStartDate,
+      trialExpiresAt: trialExpiresAt,
+      subscriptionStatus: subscriptionStatus,
+      isFrozen: isFrozen,
+      isVerified: isVerified,
+      rating: rating,
+      reviewCount: reviewCount,
     );
   }
 

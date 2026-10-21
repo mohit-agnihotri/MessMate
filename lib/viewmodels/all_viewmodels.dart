@@ -618,17 +618,16 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
     await _init();
   }
 
-  Future<void> reopenMess() async {
-    if (state.mess == null) return;
-    await _service.reopenMess(state.mess!.messId);
-    final updated = state.mess!.copyWith(
-      temporarilyClosedUntil: null,
-      closureStartDate: null,
-      closureStartSlot: null,
-      closureEndSlot: null,
-      closureReason: null,
-    );
-    state = state.copyWith(mess: updated, closedSlots: []);
+  Future<void> reopenMess([String? messId]) async {
+    final targetMessId = messId ?? state.mess?.messId;
+    if (targetMessId == null || targetMessId.isEmpty) return;
+    await _service.reopenMess(targetMessId);
+    if (state.mess != null) {
+      state = state.copyWith(
+        mess: state.mess!.clearClosure(),
+        closedSlots: [],
+      );
+    }
     await _init();
   }
 

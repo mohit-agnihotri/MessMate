@@ -64,14 +64,24 @@ void showReopenMessDialog(
           ElevatedButton(
             onPressed: () async {
               final messenger = ScaffoldMessenger.maybeOf(context);
+              final activeRef = ref ?? dialogRef;
               Navigator.pop(ctx);
-              await dialogRef.read(ownerDashboardProvider.notifier).reopenMess();
-              messenger?.showSnackBar(
-                const SnackBar(
-                  content: Text('🎉 Mess is now open for service! Students notified.'),
-                  backgroundColor: Color(0xFF16A34A),
-                ),
-              );
+              try {
+                await activeRef.read(ownerDashboardProvider.notifier).reopenMess(messId);
+                messenger?.showSnackBar(
+                  const SnackBar(
+                    content: Text('🎉 Mess is now open for service! Students notified.'),
+                    backgroundColor: Color(0xFF16A34A),
+                  ),
+                );
+              } catch (e) {
+                messenger?.showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to re-open mess: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF16A34A),
