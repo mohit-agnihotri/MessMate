@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
+import '../../../viewmodels/all_viewmodels.dart';
+import 'theme/student_inspired_theme.dart';
 
 String _hMonthName(int m) {
   const months = [
@@ -24,53 +25,136 @@ String _hMonthName(int m) {
   return months[m];
 }
 
-class StudentHistoryPage extends ConsumerWidget {
+class StudentHistoryPage extends ConsumerStatefulWidget {
   const StudentHistoryPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentHistoryPage> createState() => _StudentHistoryPageState();
+}
+
+class _StudentHistoryPageState extends ConsumerState<StudentHistoryPage> {
+  int _selectedTab = 0; // 0 = Attendance, 1 = Vacation
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(studentHistoryProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: StudentColors.canvas,
       body: SafeArea(
         child: state.isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+                child: CircularProgressIndicator(color: StudentColors.amber),
               )
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header
+                    // ── Header Title & Subtitle ──
                     Text(
-                      'My Attendance',
-                      style: GoogleFonts.inter(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                      'ATTENDANCE & LEAVES',
+                      style: StudentTypography.overline(
+                        fontSize: 11,
+                        color: StudentColors.sageDark,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // ── 3 Stat Cards ────────────────────────────────────
-                    _buildAttendanceSection(context, ref, state),
-
-                    const SizedBox(height: 32),
-
-                    // ── Apply for Leave Button ───────────────────────────
+                    const SizedBox(height: 2),
                     Text(
-                      'Vacation Leave',
+                      'My attendance',
+                      style: StudentTypography.serifHeading(fontSize: 28),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Track your daily meal check-ins and leaves',
                       style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                        fontSize: 13,
+                        color: StudentColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    _buildLeaveSection(context, ref),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+
+                    // ── Segmented Pill Switch: [ Attendance ] | [ Vacation ] ──
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: StudentColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: StudentColors.borderSubtle),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedTab = 0),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: _selectedTab == 0
+                                      ? StudentColors.walnut
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Attendance',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: _selectedTab == 0
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: _selectedTab == 0
+                                          ? Colors.white
+                                          : StudentColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedTab = 1),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: _selectedTab == 1
+                                      ? StudentColors.walnut
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Vacation',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: _selectedTab == 1
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: _selectedTab == 1
+                                          ? Colors.white
+                                          : StudentColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Active Tab View ──
+                    if (_selectedTab == 0)
+                      _buildAttendanceSection(context, ref, state)
+                    else
+                      _buildVacationSection(context, ref, state),
+
+                    const SizedBox(height: 110),
                   ],
                 ),
               ),
@@ -79,152 +163,142 @@ class StudentHistoryPage extends ConsumerWidget {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Attendance Section  (mirrors owner's _buildAttendanceSummary exactly)
+  // Attendance Tab (3 Stat Cards + Modern Calendar + Vacation Hero Card)
   // ─────────────────────────────────────────────────────────────────────────
   Widget _buildAttendanceSection(
     BuildContext context,
     WidgetRef ref,
     StudentHistoryState outerState,
   ) {
-    return StatefulBuilder(
-      builder: (context, setLocalState) {
-        DateTime selectedMonth = outerState.selectedMonth;
+    final records = outerState.records;
+    final selfOff = records.where((r) => r.status == 'absent_self').length;
+    final ownerOff = records.where((r) => r.status == 'absent_owner').length;
+    final totalOff = selfOff + ownerOff;
 
-        final records = outerState.records;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── 3 Stat Cards Row ──
+        Row(
+          children: [
+            _buildStatCard(
+              context,
+              'Total meals off',
+              '$totalOff',
+              'Breakdown',
+              StudentColors.brickRed,
+              records
+                  .where(
+                    (r) =>
+                        r.status == 'absent_self' || r.status == 'absent_owner',
+                  )
+                  .toList(),
+            ),
+            const SizedBox(width: 10),
+            _buildStatCard(
+              context,
+              'Off by you',
+              '$selfOff',
+              'Skipped',
+              StudentColors.amber,
+              records.where((r) => r.status == 'absent_self').toList(),
+            ),
+            const SizedBox(width: 10),
+            _buildStatCard(
+              context,
+              'Off by mess',
+              '$ownerOff',
+              'Mess closed',
+              StudentColors.sageDark,
+              records.where((r) => r.status == 'absent_owner').toList(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
 
-        final selfOff = records
-            .where((r) => r.status == 'absent_self')
-            .length;
-            final ownerOff = records
-                .where((r) => r.status == 'absent_owner')
-                .length;
-            final totalOff = selfOff + ownerOff;
+        // ── Modern Attendance Calendar Card ──
+        _buildCalendarCard(
+          context,
+          ref,
+          records,
+          outerState.selectedMonth,
+          (newMonth) =>
+              ref.read(studentHistoryProvider.notifier).changeMonth(newMonth),
+        ),
+        const SizedBox(height: 20),
 
-            return Column(
-              children: [
-                // 3 stat cards
-                Row(
-                  children: [
-                    _buildSummaryCard(
-                      context, ref,
-                      'Total Meals Off',
-                      '$totalOff',
-                      const Color(0xFFEF4444),
-                      records
-                          .where(
-                            (r) =>
-                                r.status == 'absent_self' ||
-                                r.status == 'absent_owner',
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      context, ref,
-                      'Off by Student',
-                      '$selfOff',
-                      const Color(0xFFF59E0B),
-                      records.where((r) => r.status == 'absent_self').toList(),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      context, ref,
-                      'Off by Mess',
-                      '$ownerOff',
-                      const Color(0xFF6B7280),
-                      records.where((r) => r.status == 'absent_owner').toList(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Calendar
-                _buildInteractiveCalendar(
-                  context,
-                  ref,
-                  records,
-                  selectedMonth,
-                  () {
-                    setLocalState(() {
-                      selectedMonth = DateTime(
-                        selectedMonth.year,
-                        selectedMonth.month - 1,
-                        1,
-                      );
-                    });
-                    ref.read(studentHistoryProvider.notifier).changeMonth(selectedMonth);
-                  },
-                  () {
-                    setLocalState(() {
-                      selectedMonth = DateTime(
-                        selectedMonth.year,
-                        selectedMonth.month + 1,
-                        1,
-                      );
-                    });
-                    ref.read(studentHistoryProvider.notifier).changeMonth(selectedMonth);
-                  },
-                ),
-              ],
-            );
-      },
+        // ── "Going away?" Vacation Hero Card ──
+        _buildGoingAwayCard(context, ref),
+      ],
     );
   }
 
-  // ── Stat Card (same look as owner side) ─────────────────────────────────
-  Widget _buildSummaryCard(
+  // ── Stat Card with Left Accent Border ──────────────────────────────────────
+  Widget _buildStatCard(
     BuildContext context,
-    WidgetRef ref,
     String label,
     String value,
+    String subtitle,
     Color accentColor,
     List<MealRecordModel> records,
   ) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => _showOffDetailsDialog(context, ref, label, records),
+        onTap: () => _showOffDetailsDialog(context, label, records),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border(left: BorderSide(color: accentColor, width: 4)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x06000000),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
+            color: StudentColors.surfaceLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: StudentColors.borderSubtle),
+            boxShadow: StudentColors.softShadow,
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 14,
+                    color: StudentColors.walnutMuted,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Text(
                 value,
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
+                style: StudentTypography.serifNumeral(
+                  fontSize: 26,
+                  color: StudentColors.walnut,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 label,
                 style: GoogleFonts.inter(
                   fontSize: 11,
-                  color: const Color(0xFF4B5563),
+                  fontWeight: FontWeight.w600,
+                  color: StudentColors.textDark,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  'View Details',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    color: const Color(0xFF3B82F6),
-                    fontWeight: FontWeight.w600,
-                  ),
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  fontSize: 9.5,
+                  color: StudentColors.textSecondary,
                 ),
               ),
             ],
@@ -234,83 +308,13 @@ class StudentHistoryPage extends ConsumerWidget {
     );
   }
 
-  // ── Off-details dialog (same as owner side) ──────────────────────────────
-  void _showOffDetailsDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String title,
-    List<MealRecordModel> offRecords,
-  ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          title,
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: offRecords.isEmpty
-              ? Text(
-                  'No records found.',
-                  style: GoogleFonts.inter(color: Colors.grey),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: offRecords.length,
-                  itemBuilder: (ctx, i) {
-                    final r = offRecords[i];
-                    String typeStr = 'Unknown';
-                    IconData icon = Icons.info;
-                    Color iconColor = Colors.grey;
-
-                    if (r.status == 'absent_self') {
-                      typeStr = 'You Cancelled';
-                      icon = Icons.event_busy;
-                      iconColor = Colors.red;
-                    } else if (r.status == 'absent_owner') {
-                      typeStr = 'Mess Closed';
-                      icon = Icons.event_busy;
-                      iconColor = Colors.red;
-                    } else if (r.status == 'guest') {
-                      typeStr = 'Guest Meal';
-                      icon = Icons.person_add;
-                      iconColor = Colors.orange;
-                    }
-
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(icon, color: iconColor),
-                      title: Text(
-                        '${r.date.day} ${_hMonthName(r.date.month)} ${r.date.year}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)} ($typeStr)',
-                        style: GoogleFonts.inter(fontSize: 12),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Interactive Calendar (same as owner side) ────────────────────────────
-  Widget _buildInteractiveCalendar(
+  // ── Interactive Calendar Card ──────────────────────────────────────────────
+  Widget _buildCalendarCard(
     BuildContext context,
     WidgetRef ref,
     List<MealRecordModel> records,
     DateTime selectedMonthDate,
-    VoidCallback onPrev,
-    VoidCallback onNext,
+    ValueChanged<DateTime> onMonthChanged,
   ) {
     final now = selectedMonthDate;
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
@@ -326,9 +330,9 @@ class StudentHistoryPage extends ConsumerWidget {
           child: Text(
             w,
             style: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: const Color(0xFF111827),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              color: StudentColors.textMuted,
             ),
           ),
         ),
@@ -349,10 +353,13 @@ class StudentHistoryPage extends ConsumerWidget {
                 dateStr,
           )
           .toList();
-      final selfOffRecords = dayRecords.where((r) => r.status == 'absent_self').toList();
-      final ownerOffRecords = dayRecords.where((r) => r.status == 'absent_owner').toList();
-      final offRecords = [...selfOffRecords, ...ownerOffRecords];
-      final guestRecords = dayRecords.where((r) => r.status == 'guest').toList();
+
+      final selfOffRecords =
+          dayRecords.where((r) => r.status == 'absent_self').toList();
+      final ownerOffRecords =
+          dayRecords.where((r) => r.status == 'absent_owner').toList();
+      final guestRecords =
+          dayRecords.where((r) => r.status == 'guest').toList();
 
       final isSelfOff = selfOffRecords.isNotEmpty;
       final isOwnerOff = ownerOffRecords.isNotEmpty;
@@ -364,7 +371,7 @@ class StudentHistoryPage extends ConsumerWidget {
           onTap: () {
             if (isOff || hasGuest) {
               _showOffDetailsDialog(
-                context, ref,
+                context,
                 'Details on $i ${_hMonthName(now.month)}',
                 dayRecords.where((r) => r.status != 'present').toList(),
               );
@@ -377,40 +384,45 @@ class StudentHistoryPage extends ConsumerWidget {
                 child: Container(
                   width: 32,
                   height: 32,
-                  decoration: isOff
-                      ? const BoxDecoration(
-                          color: Color(0xFFFECDD3),
-                          shape: BoxShape.circle,
-                        )
-                      : hasGuest
-                      ? const BoxDecoration(
-                          color: Color(0xFFFEF3C7),
-                          shape: BoxShape.circle,
-                        )
-                      : null,
+                  decoration: BoxDecoration(
+                    color: isOff
+                        ? StudentColors.brickRedLight
+                        : (hasGuest
+                            ? StudentColors.amberLight
+                            : Colors.transparent),
+                    shape: BoxShape.circle,
+                    border: isOff
+                        ? Border.all(color: StudentColors.brickRedBorder)
+                        : (hasGuest
+                            ? Border.all(color: StudentColors.amberPill)
+                            : null),
+                  ),
                   alignment: Alignment.center,
                   child: Text(
                     '$i',
                     style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 13,
+                      fontWeight: isOff || hasGuest
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       color: isOff
-                          ? const Color(0xFF9F1239)
+                          ? StudentColors.brickRed
                           : (hasGuest
-                                ? const Color(0xFFD97706)
-                                : const Color(0xFF111827)),
+                              ? StudentColors.amberText
+                              : StudentColors.textDark),
                     ),
                   ),
                 ),
               ),
-              if (hasGuest)
+              if (hasGuest && !isOff)
                 Positioned(
-                  bottom: -2,
-                  right: 4,
+                  bottom: 2,
+                  right: 8,
                   child: Container(
-                    width: 8,
-                    height: 8,
+                    width: 5,
+                    height: 5,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFF59E0B),
+                      color: StudentColors.amber,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -422,17 +434,12 @@ class StudentHistoryPage extends ConsumerWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: StudentColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: StudentColors.borderSubtle),
+        boxShadow: StudentColors.softShadow,
       ),
       child: Column(
         children: [
@@ -440,58 +447,83 @@ class StudentHistoryPage extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                onPressed: onPrev,
-                icon: const Icon(Icons.chevron_left, color: Colors.grey),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                onPressed: () => onMonthChanged(
+                  DateTime(now.year, now.month - 1, 1),
+                ),
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  color: StudentColors.walnut,
+                ),
               ),
               Text(
                 '${_hMonthName(now.month)} ${now.year}',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: StudentTypography.serifHeading(fontSize: 18),
               ),
               IconButton(
-                onPressed: onNext,
-                icon: const Icon(Icons.chevron_right, color: Colors.grey),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                onPressed: () => onMonthChanged(
+                  DateTime(now.year, now.month + 1, 1),
+                ),
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: StudentColors.walnut,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 7,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
             children: days,
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: StudentColors.borderSubtle),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLegend(StudentColors.brickRed, 'Meal Skipped / Off'),
+              const SizedBox(width: 16),
+              _buildLegend(StudentColors.amber, 'Guest Meal'),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Vacation Leave Section  (replaces Billing Summary)
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildLeaveSection(BuildContext context, WidgetRef ref) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+  Widget _buildLegend(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: StudentColors.textSecondary,
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  // ── "Going away?" Vacation Hero Card ───────────────────────────────────────
+  Widget _buildGoingAwayCard(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: StudentColors.walnut,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: StudentColors.elevated,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,33 +533,33 @@ class StudentHistoryPage extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(12),
+                  color: StudentColors.amber.withOpacity(0.18),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.beach_access_rounded,
-                  color: Color(0xFF16A34A),
+                  Icons.flight_takeoff_rounded,
+                  color: StudentColors.amber,
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Going away?',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                      'Going away for a few days?',
+                      style: StudentTypography.serifHeading(
+                        fontSize: 18,
+                        color: Colors.white,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'Apply for vacation and auto-cancel meals',
+                      'Apply for vacation to pause your meals and auto-save bill deductions',
                       style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF6B7280),
+                        fontSize: 11.5,
+                        color: Colors.white.withOpacity(0.75),
                       ),
                     ),
                   ],
@@ -535,29 +567,25 @@ class StudentHistoryPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                backgroundColor: StudentColors.amber,
+                foregroundColor: Colors.white,
                 elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              icon: const Icon(
-                Icons.event_available_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: const Icon(Icons.event_note_rounded, size: 18),
               label: Text(
                 'Apply for Vacation Leave',
                 style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               onPressed: () => _showApplyLeaveSheet(context, ref),
@@ -568,7 +596,188 @@ class StudentHistoryPage extends ConsumerWidget {
     );
   }
 
-  // ── Apply Leave Bottom Sheet ─────────────────────────────────────────────
+  // ── Vacation Tab Content ───────────────────────────────────────────────────
+  Widget _buildVacationSection(
+    BuildContext context,
+    WidgetRef ref,
+    StudentHistoryState state,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildGoingAwayCard(context, ref),
+        const SizedBox(height: 20),
+        Text(
+          'YOUR VACATION REQUESTS',
+          style: StudentTypography.overline(fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: StudentColors.surfaceLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: StudentColors.borderSubtle),
+          ),
+          child: Center(
+            child: Text(
+              'Your vacation leaves will appear here. Meals are paused and credited automatically.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                color: StudentColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Total Meals Off Details Dialog (Matching 22.48.50 (1).jpeg) ───────────
+  void _showOffDetailsDialog(
+    BuildContext context,
+    String title,
+    List<MealRecordModel> offRecords,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StudentColors.canvas,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: StudentColors.brickRedLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                color: StudentColors.brickRed,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: StudentTypography.serifHeading(fontSize: 20),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: offRecords.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Text(
+                      'No skipped or off meal records found for this period.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: StudentColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: offRecords.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, i) {
+                    final r = offRecords[i];
+                    String typeStr = 'Unknown';
+                    Color badgeColor = StudentColors.textSecondary;
+                    Color badgeBg = StudentColors.canvas;
+
+                    if (r.status == 'absent_self') {
+                      typeStr = 'You Cancelled';
+                      badgeColor = StudentColors.amberDark;
+                      badgeBg = StudentColors.amberLight;
+                    } else if (r.status == 'absent_owner') {
+                      typeStr = 'Mess Closed';
+                      badgeColor = StudentColors.brickRed;
+                      badgeBg = StudentColors.brickRedLight;
+                    } else if (r.status == 'guest') {
+                      typeStr = 'Guest Meal';
+                      badgeColor = StudentColors.sageDark;
+                      badgeBg = StudentColors.sageLight;
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: StudentColors.borderSubtle),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${r.date.day} ${_hMonthName(r.date.month)} ${r.date.year}',
+                                  style: StudentTypography.bold(fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${r.mealSlot[0].toUpperCase()}${r.mealSlot.substring(1)} Meal',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    color: StudentColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              typeStr,
+                              style: GoogleFonts.inter(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: badgeColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StudentColors.walnut,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Apply Vacation Leave Sheet (With Strict Date Bounds Security) ─────────
   void _showApplyLeaveSheet(BuildContext context, WidgetRef ref) {
     DateTime? start;
     DateTime? end;
@@ -578,150 +787,223 @@ class StudentHistoryPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+        builder: (context, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: StudentColors.canvas,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
           padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
+            22,
+            16,
+            22,
             MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Apply for Vacation Leave',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Meals within this date range will be automatically cancelled before cutoff.',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF6B7280),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDatePicker(
-                      context,
-                      'Start Date',
-                      start,
-                      (d) => setModalState(() => start = d),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: StudentColors.walnutMuted.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildDatePicker(
-                      context,
-                      'End Date',
-                      end,
-                      (d) => setModalState(() => end = d),
-                    ),
+                ),
+                Text(
+                  'Apply for Vacation Leave',
+                  style: StudentTypography.serifHeading(fontSize: 22),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Meals in this date range will be automatically cancelled before cutoff.',
+                  style: GoogleFonts.inter(
+                    color: StudentColors.textSecondary,
+                    fontSize: 12.5,
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: startSlot,
-                      decoration: InputDecoration(
-                        labelText: 'From Slot',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDatePicker(
+                        context,
+                        'Start Date',
+                        start,
+                        (d) => setModalState(() {
+                          start = d;
+                          if (end != null && end!.isBefore(start!)) {
+                            end = start;
+                          }
+                        }),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'morning', child: Text('Morning')),
-                        DropdownMenuItem(value: 'noon', child: Text('Noon')),
-                        DropdownMenuItem(value: 'evening', child: Text('Evening')),
-                        DropdownMenuItem(value: 'night', child: Text('Night')),
-                      ],
-                      onChanged: (val) => setModalState(() => startSlot = val),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: endSlot,
-                      decoration: InputDecoration(
-                        labelText: 'To Slot',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'morning', child: Text('Morning')),
-                        DropdownMenuItem(value: 'noon', child: Text('Noon')),
-                        DropdownMenuItem(value: 'evening', child: Text('Evening')),
-                        DropdownMenuItem(value: 'night', child: Text('Night')),
-                      ],
-                      onChanged: (val) => setModalState(() => endSlot = val),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF22C55E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: (start != null && end != null)
-                      ? () async {
-                          await ref
-                              .read(studentHistoryProvider.notifier)
-                              .applyLeave(start!, end!, startSlot: startSlot, endSlot: endSlot);
-                          if (context.mounted) {
-                            Navigator.pop(ctx);
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildDatePicker(
+                        context,
+                        'End Date',
+                        end,
+                        (d) => setModalState(() {
+                          if (start != null && d.isBefore(start!)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Vacation leave applied!'),
-                                backgroundColor: Color(0xFF22C55E),
+                                content: Text('End date cannot be before start date.'),
+                                backgroundColor: StudentColors.brickRed,
                               ),
                             );
+                            return;
                           }
-                        }
-                      : null,
-                  child: Text(
-                    'Submit Request',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                          end = d;
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: startSlot,
+                        decoration: InputDecoration(
+                          labelText: 'From Slot',
+                          labelStyle: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: StudentColors.textSecondary,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: StudentColors.borderSubtle,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: StudentColors.borderSubtle,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'morning', child: Text('Morning')),
+                          DropdownMenuItem(value: 'noon', child: Text('Noon')),
+                          DropdownMenuItem(value: 'evening', child: Text('Evening')),
+                          DropdownMenuItem(value: 'night', child: Text('Night')),
+                        ],
+                        onChanged: (val) => setModalState(() => startSlot = val),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: endSlot,
+                        decoration: InputDecoration(
+                          labelText: 'To Slot',
+                          labelStyle: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: StudentColors.textSecondary,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: StudentColors.borderSubtle,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: StudentColors.borderSubtle,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'morning', child: Text('Morning')),
+                          DropdownMenuItem(value: 'noon', child: Text('Noon')),
+                          DropdownMenuItem(value: 'evening', child: Text('Evening')),
+                          DropdownMenuItem(value: 'night', child: Text('Night')),
+                        ],
+                        onChanged: (val) => setModalState(() => endSlot = val),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: StudentColors.walnut,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: (start != null && end != null)
+                        ? () async {
+                            // Enforce date validation strictly
+                            if (end!.isBefore(start!)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'End date cannot be before start date.',
+                                  ),
+                                  backgroundColor: StudentColors.brickRed,
+                                ),
+                              );
+                              return;
+                            }
+                            await ref
+                                .read(studentHistoryProvider.notifier)
+                                .applyLeave(
+                                  start!,
+                                  end!,
+                                  startSlot: startSlot,
+                                  endSlot: endSlot,
+                                );
+                            if (context.mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Vacation leave applied!'),
+                                  backgroundColor: StudentColors.sage,
+                                ),
+                              );
+                            }
+                          }
+                        : null,
+                    child: Text(
+                      'Submit Vacation Request',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -739,14 +1021,14 @@ class StudentHistoryPage extends ConsumerWidget {
         final d = await showDatePicker(
           context: context,
           initialDate: selected ?? DateTime.now(),
-          firstDate: DateTime.now(),
+          firstDate: DateTime.now().subtract(const Duration(days: 1)),
           lastDate: DateTime.now().add(const Duration(days: 365)),
           builder: (context, child) => Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                primary: Color(0xFF22C55E),
+                primary: StudentColors.walnut,
                 onPrimary: Colors.white,
-                onSurface: Colors.black,
+                onSurface: StudentColors.textDark,
               ),
             ),
             child: child!,
@@ -755,11 +1037,11 @@ class StudentHistoryPage extends ConsumerWidget {
         if (d != null) onSelect(d);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: StudentColors.borderSubtle),
           borderRadius: BorderRadius.circular(14),
-          color: const Color(0xFFF9FAFB),
+          color: Colors.white,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,20 +1049,16 @@ class StudentHistoryPage extends ConsumerWidget {
             Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: 12,
-                color: const Color(0xFF6B7280),
+                fontSize: 11,
+                color: StudentColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               selected != null
                   ? '${selected.day} ${_hMonthName(selected.month)} ${selected.year}'
                   : 'Select Date',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF111827),
-              ),
+              style: StudentTypography.bold(fontSize: 13),
             ),
           ],
         ),

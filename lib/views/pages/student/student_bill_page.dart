@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
 import '../../../services/pdf_service.dart';
+import '../../../viewmodels/all_viewmodels.dart';
+import 'theme/student_inspired_theme.dart';
 
 class StudentBillPage extends ConsumerWidget {
   const StudentBillPage({super.key});
@@ -29,13 +30,14 @@ class StudentBillPage extends ConsumerWidget {
     final state = ref.watch(studentBillProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: StudentColors.canvas,
       body: SafeArea(
         child: state.isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+                child: CircularProgressIndicator(color: StudentColors.amber),
               )
             : CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _buildHeader(ref, state)),
                   if (state.bill != null) ...[
@@ -46,23 +48,45 @@ class StudentBillPage extends ConsumerWidget {
                       ),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildBreakdownCard(context, state.bill!),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                       sliver: SliverToBoxAdapter(
                         child: _buildPaymentDetails(state.bill!),
                       ),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 32, 20, 80),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                       sliver: SliverToBoxAdapter(
                         child: _buildDownloadButton(state.bill!),
                       ),
                     ),
                   ] else
                     SliverFillRemaining(
+                      hasScrollBody: false,
                       child: Center(
-                        child: Text(
-                          'No bill generated for this month.',
-                          style: GoogleFonts.inter(color: Colors.grey),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('🧾', style: TextStyle(fontSize: 42)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No bill generated for this month',
+                              style: StudentTypography.serifHeading(fontSize: 18),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Switch months using the navigation bar above.',
+                              style: GoogleFonts.inter(
+                                color: StudentColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -72,309 +96,255 @@ class StudentBillPage extends ConsumerWidget {
     );
   }
 
+  // ── Header & Month Switcher ────────────────────────────────────────────────
   Widget _buildHeader(WidgetRef ref, StudentBillState state) {
     final vm = ref.read(studentBillProvider.notifier);
+    final monthName = _months[state.selectedMonth.month - 1];
+    final year = state.selectedMonth.year;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Billing & Payment',
+            'MONTHLY INVOICE & LEDGER',
+            style: StudentTypography.overline(
+              fontSize: 11,
+              color: StudentColors.sageDark,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Billing',
+            style: StudentTypography.serifHeading(fontSize: 28),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Detailed breakdown of your mess dues and payments',
             style: GoogleFonts.inter(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
+              fontSize: 13,
+              color: StudentColors.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => vm.changeMonth(
-                  DateTime(
-                    state.selectedMonth.year,
-                    state.selectedMonth.month - 1,
+
+          // Month Switcher Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: StudentColors.surfaceLight,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: StudentColors.borderSubtle),
+              boxShadow: StudentColors.softShadow,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () => vm.changeMonth(
+                    DateTime(
+                      state.selectedMonth.year,
+                      state.selectedMonth.month - 1,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.chevron_left_rounded,
+                    color: StudentColors.walnut,
+                    size: 22,
                   ),
                 ),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.chevron_left,
-                    color: Color(0xFF374151),
-                    size: 20,
+                Text(
+                  '$monthName $year',
+                  style: StudentTypography.bold(
+                    fontSize: 15,
+                    color: StudentColors.walnut,
                   ),
                 ),
-              ),
-              Text(
-                '${_months[state.selectedMonth.month - 1]} ${state.selectedMonth.year}',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => vm.changeMonth(
-                  DateTime(
-                    state.selectedMonth.year,
-                    state.selectedMonth.month + 1,
+                IconButton(
+                  onPressed: () => vm.changeMonth(
+                    DateTime(
+                      state.selectedMonth.year,
+                      state.selectedMonth.month + 1,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: StudentColors.walnut,
+                    size: 22,
                   ),
                 ),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right,
-                    color: Color(0xFF374151),
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  // ── Dark Walnut Bill Hero Card (Matching 22.48.48.jpeg) ──────────────────────
   Widget _buildMainBillCard(BillModel bill, StudentBillState state) {
+    final monthName = _months[state.selectedMonth.month - 1].toUpperCase();
+    final year = state.selectedMonth.year;
+    final totalCredits = bill.proratedDiscount + bill.totalDeductions;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: StudentColors.walnut,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
+        boxShadow: StudentColors.elevated,
       ),
-      child: Column(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Top Section (Total)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '${_months[state.selectedMonth.month - 1]} ${state.selectedMonth.year} Bill',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '₹${bill.finalPayable.toInt()}',
-                  style: GoogleFonts.inter(
-                    fontSize: 48,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bill.isPaid
-                        ? const Color(0xFFDCFCE7)
-                        : const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        bill.isPaid ? Icons.check_circle : Icons.pending,
-                        size: 16,
-                        color: bill.isPaid
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFD97706),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        bill.isPaid ? 'Paid Successfully' : 'Payment Pending',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: bill.isPaid
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFD97706),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Issued on: ${DateTime.now().day} ${_months[DateTime.now().month - 1]}, ${DateTime.now().year}',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
+          // Ambient Warm Glow in background
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: StudentColors.amber.withValues(alpha: 0.12),
+              ),
             ),
           ),
 
-          // Dashed Divider
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final boxWidth = constraints.constrainWidth();
-                const dashWidth = 8.0;
-                const dashHeight = 1.0;
-                final dashCount = (boxWidth / (2 * dashWidth)).floor();
-                return Flex(
-                  direction: Axis.horizontal,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(dashCount, (_) {
-                    return const SizedBox(
-                      width: dashWidth,
-                      height: dashHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(color: Color(0xFFE5E7EB)),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-
-          // Bottom Section (Breakdown)
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-            ),
+            padding: const EdgeInsets.all(22),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildCleanRow(
-                  'Basic Monthly Fee',
-                  'Base active cycle',
-                  '₹${bill.baseFee.toInt()}',
-                ),
-                if (bill.proratedDiscount > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Mid-Month Join Discount',
-                    'Pro-rated deduction',
-                    '-₹${bill.proratedDiscount.toInt()}',
-                    isDeduction: true,
-                  ),
-                ],
-                if (bill.totalDeductions > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Meals Cancelled',
-                    'Valid skip refunds',
-                    '-₹${bill.totalDeductions.toInt()}',
-                    isDeduction: true,
-                  ),
-                ],
-                if (bill.extraMealsAddon > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Extra Meals',
-                    'Consumed beyond plan',
-                    '₹${bill.extraMealsAddon.toInt()}',
-                  ),
-                ],
-                if (bill.guestAddons > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Guest Meals',
-                    'Meals for guests',
-                    '₹${bill.guestAddons.toInt()}',
-                  ),
-                ],
-                if (bill.extraFeesAddon > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Other Add-ons / Charges',
-                    'Special feast or maintenance charges',
-                    '₹${bill.extraFeesAddon.toInt()}',
-                  ),
-                ],
-                if (bill.previousDues > 0) ...[
-                  const SizedBox(height: 16),
-                  _buildCleanRow(
-                    'Previous Unpaid Dues',
-                    'Arrears from past months',
-                    '₹${bill.previousDues.toInt()}',
-                  ),
-                ],
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(color: Color(0xFFE5E7EB), height: 1),
-                ),
+                // Top Tag & Status Pill
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Total',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$monthName $year BILL',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                          color: StudentColors.amber,
+                        ),
                       ),
                     ),
-                    Text(
-                      '₹${bill.finalPayable.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: bill.isPaid
+                            ? StudentColors.sageLight
+                            : StudentColors.amberLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: bill.isPaid
+                                  ? StudentColors.sage
+                                  : StudentColors.amber,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            bill.isPaid ? 'PAID' : 'PAYMENT PENDING',
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: bill.isPaid
+                                  ? StudentColors.sageText
+                                  : StudentColors.amberText,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: Builder(
-                    builder: (btnContext) => TextButton.icon(
-                      onPressed: () => _showDetailedBreakdown(btnContext, bill),
-                      icon: const Icon(Icons.receipt_long, size: 18),
-                      label: Text(
-                        'View Detailed Breakdown',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF3B82F6),
-                        backgroundColor: const Color(0xFFEFF6FF),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                const SizedBox(height: 16),
+
+                // Large Serif Numeral Amount
+                Text(
+                  '₹${bill.finalPayable.toInt()}',
+                  style: StudentTypography.serifNumeral(
+                    fontSize: 46,
+                    color: Colors.white,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  bill.isPaid
+                      ? 'Paid successfully • Settled with mess owner'
+                      : 'Due this month • Pay via UPI or cash',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Divider(color: Colors.white12, height: 1),
+                const SizedBox(height: 14),
+
+                // Bottom stats row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Base plan fee',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        Text(
+                          '₹${bill.baseFee.toInt()}',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (totalCredits > 0)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Credits saved',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          Text(
+                            '-₹${totalCredits.toInt()}',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF86EFAC),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -384,11 +354,130 @@ class StudentBillPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCleanRow(
+  // ── Clean Breakdown Card ───────────────────────────────────────────────────
+  Widget _buildBreakdownCard(BuildContext context, BillModel bill) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: StudentColors.surfaceLight,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: StudentColors.borderSubtle),
+        boxShadow: StudentColors.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'BILL BREAKDOWN',
+            style: StudentTypography.overline(fontSize: 11),
+          ),
+          const SizedBox(height: 14),
+          _buildBreakdownRow(
+            'Basic Monthly Fee',
+            'Base plan charge',
+            '₹${bill.baseFee.toInt()}',
+          ),
+          if (bill.proratedDiscount > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Mid-Month Join Discount',
+              'Pro-rated deduction',
+              '-₹${bill.proratedDiscount.toInt()}',
+              isCredit: true,
+            ),
+          ],
+          if (bill.totalDeductions > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Skipped Meal Credits',
+              'Valid cancellations',
+              '-₹${bill.totalDeductions.toInt()}',
+              isCredit: true,
+            ),
+          ],
+          if (bill.extraMealsAddon > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Extra Meals',
+              'Beyond regular plan',
+              '₹${bill.extraMealsAddon.toInt()}',
+            ),
+          ],
+          if (bill.guestAddons > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Guest Meals Added',
+              'Meals hosted for guests',
+              '₹${bill.guestAddons.toInt()}',
+            ),
+          ],
+          if (bill.extraFeesAddon > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Other Add-ons / Charges',
+              'Feast or maintenance',
+              '₹${bill.extraFeesAddon.toInt()}',
+            ),
+          ],
+          if (bill.previousDues > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Previous Unpaid Dues',
+              'Arrears from past cycle',
+              '₹${bill.previousDues.toInt()}',
+            ),
+          ],
+          const SizedBox(height: 16),
+          const Divider(color: StudentColors.borderSubtle, height: 1),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Payable',
+                style: StudentTypography.bold(fontSize: 16),
+              ),
+              Text(
+                '₹${bill.finalPayable.toInt()}',
+                style: StudentTypography.serifNumeral(
+                  fontSize: 24,
+                  color: StudentColors.walnut,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showDetailedBreakdown(context, bill),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: StudentColors.walnut),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                'View Detailed Itemized List',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: StudentColors.walnut,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBreakdownRow(
     String title,
     String subtitle,
     String amount, {
-    bool isDeduction = false,
+    bool isCredit = false,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -399,18 +488,13 @@ class StudentBillPage extends ConsumerWidget {
           children: [
             Text(
               title,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF374151),
-              ),
+              style: StudentTypography.bold(fontSize: 13.5),
             ),
-            const SizedBox(height: 2),
             Text(
               subtitle,
               style: GoogleFonts.inter(
-                fontSize: 12,
-                color: const Color(0xFF9CA3AF),
+                fontSize: 11,
+                color: StudentColors.textSecondary,
               ),
             ),
           ],
@@ -419,325 +503,242 @@ class StudentBillPage extends ConsumerWidget {
           amount,
           style: GoogleFonts.inter(
             fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: isDeduction
-                ? const Color(0xFF16A34A)
-                : const Color(0xFF111827),
+            fontWeight: FontWeight.w700,
+            color: isCredit ? StudentColors.sageDark : StudentColors.textDark,
           ),
         ),
       ],
     );
   }
 
+  // ── Payment Details Card ───────────────────────────────────────────────────
   Widget _buildPaymentDetails(BillModel bill) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Payment Details',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF111827),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: StudentColors.surfaceLight,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: StudentColors.borderSubtle),
+        boxShadow: StudentColors.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'PAYMENT DETAILS',
+            style: StudentTypography.overline(fontSize: 11),
           ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Column(
+          const SizedBox(height: 12),
+          Row(
             children: [
-              _buildDetailRow(
-                'Status',
-                bill.isPaid ? 'PAID' : 'PENDING',
-                valueColor: bill.isPaid
-                    ? const Color(0xFF16A34A)
-                    : const Color(0xFFD97706),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: StudentColors.amberLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: StudentColors.amberDark,
+                  size: 20,
+                ),
               ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                'Date',
-                bill.isPaid
-                    ? '${DateTime.now().day} ${_months[DateTime.now().month - 1]} ${DateTime.now().year}'
-                    : 'N/A',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                'Method',
-                bill.isPaid ? 'Paid to Owner directly' : 'N/A',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                'Bill ID',
-                bill.billId.length > 8
-                    ? bill.billId.substring(0, 8).toUpperCase()
-                    : bill.billId.toUpperCase(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      bill.isPaid ? 'Payment Confirmed' : 'Settle with Mess Owner',
+                      style: StudentTypography.bold(fontSize: 14),
+                    ),
+                    Text(
+                      bill.isPaid
+                          ? 'Receipt has been issued by owner'
+                          : 'Pay in cash or UPI directly at the counter',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: StudentColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF6B7280),
-          ),
-        ),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: valueColor ?? const Color(0xFF111827),
-          ),
-        ),
-      ],
-    );
-  }
-
+  // ── Download Invoice PDF Button ───────────────────────────────────────────
   Widget _buildDownloadButton(BillModel bill) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: () => PdfService.generateAndDownloadBill(bill),
+        icon: const Icon(Icons.download_rounded, size: 20),
+        label: Text(
+          'Download Invoice PDF',
+          style: GoogleFonts.inter(fontSize: 14.5, fontWeight: FontWeight.w700),
+        ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF22C55E),
+          backgroundColor: StudentColors.walnut,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 0,
-        ),
-        onPressed: () async {
-          await PdfService.generateAndDownloadBill(bill);
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.download_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Download PDF Invoice',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              '₹${bill.finalPayable.toInt()}',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
+  // ── Detailed Itemized List Modal ──────────────────────────────────────────
   void _showDetailedBreakdown(BuildContext context, BillModel bill) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: StudentColors.canvas,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
+        child: SafeArea(
+          top: false,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Bill Breakdown',
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: StudentColors.walnutMuted.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Detailed Bill Breakdown',
+                style: StudentTypography.serifHeading(fontSize: 22),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Complete itemized summary for this billing cycle',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  color: StudentColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: StudentColors.borderSubtle),
+                ),
+                child: Column(
+                  children: [
+                    _buildModalRow('Base Plan Fee', '₹${bill.baseFee.toInt()}'),
+                    if (bill.proratedDiscount > 0)
+                      _buildModalRow(
+                        'Prorated Joining Discount',
+                        '-₹${bill.proratedDiscount.toInt()}',
+                        isCredit: true,
+                      ),
+                    if (bill.totalDeductions > 0)
+                      _buildModalRow(
+                        'Skipped Meals Credit',
+                        '-₹${bill.totalDeductions.toInt()}',
+                        isCredit: true,
+                      ),
+                    if (bill.guestAddons > 0)
+                      _buildModalRow(
+                        'Guest Meals',
+                        '+₹${bill.guestAddons.toInt()}',
+                      ),
+                    if (bill.extraFeesAddon > 0)
+                      _buildModalRow(
+                        'Other Charges',
+                        '+₹${bill.extraFeesAddon.toInt()}',
+                      ),
+                    if (bill.previousDues > 0)
+                      _buildModalRow(
+                        'Previous Dues',
+                        '+₹${bill.previousDues.toInt()}',
+                      ),
+                    const Divider(height: 20, color: StudentColors.borderSubtle),
+                    _buildModalRow(
+                      'Final Amount',
+                      '₹${bill.finalPayable.toInt()}',
+                      isBold: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudentColors.walnut,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _buildBillRow('Basic Fee', '₹${bill.baseFee.toStringAsFixed(0)}'),
-              if (bill.proratedDiscount > 0)
-                _buildBillRow(
-                  'Mid-Month Joining Discount',
-                  '-₹${bill.proratedDiscount.toStringAsFixed(0)}',
-                  color: Colors.green,
                 ),
-              if (bill.totalDeductions > 0)
-                _buildBillRow(
-                  'Valid Skipped Meals Refunds',
-                  '-₹${bill.totalDeductions.toStringAsFixed(0)}',
-                  color: Colors.green,
-                ),
-              if (bill.extraMealsAddon > 0)
-                _buildBillRow(
-                  'Extra Meals Consumed',
-                  '+₹${bill.extraMealsAddon.toStringAsFixed(0)}',
-                  color: Colors.red,
-                ),
-              if (bill.guestAddons > 0)
-                _buildBillRow(
-                  'Guest Meals',
-                  '+₹${bill.guestAddons.toStringAsFixed(0)}',
-                  color: Colors.red,
-                ),
-              if (bill.extraFeesAddon > 0)
-                _buildBillRow(
-                  'Other Add-on Charges',
-                  '+₹${bill.extraFeesAddon.toStringAsFixed(0)}',
-                  color: Colors.red,
-                ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(),
-              ),
-              _buildBillRow(
-                'Final Payable',
-                '₹${bill.finalPayable.toStringAsFixed(0)}',
-                isBold: true,
-                size: 18,
-              ),
-
-              const SizedBox(height: 24),
-              Text(
-                'Itemized Details',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: bill.deductions.isEmpty
-                    ? Center(
-                        child: Text(
-                          "No itemized details this month.",
-                          style: GoogleFonts.inter(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: bill.deductions.length,
-                        separatorBuilder: (context, index) =>
-                            const Divider(height: 16),
-                        itemBuilder: (context, index) {
-                          final item = bill.deductions[index];
-                          final isDeduction = item.amount < 0;
-                          final typeStr = item.type
-                              .replaceAll('_', ' ')
-                              .toUpperCase();
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${item.date.day}/${item.date.month} - ${item.mealSlot}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF111827),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      typeStr,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: const Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '${isDeduction ? '' : '+'}₹${item.amount.abs().toStringAsFixed(0)}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDeduction
-                                      ? Colors.green
-                                      : Colors.red,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildBillRow(
+  Widget _buildModalRow(
     String label,
-    String amount, {
+    String value, {
+    bool isCredit = false,
     bool isBold = false,
-    Color color = const Color(0xFF111827),
-    double size = 14,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: size,
+              fontSize: 13,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: isBold ? const Color(0xFF111827) : const Color(0xFF6B7280),
+              color: StudentColors.textDark,
             ),
           ),
           Text(
-            amount,
+            value,
             style: GoogleFonts.inter(
-              fontSize: size,
+              fontSize: 13,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-              color: color,
+              color: isCredit
+                  ? StudentColors.sageDark
+                  : (isBold ? StudentColors.walnut : StudentColors.textDark),
             ),
           ),
         ],

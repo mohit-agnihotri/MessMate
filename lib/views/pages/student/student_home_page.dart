@@ -1,24 +1,14 @@
-import '../../../services/localization_service.dart';
-import '../../../viewmodels/cutoff_helper.dart';
-import 'dart:ui';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
-import 'widgets/view_mess_menu_sheet.dart';
+import '../../../viewmodels/all_viewmodels.dart';
+import '../../../viewmodels/cutoff_helper.dart';
+import 'theme/student_inspired_theme.dart';
 import 'widgets/rate_mess_sheet.dart';
-
-// ─── Slot Illustration Banners ──────────────────────────────────────────────
-const _slotBannerAssets = {
-  'morning': 'assets/images/slot_morning.png',
-  'noon': 'assets/images/slot_noon.png',
-  'evening': 'assets/images/slot_evening.png',
-  'night': 'assets/images/slot_night.png',
-};
+import 'widgets/view_mess_menu_sheet.dart';
 
 const _slotIcons = {
   'morning': '🌅',
@@ -60,9 +50,9 @@ class StudentHomePage extends ConsumerWidget {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning,';
-    if (hour < 17) return 'Good Afternoon,';
-    return 'Good Evening,';
+    if (hour < 12) return 'GOOD MORNING';
+    if (hour < 17) return 'GOOD AFTERNOON';
+    return 'GOOD EVENING';
   }
 
   @override
@@ -70,12 +60,14 @@ class StudentHomePage extends ConsumerWidget {
     final state = ref.watch(studentHomeProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: StudentColors.canvas,
       body: SafeArea(
         child: RefreshIndicator(
-          color: const Color(0xFF22C55E),
+          color: StudentColors.amber,
+          backgroundColor: Colors.white,
           onRefresh: () => ref.read(studentHomeProvider.notifier).load(),
           child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               // ── Header ──
               SliverToBoxAdapter(
@@ -101,20 +93,58 @@ class StudentHomePage extends ConsumerWidget {
                 child: _ChoiceGroupsSection(state: state, ref: ref),
               ),
 
-              // ── Current Meal ──
+              // ── Current Meal Section Header ──
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-                  child: Text(
-                    'Current Meal',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'CURRENT MEAL',
+                        style: StudentTypography.overline(
+                          fontSize: 12,
+                          color: StudentColors.walnutMuted,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                      if (state.currentSlot != 'closed')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: StudentColors.sageLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: StudentColors.sage,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'NOW SERVING',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: StudentColors.sageText,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
+
+              // ── Current Meal Card ──
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverToBoxAdapter(
@@ -122,21 +152,12 @@ class StudentHomePage extends ConsumerWidget {
                 ),
               ),
 
-              // ── My Mess Menu Button Card ──
+              // ── Quick Info Action Cards (My Mess Menu & My Rating) ──
               if (state.mess != null)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   sliver: SliverToBoxAdapter(
-                    child: _buildMessMenuButtonCard(context, state),
-                  ),
-                ),
-
-              // ── Rate My Mess Card ──
-              if (state.mess != null)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: _buildRateMessCard(context, ref, state),
+                    child: _buildMiddleActionCards(context, ref, state),
                   ),
                 ),
 
@@ -144,7 +165,6 @@ class StudentHomePage extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Builder(
                   builder: (ctx) {
-                    // Build combined upcoming: today's remaining + tomorrow's enabled
                     final allSlots = ['morning', 'noon', 'evening', 'night'];
                     final enabledSlots = allSlots
                         .where(
@@ -153,27 +173,21 @@ class StudentHomePage extends ConsumerWidget {
                         )
                         .toList();
 
-                    // Today's remaining (after current slot)
                     final currentIdx = allSlots.indexOf(state.currentSlot);
                     final todayRemaining = state.currentSlot == 'closed'
                         ? <String>[]
                         : enabledSlots
-                              .where((s) => allSlots.indexOf(s) > currentIdx)
-                              .toList();
+                            .where((s) => allSlots.indexOf(s) > currentIdx)
+                            .toList();
 
-                    // Tomorrow's slots
                     final tomorrowSlots = enabledSlots;
 
-                    final todayIso = DateTime.now().toIso8601String().substring(
-                      0,
-                      10,
-                    );
+                    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
                     final tomorrowIso = DateTime.now()
                         .add(const Duration(days: 1))
                         .toIso8601String()
                         .substring(0, 10);
 
-                    // Combine: today remaining then tomorrow
                     final items = [
                       for (final s in todayRemaining)
                         _UpcomingItem(
@@ -190,8 +204,7 @@ class StudentHomePage extends ConsumerWidget {
                           slot: s,
                           isToday: false,
                           menu: state.tomorrowMenus[s],
-                          label:
-                              "Tomorrow's ${s[0].toUpperCase()}${s.substring(1)}",
+                          label: "Tomorrow's ${s[0].toUpperCase()}${s.substring(1)}",
                           isSkipped: state.skippedUpcomingMeals.containsKey(
                             '${tomorrowIso}_$s',
                           ),
@@ -204,18 +217,18 @@ class StudentHomePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                           child: Text(
-                            'Upcoming Meals',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF111827),
+                            'UPCOMING MEALS',
+                            style: StudentTypography.overline(
+                              fontSize: 12,
+                              color: StudentColors.walnutMuted,
+                              letterSpacing: 1.4,
                             ),
                           ),
                         ),
                         SizedBox(
-                          height: 155, // Increased height to prevent bottom overflow
+                          height: 168,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -238,9 +251,7 @@ class StudentHomePage extends ConsumerWidget {
                                   isSkipped: item.isSkipped,
                                   date: item.isToday
                                       ? DateTime.now()
-                                      : DateTime.now().add(
-                                          const Duration(days: 1),
-                                        ),
+                                      : DateTime.now().add(const Duration(days: 1)),
                                 ),
                               );
                             },
@@ -252,7 +263,7 @@ class StudentHomePage extends ConsumerWidget {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              const SliverToBoxAdapter(child: SizedBox(height: 110)),
             ],
           ),
         ),
@@ -260,17 +271,17 @@ class StudentHomePage extends ConsumerWidget {
     );
   }
 
-  // ── Current Meal Card ────────────────────────────────────────────────────
+  // ── Current Meal Card (Warm Walnut Editorial Hero Card) ───────────────────────
   Widget _buildCurrentMealCard(
     BuildContext context,
     WidgetRef ref,
     StudentHomeState state,
   ) {
     if (state.isLoading) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+          padding: const EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: StudentColors.amber),
         ),
       );
     }
@@ -303,474 +314,244 @@ class StudentHomePage extends ConsumerWidget {
     final cutoff = state.timeLeftToCutoff ?? Duration.zero;
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
-    final bannerAsset = _slotBannerAssets[slot] ?? _slotBannerAssets['noon']!;
-    final isNight = slot == 'night';
-
-    Color slotAccentColor;
-    Color slotBgBadgeColor;
-    IconData slotIconData;
-    switch (slot) {
-      case 'morning':
-        slotAccentColor = const Color(0xFFB45309);
-        slotBgBadgeColor = const Color(0xFFFEF3C7);
-        slotIconData = Icons.wb_sunny_rounded;
-        break;
-      case 'noon':
-        slotAccentColor = const Color(0xFF0284C7);
-        slotBgBadgeColor = const Color(0xFFE0F2FE);
-        slotIconData = Icons.wb_sunny_rounded;
-        break;
-      case 'evening':
-        slotAccentColor = const Color(0xFFEA580C);
-        slotBgBadgeColor = const Color(0xFFFFEDD5);
-        slotIconData = Icons.wb_twilight_rounded;
-        break;
-      case 'night':
-      default:
-        slotAccentColor = const Color(0xFF93C5FD);
-        slotBgBadgeColor = const Color(0xFF1E293B);
-        slotIconData = Icons.nightlight_round;
-        break;
-    }
 
     String mealTitle;
     if (isSpecial) {
-      mealTitle = '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Meal"}';
+      mealTitle = '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast"}';
     } else if (isRegularToday) {
       mealTitle = 'Today\'s $slotDisplayName Meal';
     } else {
       mealTitle = 'Homestyle Mess Meal';
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isNight ? Colors.white12 : const Color(0xFFE5E7EB),
-            width: 1.0,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 16,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // ── Slot Illustration Banner Background ──
-            Positioned.fill(
-              child: Image.asset(
-                bannerAsset,
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                errorBuilder: (_, __, ___) => Container(
-                  color: isNight ? const Color(0xFF19203A) : const Color(0xFFF8FAFC),
-                ),
+    final dishes = menu?.dishes ?? [];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: StudentColors.walnut,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: StudentColors.elevated,
+      ),
+      child: Stack(
+        children: [
+          // Ambient Warm Glow Behind Content
+          Positioned(
+            top: -40,
+            right: -40,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: StudentColors.amber.withOpacity(0.12),
               ),
             ),
+          ),
 
-            // ── Foreground Content ──
-            Column(
-              mainAxisSize: MainAxisSize.min,
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Banner Row (Image 3 layout)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Themed Icon Badge
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: slotBgBadgeColor,
-                          borderRadius: BorderRadius.circular(14),
-                          border: isNight ? Border.all(color: Colors.white24) : null,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            slotIconData,
-                            color: isNight ? const Color(0xFFFCD34D) : slotAccentColor,
-                            size: 26,
-                          ),
+                // Top Tag & Timings
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${slot.toUpperCase()} MEAL',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                          color: StudentColors.amber,
                         ),
                       ),
-                      const SizedBox(width: 12),
-
-                      // Text Info Column
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              slot.toUpperCase(),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.3,
-                                color: slotAccentColor,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              mealTitle,
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isNight ? Colors.white : const Color(0xFF111827),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (timeRange.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.access_time_rounded,
-                                    size: 13,
-                                    color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    timeRange,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 6),
-                            // Live Status Pill
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                              decoration: BoxDecoration(
-                                color: isNight
-                                    ? Colors.white.withValues(alpha: 0.14)
-                                    : const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(12),
-                                border: isNight
-                                    ? Border.all(color: Colors.white24)
-                                    : Border.all(color: const Color(0xFFBBF7D0)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.notifications_active_rounded,
-                                    size: 12,
-                                    color: isNight ? const Color(0xFF86EFAC) : const Color(0xFF16A34A),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Serving now',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: isNight ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Menu > Button (Top Right)
-                      if (state.mess != null)
-                        GestureDetector(
-                          onTap: () {
-                            ViewMessMenuSheet.show(
-                              context,
-                              mess: state.mess!,
-                              initialMenus: state.todayMenus.values.toList(),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isNight ? Colors.white.withValues(alpha: 0.18) : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isNight ? Colors.white30 : const Color(0xFFE2E8F0),
-                              ),
-                              boxShadow: isNight
-                                  ? null
-                                  : const [
-                                      BoxShadow(
-                                        color: Color(0x0E000000),
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Menu',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isNight ? Colors.white : const Color(0xFF1F2937),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                Icon(
-                                  Icons.chevron_right,
-                                  size: 15,
-                                  color: isNight ? Colors.white : const Color(0xFF1F2937),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // Bottom Action & Cutoff Panel
-                Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isNight
-                        ? const Color(0xFF0F172A).withValues(alpha: 0.82)
-                        : Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isNight ? Colors.white12 : const Color(0xFFE2E8F0),
                     ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x08000000),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Timer row
+                    if (timeRange.isNotEmpty)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            'Cancellation closes in: ',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
-                            ),
-                          ),
-                          Text(
-                            cutoffStr,
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              color: hasCutoff
-                                  ? const Color(0xFFD97706)
-                                  : const Color(0xFFEF4444),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
                           Icon(
                             Icons.access_time_rounded,
                             size: 13,
-                            color: hasCutoff
-                                ? const Color(0xFFD97706)
-                                : const Color(0xFFEF4444),
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            timeRange,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      // Action buttons
-                      if (!hasCutoff)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: isNight ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isNight ? Colors.white12 : const Color(0xFFE2E8F0),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.stars_rounded, size: 16, color: Color(0xFFFBBF24)),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Meal concluded • Rate dishes in Mess Menu',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isNight ? Colors.white : const Color(0xFF334155),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (state.hasSelfSkipped)
-                        _UndoButton(ref: ref)
-                      else
-                        Row(
-                          children: [
-                            if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
-                              Expanded(
-                                flex: 3,
-                                child: _SkipButton(
-                                  ref: ref,
-                                  mealSlot: slot,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                            ],
-                            Expanded(
-                              flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
-                              child: _GuestButton(
-                                onAddGuest: () => _showAddGuestDialog(
-                                  context,
-                                  ref,
-                                  state,
-                                  slot,
-                                  DateTime.now(),
-                                ),
-                              ),
-                            ),
-                          ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Main Heading
+                Text(
+                  mealTitle,
+                  style: StudentTypography.serifHeading(
+                    fontSize: 24,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+
+                // Cutoff Status Row
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 14,
+                      color: hasCutoff ? StudentColors.amber : const Color(0xFFF87171),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        hasCutoff
+                            ? 'Cancellation closes in: $cutoffStr'
+                            : 'Cutoff passed ($cutoffStr)',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: hasCutoff
+                              ? StudentColors.amberLight
+                              : const Color(0xFFFCA5A5),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Dishes Chips
+                if (dishes.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: dishes.map((dish) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          dish.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.92),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Standard homestyle seasonal meal will be served',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.7),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Action Buttons Row
+                if (!hasCutoff)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 16, color: StudentColors.amber),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Cutoff closed • Enjoy your meal!',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (state.hasSelfSkipped)
+                  _UndoButton(ref: ref)
+                else
+                  Row(
+                    children: [
+                      if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
+                        Expanded(
+                          flex: 3,
+                          child: _SkipButton(
+                            ref: ref,
+                            mealSlot: slot,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
+                        child: _GuestButton(
+                          onAddGuest: () => _showAddGuestDialog(
+                            context,
+                            ref,
+                            state,
+                            slot,
+                            DateTime.now(),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // ── My Mess Menu Button Card ─────────────────────────────────────────────
-  Widget _buildMessMenuButtonCard(BuildContext context, StudentHomeState state) {
-    final mess = state.mess;
-    if (mess == null) return const SizedBox.shrink();
-
-    return InkWell(
-      onTap: () {
-        ViewMessMenuSheet.show(
-          context,
-          mess: mess,
-          initialMenus: state.todayMenus.values.toList(),
-        );
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x06000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCFCE7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text('📋', style: TextStyle(fontSize: 20)),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'My Mess Menu (मेन्यू देखें)',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Standard breakfast, lunch & dinner offerings',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: const Color(0xFF6B7280),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'View',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF16A34A),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 16,
-                    color: Color(0xFF16A34A),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Rate My Mess Card ────────────────────────────────────────────────────
-  Widget _buildRateMessCard(
+  // ── Combined Middle Action Cards (Mess Menu & My Rating) ─────────────────────
+  Widget _buildMiddleActionCards(
     BuildContext context,
     WidgetRef ref,
     StudentHomeState state,
@@ -782,189 +563,326 @@ class StudentHomePage extends ConsumerWidget {
     final reviews = reviewsAsync.valueOrNull ?? [];
     final currentUid =
         state.student?.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
-    final myReview =
-        reviews.where((r) => r.studentId == currentUid).firstOrNull;
+    final myReview = reviews.where((r) => r.studentId == currentUid).firstOrNull;
 
-    final isHi = ref.watch(localizationProvider) == 'hi';
-
-    return InkWell(
-      onTap: () {
-        RateMessSheet.show(context, mess: mess, existingReview: myReview);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: myReview != null
-                ? const Color(0xFFFDE68A)
-                : const Color(0xFFE5E7EB),
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x06000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(9),
+    return Row(
+      children: [
+        // ── Card 1: My Mess Menu ──
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              ViewMessMenuSheet.show(
+                context,
+                mess: mess,
+                initialMenus: state.todayMenus.values.toList(),
+              );
+            },
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 120),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(12),
+                color: StudentColors.surfaceLight,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: StudentColors.borderSubtle),
+                boxShadow: StudentColors.softShadow,
               ),
-              child: const Icon(Icons.star_rounded,
-                  color: Color(0xFFD97706), size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    myReview != null
-                        ? (isHi
-                            ? 'मेरी रेटिंग: ⭐ ${myReview.rating.toStringAsFixed(1)}'
-                            : 'My Rating: ⭐ ${myReview.rating.toStringAsFixed(1)}')
-                        : (isHi
-                            ? 'मेस को रेटिंग दें (Rate Mess)'
-                            : 'Rate & Review This Mess'),
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: StudentColors.sageLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.restaurant_menu_rounded,
+                          size: 18,
+                          color: StudentColors.sageDark,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: StudentColors.walnutMuted,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    myReview != null
-                        ? (isHi
-                            ? 'रिव्यू अपडेट या एडिट करने के लिए टैप करें'
-                            : 'Tap to edit or update your review')
-                        : (isHi
-                            ? 'खाने का स्वाद, सर्विस व सफाई पर फीडबैक दें'
-                            : 'Rate food quality, cleanliness & service'),
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: const Color(0xFF6B7280),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My mess menu',
+                        style: StudentTypography.bold(fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Weekly dishes schedule',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: StudentColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    myReview != null ? 'Edit' : 'Rate',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFD97706),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 16,
-                    color: Color(0xFFD97706),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(width: 12),
+
+        // ── Card 2: My Rating ──
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              RateMessSheet.show(context, mess: mess, existingReview: myReview);
+            },
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 120),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: StudentColors.surfaceLight,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: StudentColors.borderSubtle),
+                boxShadow: StudentColors.softShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 22,
+                            color: StudentColors.amber,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            myReview != null
+                                ? myReview.rating.toStringAsFixed(1)
+                                : 'Rate',
+                            style: StudentTypography.serifNumeral(
+                              fontSize: 20,
+                              color: StudentColors.walnut,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: StudentColors.amberLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          myReview != null ? 'Edit' : 'Rate',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: StudentColors.amberText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My rating',
+                        style: StudentTypography.bold(fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        myReview != null
+                            ? (myReview.comment != null && myReview.comment!.isNotEmpty
+                                ? myReview.comment!
+                                : 'Reviewed this mess')
+                            : 'Rate food & cleanliness',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: StudentColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   // ── Announcement dialog ──────────────────────────────────────────────────
   void _showAnnouncementDialog(BuildContext context, StudentHomeState state) {
     final anns = state.announcements;
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Text('📢', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 8),
-            Text(
-              'Announcements',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: StudentColors.canvas,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: anns.isEmpty
-              ? Text(
-                  'No new announcements from your mess owner.',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: const Color(0xFF4B5563),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: StudentColors.walnutMuted.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Announcements',
+                        style: StudentTypography.serifHeading(fontSize: 24),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Notices and updates from mess owner',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: StudentColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close_rounded, color: StudentColors.walnut),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (anns.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: StudentColors.borderSubtle),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'No new announcements right now.',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: StudentColors.textSecondary,
+                      ),
+                    ),
                   ),
                 )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: anns.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final a = anns[index];
-                    final date = '${a.timestamp.day}/${a.timestamp.month}/${a.timestamp.year}';
-                    final time = '${a.timestamp.hour.toString().padLeft(2, '0')}:${a.timestamp.minute.toString().padLeft(2, '0')}';
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          a.message,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: const Color(0xFF4B5563),
-                          ),
+              else
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: anns.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final a = anns[index];
+                      final date = '${a.timestamp.day}/${a.timestamp.month}/${a.timestamp.year}';
+                      final time =
+                          '${a.timestamp.hour.toString().padLeft(2, '0')}:${a.timestamp.minute.toString().padLeft(2, '0')}';
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: StudentColors.borderSubtle),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$date at $time',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: const Color(0xFF9CA3AF),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.campaign_rounded,
+                                  size: 18,
+                                  color: StudentColors.amber,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$date at $time',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: StudentColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              a.message,
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                height: 1.4,
+                                color: StudentColors.textDark,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Close',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF22C55E),
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudentColors.walnut,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1004,10 +922,10 @@ class StudentHomePage extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: StudentColors.canvas,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1018,229 +936,192 @@ class StudentHomePage extends ConsumerWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
+                  color: StudentColors.walnutMuted.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            // Title
             Row(
               children: [
-                Text(icon, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      slotName,
+                Text(icon, style: const TextStyle(fontSize: 26)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isToday ? slotName : "Tomorrow's $slotName",
+                        style: StudentTypography.serifHeading(fontSize: 22),
+                      ),
+                      if (timeRange.isNotEmpty)
+                        Text(
+                          timeRange,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: StudentColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isSkipped)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: StudentColors.brickRedLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'SKIPPED',
                       style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: StudentColors.brickRed,
                       ),
                     ),
-                    if (timeRange.isNotEmpty)
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.access_time,
-                            size: 13,
-                            color: Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            timeRange,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+                  ),
               ],
             ),
-            const SizedBox(height: 14),
-            if (isExplicitlyPosted) ...[
-              if (menu.menuType == 'special')
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: Text(
-                    '✨ SPECIAL MEAL',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFFD97706),
-                    ),
-                  ),
-                ),
-              Text(
-                menu.dishes.map((d) => d.name).join(', '),
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF374151),
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ] else ...[
-              Text(
-                'Regular Mess Meal',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF6B7280),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 6),
-              if (state.mess != null)
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ViewMessMenuSheet.show(
-                      context,
-                      mess: state.mess!,
-                      initialMenus: state.todayMenus.values.toList(),
-                    );
-                  },
-                  child: Text(
-                    'View regular offerings in Mess Menu ➔',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF16A34A),
-                    ),
-                  ),
-                ),
-            ],
-            const SizedBox(height: 20),
-            // Timer
+            const SizedBox(height: 16),
+
+            // Cutoff Info
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFED7AA)),
+                border: Border.all(color: StudentColors.borderSubtle),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 16,
+                    color: hasCutoff ? StudentColors.amber : StudentColors.brickRed,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    'Cancellation closes in: ',
+                    hasCutoff
+                        ? 'Cancellation closes in: $cutoffStr'
+                        : 'Cutoff passed ($cutoffStr)',
                     style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF92400E),
+                      color: hasCutoff ? StudentColors.amberText : StudentColors.brickRed,
                     ),
-                  ),
-                  Text(
-                    cutoffStr,
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: hasCutoff
-                          ? const Color(0xFFFFB347)
-                          : const Color(0xFFF87171),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Color(0xFF92400E),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
+
+            // Dishes list
+            Text(
+              'PLANNED DISHES',
+              style: StudentTypography.overline(fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            if (isExplicitlyPosted)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: menu.dishes.map((d) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: StudentColors.borderSubtle),
+                    ),
+                    child: Text(
+                      d.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: StudentColors.textDark,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              )
+            else
+              Text(
+                'Standard seasonal menu for this slot.',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: StudentColors.textSecondary,
+                ),
+              ),
+
+            const SizedBox(height: 24),
+
+            // Action Buttons
             if (hasCutoff)
               Row(
                 children: [
-                  if ((state.mess?.allowMealSkipping ?? true) || isSkipped) ...[
+                  if (!isSkipped)
                     Expanded(
-                      flex: 3,
-                      child: isSkipped
-                          ? ElevatedButton(
-                              onPressed: () {
-                                final mealIso = mealDate
-                                    .toIso8601String()
-                                    .substring(0, 10);
-                                final recordId = state
-                                    .skippedUpcomingMeals['${mealIso}_$slot'];
-                                if (recordId != null) {
-                                  ref
-                                      .read(studentHomeProvider.notifier)
-                                      .undoSkip(recordId);
-                                }
-                                Navigator.pop(ctx);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('$slotName skip undone!'),
-                                    backgroundColor: const Color(0xFF22C55E),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFEE2E2),
-                                foregroundColor: const Color(0xFFEF4444),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                'Undo Skip',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            )
-                          : ElevatedButton(
-                              onPressed: () {
-                                ref
-                                    .read(studentHomeProvider.notifier)
-                                    .skipMeal(slot, date: mealDate);
-                                Navigator.pop(ctx);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('$slotName skipped!'),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEF4444),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                'Skip This Meal',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(studentHomeProvider.notifier)
+                              .skipMeal(slot, date: mealDate);
+                          Navigator.pop(ctx);
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: Text(
+                          'Skip Meal',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudentColors.brickRed,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final dateIso = mealDate.toIso8601String().substring(0, 10);
+                          final recordId =
+                              state.skippedUpcomingMeals['${dateIso}_$slot'];
+                          if (recordId != null) {
+                            ref
+                                .read(studentHomeProvider.notifier)
+                                .undoSkip(recordId);
+                          }
+                          Navigator.pop(ctx);
+                        },
+                        icon: const Icon(Icons.undo_rounded, size: 16),
+                        label: Text(
+                          'Undo Skip',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudentColors.walnut,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 10),
-                  ],
+                  const SizedBox(width: 10),
                   Expanded(
-                    flex: ((state.mess?.allowMealSkipping ?? true) || isSkipped) ? 2 : 5,
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
                         _showAddGuestDialog(
@@ -1251,51 +1132,25 @@ class StudentHomePage extends ConsumerWidget {
                           mealDate,
                         );
                       },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF22C55E),
-                        side: const BorderSide(color: Color(0xFF22C55E)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      icon: const Icon(Icons.group_add_rounded, size: 16),
+                      label: Text(
+                        '+ Add Guest',
+                        style: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: StudentColors.walnut,
                         ),
                       ),
-                      child: Text(
-                        '+ Guest(s)',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: StudentColors.walnut),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),
                   ),
                 ],
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(
-                    Icons.star_outline_rounded,
-                    size: 18,
-                    color: Color(0xFFF59E0B),
-                  ),
-                  label: Text(
-                    'Rate This Meal',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFF59E0B),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Color(0xFFF59E0B)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
               ),
           ],
         ),
@@ -1303,6 +1158,7 @@ class StudentHomePage extends ConsumerWidget {
     );
   }
 
+  // ── Add Guest Dialog (Bounded 1-10 with Stepper) ──────────────────────────
   void _showAddGuestDialog(
     BuildContext context,
     WidgetRef ref,
@@ -1314,114 +1170,159 @@ class StudentHomePage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'Add Guests',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'How many guests are joining you?',
-                style: GoogleFonts.inter(color: const Color(0xFF4B5563)),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: count > 1 ? () => setState(() => count--) : null,
-                    icon: const Icon(
-                      Icons.remove_circle_outline,
-                      color: Color(0xFFEF4444),
-                      size: 32,
-                    ),
+        builder: (context, setState) => Dialog(
+          backgroundColor: StudentColors.canvas,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: StudentColors.amberLight,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 20),
-                  Text(
-                    '$count',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: const Icon(
+                    Icons.group_add_rounded,
+                    color: StudentColors.amberDark,
+                    size: 26,
                   ),
-                  const SizedBox(width: 20),
-                  IconButton(
-                    onPressed: count < 10
-                        ? () => setState(() => count++)
-                        : null,
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: Color(0xFF22C55E),
-                      size: 32,
-                    ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Add Guests',
+                  style: StudentTypography.serifHeading(fontSize: 22),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'How many guests are joining you for $slot?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: StudentColors.textSecondary,
                   ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFF6B7280)),
-              ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: StudentColors.borderSubtle),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: count > 1 ? () => setState(() => count--) : null,
+                        icon: Icon(
+                          Icons.remove_circle_rounded,
+                          color: count > 1 ? StudentColors.brickRed : StudentColors.walnutMuted,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Text(
+                        '$count',
+                        style: StudentTypography.serifNumeral(
+                          fontSize: 32,
+                          color: StudentColors.walnut,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      IconButton(
+                        onPressed: count < 10 ? () => setState(() => count++) : null,
+                        icon: Icon(
+                          Icons.add_circle_rounded,
+                          color: count < 10 ? StudentColors.sage : StudentColors.walnutMuted,
+                          size: 30,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.inter(
+                            color: StudentColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Bound guest count strictly between 1 and 10 for security
+                          final safeCount = count.clamp(1, 10);
+                          ref
+                              .read(studentHomeProvider.notifier)
+                              .addGuest(
+                                slot,
+                                state.mess?.perMealRate ?? 0.0,
+                                date: mealDate,
+                                count: safeCount,
+                              );
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$safeCount Guest(s) added successfully!'),
+                              backgroundColor: StudentColors.sage,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudentColors.amber,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Confirm',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                ref
-                    .read(studentHomeProvider.notifier)
-                    .addGuest(
-                      slot,
-                      state.mess?.perMealRate ?? 0.0,
-                      date: mealDate,
-                      count: count,
-                    );
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('$count Guest(s) added successfully!'),
-                    backgroundColor: const Color(0xFF22C55E),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-              ),
-              child: const Text(
-                'Confirm',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── Helper data class for upcoming items ────────────────────────────────────
+// ─── Helper data class for upcoming items ─────────────────────────────────────
 class _UpcomingItem {
   final String slot;
   final bool isToday;
   final MenuModel? menu;
   final String label;
   final bool isSkipped;
-  const _UpcomingItem({
+
+  _UpcomingItem({
     required this.slot,
     required this.isToday,
     required this.menu,
     required this.label,
-    required this.isSkipped,
+    this.isSkipped = false,
   });
 }
 
-// ─── Header ─────────────────────────────────────────────────────────────────
+// ─── Header Widget ─────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
   final StudentHomeState state;
   final String greeting;
@@ -1437,137 +1338,160 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = state.student?.name.split(' ').first ?? 'Student';
+    final fullName = state.student?.name ?? 'Student';
+    final firstName = fullName.split(' ').first;
     final isClosed = state.currentSlot == 'closed';
     final hasAnnouncement = state.unseenAnnouncementsCount > 0;
     final photoUrl = state.student?.photoUrl;
+    final initial = firstName.isNotEmpty ? firstName[0].toUpperCase() : 'M';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          // Profile picture
+          // Circle Avatar with Letter or Photo
           Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              color: StudentColors.walnut,
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF22C55E), width: 2.5),
             ),
             child: ClipOval(
               child: photoUrl != null
                   ? Image.network(
                       photoUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _defaultAvatar(),
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Text(
+                          initial,
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     )
-                  : _defaultAvatar(),
+                  : Center(
+                      child: Text(
+                        initial,
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
+
+          // Greeting & Student Name
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   greeting,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: const Color(0xFF6B7280),
+                  style: StudentTypography.overline(
+                    fontSize: 11,
+                    color: StudentColors.sageDark,
+                    letterSpacing: 1.1,
                   ),
                 ),
                 Text(
-                  name,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF111827),
-                  ),
+                  firstName,
+                  style: StudentTypography.serifHeading(fontSize: 22),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          // MESS OPEN badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isClosed
-                  ? const Color(0xFFF3F4F6)
-                  : const Color(0xFF22C55E),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isClosed ? 'MESS' : 'MESS',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isClosed ? const Color(0xFF6B7280) : Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  isClosed ? 'CLOSED' : 'OPEN',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isClosed ? const Color(0xFF6B7280) : Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 4),
-          // Bell icon with badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Color(0xFF374151),
-                  size: 26,
-                ),
-                onPressed: onBellTap,
+
+          // Alerts Button Pill
+          GestureDetector(
+            onTap: onBellTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: StudentColors.surfaceLight,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: StudentColors.borderSubtle),
               ),
-              if (hasAnnouncement)
-                Positioned(
-                  top: 0,
-                  right: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      shape: BoxShape.circle,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.notifications_none_rounded,
+                    size: 16,
+                    color: hasAnnouncement ? StudentColors.amberDark : StudentColors.walnut,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Alerts',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: StudentColors.walnut,
                     ),
-                    child: Text(
-                      '${state.unseenAnnouncementsCount}',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        height: 1,
+                  ),
+                  if (hasAnnouncement) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: StudentColors.amber,
+                        shape: BoxShape.circle,
                       ),
                     ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Mess Status Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isClosed ? StudentColors.brickRedLight : StudentColors.sageLight,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isClosed ? StudentColors.brickRedBorder : StudentColors.sageBorder,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isClosed ? StudentColors.brickRed : StudentColors.sage,
+                    shape: BoxShape.circle,
                   ),
                 ),
-            ],
+                const SizedBox(width: 5),
+                Text(
+                  isClosed ? 'Closed' : 'Mess open',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isClosed ? StudentColors.brickRed : StudentColors.sageText,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _defaultAvatar() => Container(
-    color: const Color(0xFFDCFCE7),
-    child: const Icon(Icons.person, color: Color(0xFF16A34A), size: 32),
-  );
 }
 
-// ─── Upcoming Meal Card ──────────────────────────────────────────────────────
+// ─── Upcoming Meal Card ────────────────────────────────────────────────────────
 class _UpcomingMealCard extends StatelessWidget {
   final String slot;
   final MenuModel? menu;
@@ -1589,9 +1513,7 @@ class _UpcomingMealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final slotName = label ?? '${slot[0].toUpperCase()}${slot.substring(1)}';
     final timings = state.mess?.mealTimings[slot];
-    final timeRange = timings != null
-        ? '${timings['start']} - ${timings['end']}'
-        : '';
+    final timeRange = timings != null ? '${timings['start']} - ${timings['end']}' : '';
     final icon = _slotIcons[slot] ?? '🍽';
 
     final isExplicitlyPosted = menu != null &&
@@ -1602,107 +1524,90 @@ class _UpcomingMealCard extends StatelessWidget {
     final dishesStr = isExplicitlyPosted
         ? (isSpecial
             ? '✨ Special: ${menu!.dishes.map((d) => d.name).join(", ")}'
-            : 'Today: ${menu!.dishes.map((d) => d.name).join(", ")}')
-        : 'Regular Mess Meal';
+            : menu!.dishes.map((d) => d.name).join(", "))
+        : 'Regular Homestyle Meal';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 200,
+        width: 210,
         margin: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: StudentColors.surfaceLight,
           borderRadius: BorderRadius.circular(18),
-          border: isSpecial
-              ? Border.all(color: const Color(0xFFFDE68A), width: 1.5)
-              : null,
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0F000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
+          border: Border.all(
+            color: isSpecial ? StudentColors.amber : StudentColors.borderSubtle,
+            width: isSpecial ? 1.5 : 1.0,
+          ),
+          boxShadow: StudentColors.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(icon, style: const TextStyle(fontSize: 20)),
+                Text(icon, style: const TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     slotName,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      decoration: isSkipped ? TextDecoration.lineThrough : null,
-                      color: isSkipped
-                          ? const Color(0xFF9CA3AF)
-                          : const Color(0xFF111827),
+                    style: StudentTypography.bold(
+                      fontSize: 14,
+                      color: isSkipped ? StudentColors.walnutMuted : StudentColors.textDark,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (isSkipped)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(4),
+                      color: StudentColors.brickRedLight,
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'SKIPPED',
                       style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFEF4444),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: StudentColors.brickRed,
                       ),
                     ),
-                  )
-                else
-                  const Icon(
-                    Icons.notifications_active_outlined,
-                    size: 16,
-                    color: Color(0xFF22C55E),
                   ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             if (timeRange.isNotEmpty)
               Row(
                 children: [
                   const Icon(
-                    Icons.access_time,
-                    size: 12,
-                    color: Color(0xFF6B7280),
+                    Icons.access_time_rounded,
+                    size: 11,
+                    color: StudentColors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     timeRange,
                     style: GoogleFonts.inter(
                       fontSize: 11,
-                      color: const Color(0xFF6B7280),
+                      color: StudentColors.textSecondary,
                     ),
                   ),
                 ],
               ),
-            const SizedBox(height: 4),
+            const Spacer(),
             Text(
               dishesStr,
               style: GoogleFonts.inter(
                 fontSize: 12,
-                fontWeight: isExplicitlyPosted ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isExplicitlyPosted ? FontWeight.w600 : FontWeight.w400,
                 color: isSpecial
-                    ? const Color(0xFFD97706)
+                    ? StudentColors.amberDark
                     : (isExplicitlyPosted
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFF6B7280)),
-                fontStyle: isExplicitlyPosted ? FontStyle.normal : FontStyle.italic,
+                        ? StudentColors.sageDark
+                        : StudentColors.textSecondary),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -1722,33 +1627,25 @@ class _ClosedCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: StudentColors.surfaceLight,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: StudentColors.borderSubtle),
+        boxShadow: StudentColors.softShadow,
       ),
       child: Column(
         children: [
-          const Text('🌙', style: TextStyle(fontSize: 48)),
+          const Text('🌙', style: TextStyle(fontSize: 42)),
           const SizedBox(height: 12),
           Text(
             'Mess Closed for Today',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: const Color(0xFF111827),
-            ),
+            style: StudentTypography.serifHeading(fontSize: 20),
           ),
           const SizedBox(height: 4),
           Text(
-            'All meals for today have concluded.',
+            'All meals for today have concluded. Check tomorrow\'s schedule below.',
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              color: const Color(0xFF6B7280),
+              color: StudentColors.textSecondary,
               fontSize: 13,
             ),
           ),
@@ -1757,7 +1654,6 @@ class _ClosedCard extends StatelessWidget {
     );
   }
 }
-
 
 // ─── On Leave Banner ──────────────────────────────────────────────────────────
 class _OnLeaveBanner extends StatelessWidget {
@@ -1771,9 +1667,9 @@ class _OnLeaveBanner extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF86EFAC)),
+        color: StudentColors.sageLight,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: StudentColors.sageBorder),
       ),
       child: Row(
         children: [
@@ -1784,18 +1680,17 @@ class _OnLeaveBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'You are On Leave',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: const Color(0xFF166534),
+                  'You are On Vacation / Leave',
+                  style: StudentTypography.bold(
+                    fontSize: 14,
+                    color: StudentColors.sageText,
                   ),
                 ),
                 Text(
-                  'Meals are auto-cancelled.',
+                  'Meals are auto-cancelled during your leave.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: const Color(0xFF15803D),
+                    color: StudentColors.sageDark,
                   ),
                 ),
               ],
@@ -1807,15 +1702,15 @@ class _OnLeaveBanner extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Leave cancelled!'),
-                  backgroundColor: Color(0xFF22C55E),
+                  backgroundColor: StudentColors.sage,
                 ),
               );
             },
             child: Text(
               'Cancel',
               style: GoogleFonts.inter(
-                color: const Color(0xFF22C55E),
-                fontWeight: FontWeight.bold,
+                color: StudentColors.sageDark,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -1833,26 +1728,27 @@ class _SkipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
+    return ElevatedButton.icon(
       onPressed: () {
         ref.read(studentHomeProvider.notifier).skipMeal(mealSlot);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Meal skipped!'),
-            backgroundColor: Color(0xFFEF4444),
+            backgroundColor: StudentColors.brickRed,
           ),
         );
       },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFEF4444),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+      icon: const Icon(Icons.close_rounded, size: 16),
+      label: Text(
+        'Skip this meal',
+        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
       ),
-      child: Text(
-        'Skip This Meal',
-        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: StudentColors.brickRed,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 0,
       ),
     );
   }
@@ -1861,27 +1757,26 @@ class _SkipButton extends StatelessWidget {
 // ─── Guest Button ─────────────────────────────────────────────────────────────
 class _GuestButton extends StatelessWidget {
   final VoidCallback onAddGuest;
-  const _GuestButton({
-    required this.onAddGuest,
-  });
+  const _GuestButton({required this.onAddGuest});
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
+    return OutlinedButton.icon(
       onPressed: onAddGuest,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF22C55E),
-        side: const BorderSide(color: Color(0xFF4ADE80)),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Text(
-        '+1 Guest',
+      icon: const Icon(Icons.group_add_rounded, size: 16, color: Colors.white),
+      label: Text(
+        '+ Add guests',
         style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF22C55E),
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
         ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1.2),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -1900,37 +1795,31 @@ class _UndoButton extends StatelessWidget {
         onPressed: () {
           final state = ref.read(studentHomeProvider);
           final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-          final recordId =
-              state.skippedUpcomingMeals['${todayIso}_${state.currentSlot}'];
+          final recordId = state.skippedUpcomingMeals['${todayIso}_${state.currentSlot}'];
           if (recordId != null) {
             ref.read(studentHomeProvider.notifier).undoSkip(recordId);
           }
         },
-        icon: const Icon(Icons.undo_rounded, size: 18, color: Colors.white),
+        icon: const Icon(Icons.undo_rounded, size: 18, color: StudentColors.amber),
         label: Text(
           'Undo Skip',
           style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: StudentColors.amber,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          side: const BorderSide(color: Colors.white54),
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          side: const BorderSide(color: StudentColors.amber),
         ),
       ),
     );
   }
 }
 
-
-
-
-// ─── Choice Groups Section (Balanced 3D Card) ─────────────────────────────────
+// ─── Choice Groups Section (Flexi Meal Picker) ─────────────────────────────────
 class _ChoiceGroupsSection extends ConsumerWidget {
   final StudentHomeState state;
   final WidgetRef ref;
@@ -1953,22 +1842,29 @@ class _ChoiceGroupsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF2563EB)),
-              ),
-              const SizedBox(width: 8),
               Text(
-                ref.watch(localizationProvider) == 'hi' ? 'आज का चुनाव' : "Today's Choice",
-                style: GoogleFonts.outfit(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0F172A),
+                "TODAY'S CHOICE",
+                style: StudentTypography.overline(
+                  fontSize: 12,
+                  color: StudentColors.walnutMuted,
+                  letterSpacing: 1.4,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (plan.choiceGroups.isNotEmpty) {
+                    _showDefaultPreferenceModal(context, ref, plan.choiceGroups.first);
+                  }
+                },
+                child: Text(
+                  'Set daily default >',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: StudentColors.sageDark,
+                  ),
                 ),
               ),
             ],
@@ -1984,352 +1880,111 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                 group.availableMeals.first;
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: StudentColors.surfaceLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0C0F172A),
-                    blurRadius: 18,
-                    offset: Offset(0, 6),
-                  ),
-                  BoxShadow(
-                    color: Color(0x040F172A),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+                border: Border.all(color: StudentColors.borderSubtle),
+                boxShadow: StudentColors.softShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Row: Group Title & Cutoff Badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Builder(
-                            builder: (context) {
-                              final isHi = ref.watch(localizationProvider) == 'hi';
-                              final mealsList = group.availableMeals.map((s) {
-                                if (isHi) {
-                                  return s == 'morning' ? 'नाश्ता' : (s == 'noon' ? 'दोपहर खाना' : (s == 'evening' ? 'शाम नाश्ता' : 'रात खाना'));
-                                } else {
-                                  return s == 'morning' ? 'Breakfast' : (s == 'noon' ? 'Lunch' : (s == 'evening' ? 'Snacks' : 'Dinner'));
-                                }
-                              }).join(isHi ? ' या ' : ' or ');
-                              final label = isHi ? '$mealsList (कोई 1)' : 'Choose 1: $mealsList';
-                              return Text(
-                                label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1D4ED8),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                      Text(
+                        group.name.isNotEmpty ? group.name : 'Flexi Plan Choice',
+                        style: StudentTypography.bold(fontSize: 14),
                       ),
-                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isCutoffPassed ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isCutoffPassed ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
-                          ),
+                          color: isCutoffPassed
+                              ? StudentColors.brickRedLight
+                              : StudentColors.amberLight,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isCutoffPassed ? Icons.lock_outline_rounded : Icons.timer_outlined,
-                              size: 13,
-                              color: isCutoffPassed ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isCutoffPassed
-                                  ? (ref.watch(localizationProvider) == 'hi' ? 'समय समाप्त' : 'Locked')
-                                  : '${diff.inHours > 0 ? '${diff.inHours}h ' : ''}${diff.inMinutes.remainder(60)}m ' + (ref.watch(localizationProvider) == 'hi' ? 'बाकी' : 'left'),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: isCutoffPassed ? const Color(0xFFDC2626) : const Color(0xFFD97706),
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          isCutoffPassed
+                              ? '🔒 Locked'
+                              : '🔒 Closes in ${_formatDuration(diff)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isCutoffPassed
+                                ? StudentColors.brickRed
+                                : StudentColors.amberText,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
-                    ref.watch(localizationProvider) == 'hi'
-                        ? 'आज आप नाश्ता लेंगे या दोपहर का खाना?'
-                        : 'Which meal would you like today?',
+                    'Pick any 1 meal for today:',
                     style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF475569),
+                      fontSize: 12,
+                      color: StudentColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 14),
-
-                  // Alternative Choice Interactive Tiles (Balanced 3D)
-                  Row(
+                  const SizedBox(height: 12),
+                  // Meal Choice Pills
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: group.availableMeals.map((slot) {
                       final isSelected = chosenSlot == slot;
-                      final isOwnerClosed = state.skippedUpcomingMeals.containsKey('${todayIso}_$slot') ||
-                          (state.mess?.temporarilyClosedUntil != null &&
-                              DateTime.now().isBefore(state.mess!.temporarilyClosedUntil!));
+                      final slotLabel = '${slot[0].toUpperCase()}${slot.substring(1)}';
 
-                      final isHi = ref.watch(localizationProvider) == 'hi';
-                      final slotTitle = isHi
-                          ? (slot == 'morning' ? '🌅 सुबह नाश्ता' : (slot == 'noon' ? '☀️ दोपहर लंच' : (slot == 'evening' ? '☕ शाम नाश्ता' : '🌙 रात डिनर')))
-                          : (slot == 'morning' ? '🌅 Breakfast' : (slot == 'noon' ? '☀️ Lunch' : (slot == 'evening' ? '☕ Snacks' : '🌙 Dinner')));
-
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: InkWell(
-                            onTap: () async {
-                              if (isCutoffPassed) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      ref.read(localizationProvider) == 'hi'
-                                          ? 'आज का समय समाप्त हो चुका है। आगे के दिनों का डिफ़ॉल्ट बदलने के लिए नीचे "डिफ़ॉल्ट बदलें" पर टैप करें।'
-                                          : "Today's cutoff has passed. Tap 'Change default' below to update upcoming days.",
-                                    ),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
-                                return;
-                              }
-                              if (isOwnerClosed) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(ref.watch(localizationProvider) == 'hi' ? '$slotTitle आज मेस द्वारा बंद है। कृपया दूसरा विकल्प चुनें।' : '$slotTitle is closed by mess today. Please pick another option.'),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                  ),
-                                );
-                                return;
-                              }
-                              try {
-                                await ref.read(studentHomeProvider.notifier).selectChoiceMeal(
-                                  group.groupId,
-                                  slot,
-                                  date: DateTime.now(),
-                                );
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(ref.watch(localizationProvider) == 'hi' ? 'आज के लिए $slotTitle चुना गया! ✓' : '$slotTitle selected for today! ✓'),
-                                      backgroundColor: const Color(0xFF10B981),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(ref.watch(localizationProvider) == 'hi' ? 'चुनाव सुरक्षित नहीं हो सका: $e' : 'Failed to save choice: $e'),
-                                      backgroundColor: const Color(0xFFEF4444),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
+                      return GestureDetector(
+                        onTap: isCutoffPassed
+                            ? null
+                            : () {
+                                ref
+                                    .read(studentHomeProvider.notifier)
+                                    .selectChoiceMeal(
+                                      group.groupId,
+                                      slot,
+                                    );
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? StudentColors.walnut : StudentColors.sageLight,
                             borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF10B981)
-                                    : (isOwnerClosed ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC)),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF059669)
-                                      : (isOwnerClosed ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1)),
-                                  width: isSelected ? 2 : 1.2,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        const BoxShadow(
-                                          color: Color(0x3310B981),
-                                          blurRadius: 10,
-                                          offset: Offset(0, 4),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    slotTitle,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : (isOwnerClosed ? const Color(0xFF94A3B8) : const Color(0xFF1E293B)),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (isOwnerClosed)
-                                    Text(
-                                      isHi ? 'आज बंद है' : 'Closed today',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFFEF4444),
-                                      ),
-                                    )
-                                  else if (isSelected)
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          isHi ? 'चुना हुआ' : 'Selected',
-                                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-                                        ),
-                                      ],
-                                    )
-                                  else
-                                    Text(
-                                      isHi ? 'चुनने के लिए टैप करें' : 'Tap to select',
-                                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF94A3B8)),
-                                    ),
-                                ],
-                              ),
+                            border: Border.all(
+                              color: isSelected
+                                  ? StudentColors.walnut
+                                  : StudentColors.sageBorder,
                             ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isSelected) ...[
+                                const Icon(
+                                  Icons.check_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                slotLabel,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  color: isSelected ? Colors.white : StudentColors.sageText,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
                     }).toList(),
-                  ),
-
-                  // Fixed Meals Reminder Pill (Pukka Khana)
-                  if (plan.fixedMeals.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFA7F3D0)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle_outline_rounded, size: 16, color: Color(0xFF059669)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Builder(
-                              builder: (context) {
-                                final isHi = ref.watch(localizationProvider) == 'hi';
-                                final mealsText = plan.fixedMeals.map((s) {
-                                  if (isHi) {
-                                    return s == 'night' ? 'रात का खाना' : (s == 'noon' ? 'दोपहर का खाना' : 'नाश्ता');
-                                  } else {
-                                    return s == 'night' ? 'Dinner' : (s == 'noon' ? 'Lunch' : 'Breakfast');
-                                  }
-                                }).join(', ');
-                                return Text(
-                                  isHi ? 'पक्का खाना: $mealsText रोज़ाना पक्का मिलेगा।' : 'Fixed Meal: $mealsText is served every day.',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF065F46),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 10),
-                  // Current Default Display & Change Button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Builder(
-                        builder: (context) {
-                          final studentState = ref.watch(studentHomeProvider);
-                          final currentDef = studentState.student?.regularMealPreference[group.groupId] ??
-                              group.availableMeals.first;
-                          final isHi = ref.watch(localizationProvider) == 'hi';
-                          final defName = isHi
-                              ? (currentDef == 'morning'
-                                  ? 'नाश्ता'
-                                  : (currentDef == 'noon'
-                                      ? 'लंच'
-                                      : (currentDef == 'evening' ? 'शाम नाश्ता' : 'डिनर')))
-                              : (currentDef == 'morning'
-                                  ? 'Breakfast'
-                                  : (currentDef == 'noon'
-                                      ? 'Lunch'
-                                      : (currentDef == 'evening' ? 'Snacks' : 'Dinner')));
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.bookmark_added_rounded, size: 13, color: Color(0xFF475569)),
-                                const SizedBox(width: 5),
-                                Text(
-                                  isHi ? 'डिफ़ॉल्ट: $defName' : 'Default: $defName',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF475569),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _showDefaultPreferenceModal(context, ref, group),
-                        icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF2563EB)),
-                        label: Text(
-                          ref.watch(localizationProvider) == 'hi' ? 'डिफ़ॉल्ट बदलें' : 'Change default',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF2563EB),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -2340,30 +1995,38 @@ class _ChoiceGroupsSection extends ConsumerWidget {
     );
   }
 
+  String _formatDuration(Duration d) {
+    if (d.isNegative || d == Duration.zero) return 'Passed';
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    return h > 0 ? '${h}hr ${m}m' : '${m}m';
+  }
+
   void _showDefaultPreferenceModal(
     BuildContext context,
     WidgetRef ref,
     ChoiceGroupModel group,
   ) {
     final studentState = ref.read(studentHomeProvider);
-    final currentDefault = studentState.student?.regularMealPreference[group.groupId] ??
-        group.availableMeals.first;
+    final currentDefault =
+        studentState.student?.regularMealPreference[group.groupId] ?? group.availableMeals.first;
     String selectedSlot = currentDefault;
-    final isHi = ref.read(localizationProvider) == 'hi';
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            return Container(
+              decoration: const BoxDecoration(
+                color: StudentColors.canvas,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              child: SafeArea(
+                top: false,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2372,93 +2035,47 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                       child: Container(
                         width: 40,
                         height: 4,
+                        margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE2E8F0),
+                          color: StudentColors.walnutMuted.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.bookmark_added_rounded,
-                            color: Color(0xFF2563EB),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isHi ? 'रोज़ का डिफ़ॉल्ट भोजन' : 'Set Daily Default Meal',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                isHi
-                                    ? 'आगे के सभी दिनों के लिए अपने आप यही भोजन चुना जाएगा'
-                                    : 'Automatically selected for you for upcoming days',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Set Daily Default Meal',
+                      style: StudentTypography.serifHeading(fontSize: 22),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Automatically selected for you for all upcoming days',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: StudentColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     ...group.availableMeals.map((slot) {
                       final isSelected = selectedSlot == slot;
-                      final isCurrentlySaved = currentDefault == slot;
-                      final slotLabel = isHi
-                          ? (slot == 'morning'
-                              ? '🌅 सुबह का नाश्ता (Breakfast)'
-                              : (slot == 'noon'
-                                  ? '☀️ दोपहर का खाना (Lunch)'
-                                  : (slot == 'evening'
-                                      ? '☕ शाम का नाश्ता (Snacks)'
-                                      : '🌙 रात का खाना (Dinner)')))
-                          : (slot == 'morning'
-                              ? '🌅 Breakfast'
-                              : (slot == 'noon'
-                                  ? '☀️ Lunch'
-                                  : (slot == 'evening'
-                                      ? '☕ Evening Snacks'
-                                      : '🌙 Dinner')));
+                      final slotLabel = '${slot[0].toUpperCase()}${slot.substring(1)}';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
-                            width: isSelected ? 1.8 : 1,
-                          ),
-                        ),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            setModalState(() {
-                              selectedSlot = slot;
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          onTap: () => setModalState(() => selectedSlot = slot),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? StudentColors.walnut
+                                    : StudentColors.borderSubtle,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
                             child: Row(
                               children: [
                                 Icon(
@@ -2466,39 +2083,13 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                                       ? Icons.radio_button_checked_rounded
                                       : Icons.radio_button_off_rounded,
                                   color: isSelected
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFF94A3B8),
-                                  size: 20,
+                                      ? StudentColors.walnut
+                                      : StudentColors.walnutMuted,
                                 ),
                                 const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        slotLabel,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight:
-                                              isSelected ? FontWeight.w700 : FontWeight.w500,
-                                          color: isSelected
-                                              ? const Color(0xFF0F172A)
-                                              : const Color(0xFF334155),
-                                        ),
-                                      ),
-                                      if (isCurrentlySaved)
-                                        Text(
-                                          isHi
-                                              ? '✓ वर्तमान में डिफ़ॉल्ट है'
-                                              : '✓ Currently your default',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF059669),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                                Text(
+                                  slotLabel,
+                                  style: StudentTypography.bold(fontSize: 14),
                                 ),
                               ],
                             ),
@@ -2510,66 +2101,31 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
+                        onPressed: () {
+                          ref
+                              .read(studentHomeProvider.notifier)
+                              .saveRegularPreference(
+                                group.groupId,
+                                selectedSlot,
+                              );
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Default preference saved!'),
+                              backgroundColor: StudentColors.sage,
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
+                          backgroundColor: StudentColors.walnut,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          elevation: 0,
                         ),
-                        onPressed: () async {
-                          try {
-                            await ref
-                                .read(studentHomeProvider.notifier)
-                                .saveRegularPreference(group.groupId, selectedSlot);
-                            Navigator.pop(ctx);
-                            if (context.mounted) {
-                              final chosenName = isHi
-                                  ? (selectedSlot == 'morning'
-                                      ? 'सुबह का नाश्ता'
-                                      : (selectedSlot == 'noon'
-                                          ? 'दोपहर का लंच'
-                                          : (selectedSlot == 'evening'
-                                              ? 'शाम का नाश्ता'
-                                              : 'रात का डिनर')))
-                                  : (selectedSlot == 'morning'
-                                      ? 'Breakfast'
-                                      : (selectedSlot == 'noon'
-                                          ? 'Lunch'
-                                          : (selectedSlot == 'evening'
-                                              ? 'Snacks'
-                                              : 'Dinner')));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    isHi
-                                        ? 'कल से आगे के लिए रोज़ का डिफ़ॉल्ट $chosenName सेट हो गया! ✓'
-                                        : '$chosenName set as your daily default from tomorrow! ✓',
-                                  ),
-                                  backgroundColor: const Color(0xFF10B981),
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    isHi
-                                        ? 'डिफ़ॉल्ट सेट करने में त्रुटि: $e'
-                                        : 'Failed to set default: $e',
-                                  ),
-                                  backgroundColor: const Color(0xFFEF4444),
-                                ),
-                              );
-                            }
-                          }
-                        },
                         child: Text(
-                          isHi ? 'डिफ़ॉल्ट के रूप में सेट करें' : 'Save as Daily Default',
+                          'Save Default Choice',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,

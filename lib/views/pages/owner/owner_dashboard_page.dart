@@ -5,10 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'owner_student_management_page.dart';
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
-import '../../../services/localization_service.dart';
 import 'owner_absentee_tracker_page.dart';
 import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
+import 'theme/owner_inspired_theme.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
   const OwnerDashboardPage({super.key});
@@ -16,56 +16,72 @@ class OwnerDashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ownerDashboardProvider);
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good Morning'
-        : hour < 17
-        ? 'Good Afternoon'
-        : 'Good Evening';
+    final now = DateTime.now();
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final dayName = days[now.weekday - 1];
+
+    final slot = state.currentSlot;
+    final slotName = slot == 'closed' ? 'Night' : (slot[0].toUpperCase() + slot.substring(1));
+    final daySlotOverline = '$dayName $slotName'.toUpperCase();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: state.isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+                child: CircularProgressIndicator(color: OwnerColors.sage),
               )
             : RefreshIndicator(
-                color: const Color(0xFF22C55E),
-                onRefresh: () =>
-                    ref.read(ownerDashboardProvider.notifier).reload(),
+                color: OwnerColors.sage,
+                onRefresh: () => ref.read(ownerDashboardProvider.notifier).reload(),
                 child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   slivers: [
+                    // Top Header (Screenshot 1)
                     SliverToBoxAdapter(
-                      child: _buildHeader(context, ref, state, greeting),
+                      child: _buildHeader(context, ref, state, daySlotOverline),
                     ),
-                    SliverToBoxAdapter(
-                      child: _buildAnnouncementBanner(context, ref, state),
+
+                    // VIP Pill + Search Bar Row (Screenshot 1)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildVipAndSearchRow(context, ref, state),
+                      ),
                     ),
-                    SliverToBoxAdapter(
-                      child: _buildGuestBanner(context, state),
+
+                    // Hero Card (Dark Walnut + Wavy Hills + Diner Count + CTA)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildHeroCard(context, ref, state),
+                      ),
                     ),
+
+                    // Today's Service Timeline / Stepper Card (Screenshot 1)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildTodayServiceStepper(context, ref, state),
+                      ),
+                    ),
+
+                    // Split Action Cards: Announce & Join (Screenshot 1)
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       sliver: SliverToBoxAdapter(
-                        child: _buildStatsGrid(context, state),
+                        child: _buildSplitActionCards(context, ref, state),
                       ),
                     ),
+
+                    // Absent Today Summary Card (Screenshot 1)
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                       sliver: SliverToBoxAdapter(
-                        child: _buildAbsentSummaryCard(context, state),
+                        child: _buildAbsentTodayCard(context, ref, state),
                       ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      sliver: SliverToBoxAdapter(
-                        child: _buildCurrentMealCard(context, state),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                      sliver: SliverToBoxAdapter(child: _buildUpcomingLeaves()),
                     ),
                   ],
                 ),
@@ -74,155 +90,127 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
+  // ── Top Header matching Screenshot 1 ──
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
     OwnerDashboardState state,
-    String greeting,
+    String daySlotOverline,
   ) {
+    final messName = state.mess?.name ?? 'Mahakal\nmess';
+    final isOpen = state.mess?.isOpen ?? true;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      greeting,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
-                      ),
-                    ),
-                    Text(
-                      state.mess?.name ?? 'Welcome back.'.tr(context, ref),
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: const Color(0xFF6B7280),
-                      ),
-                    ),
-                    if (state.mess != null) ...[
-                      const SizedBox(height: 5),
-                      InkWell(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            isScrollControlled: true,
-                            builder: (_) =>
-                                OwnerLaunchPartnerSheet(mess: state.mess!),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981)
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: const Color(0xFF10B981)
-                                    .withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded,
-                                  size: 13, color: Color(0xFF059669)),
-                              const SizedBox(width: 4),
-                              Text(
-                                state.mess!.subscriptionStatus == 'lifetime_vip'
-                                    ? 'VIP Lifetime Partner'
-                                    : '⭐ 180 Days Free VIP Active',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF059669),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+          // Left: Overline + Serif Title
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  daySlotOverline,
+                  style: OwnerTypography.overline(
+                    fontSize: 12,
+                    color: OwnerColors.textOverline,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  messName,
+                  style: OwnerTypography.serifHeading(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    color: OwnerColors.textDark,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Right: Alerts & Open/Close pills
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Alerts pill
               Consumer(
                 builder: (context, ref, _) {
-                  final pendingCount = ref
-                      .watch(ownerStudentsProvider)
-                      .pending
-                      .length;
-                  return Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.notifications_outlined,
-                          color: Color(0xFF374151),
-                        ),
-                        onPressed: () => _showPendingRequests(context, ref),
+                  final pendingCount = ref.watch(ownerStudentsProvider).pending.length;
+                  return GestureDetector(
+                    onTap: () => _showPendingRequests(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: OwnerColors.sageLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: OwnerColors.sageBorder.withValues(alpha: 0.5)),
                       ),
-                      if (pendingCount > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              pendingCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
+                      child: Row(
+                        children: [
+                          Text(
+                            'Alerts',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: OwnerColors.sageText,
                             ),
                           ),
-                        ),
-                    ],
+                          if (pendingCount > 0) ...[
+                            const SizedBox(width: 5),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: OwnerColors.amber,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '$pendingCount',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: OwnerColors.textDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
+              const SizedBox(width: 8),
+
+              // Open · Close status pill
               GestureDetector(
                 onTap: () => _showEmergencyCloseDialog(context, ref),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
+                    color: OwnerColors.sageLight,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                    border: Border.all(color: OwnerColors.sageBorder.withValues(alpha: 0.5)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.dangerous_rounded,
-                        color: Color(0xFFEF4444),
-                        size: 14,
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isOpen ? const Color(0xFF16A34A) : const Color(0xFFEF4444),
+                        ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
-                        'Close',
+                        isOpen ? 'Open · Close' : 'Closed',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFEF4444),
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.sageText,
                         ),
                       ),
                     ],
@@ -231,9 +219,65 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Global Search Bar
-          GestureDetector(
+        ],
+      ),
+    );
+  }
+
+  // ── VIP Pill + Global Search Row ──
+  Widget _buildVipAndSearchRow(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    return Row(
+      children: [
+        // VIP Pill
+        GestureDetector(
+          onTap: () {
+            if (state.mess != null) {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) => OwnerLaunchPartnerSheet(mess: state.mess!),
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: OwnerColors.walnut,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.star_rounded, size: 14, color: OwnerColors.amber),
+                const SizedBox(width: 5),
+                Text(
+                  'VIP · 180 days free',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: OwnerColors.amber,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Search Student or Dish Field
+        Expanded(
+          child: GestureDetector(
             onTap: () {
               showSearch(
                 context: context,
@@ -243,811 +287,673 @@ class OwnerDashboardPage extends ConsumerWidget {
                 ),
               );
             },
-            child: AbsorbPointer(
-              child: TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
-                  hintText: 'Search student or dish...',
-                  hintStyle: GoogleFonts.inter(
-                    color: const Color(0xFF9CA3AF),
-                    fontSize: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: OwnerColors.cardPure,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: OwnerColors.cardBorder),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x06000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF22C55E)),
-                  ),
-                ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnnouncementBanner(
-    BuildContext context,
-    WidgetRef ref,
-    OwnerDashboardState state,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: GestureDetector(
-        onTap: () => _showAnnouncementDialog(context, ref),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.campaign_rounded,
-                color: Color(0xFF92400E),
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Tap to send announcement to all students',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF92400E),
-                  ),
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Color(0xFF92400E),
-                size: 18,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGuestBanner(BuildContext context, OwnerDashboardState state) {
-    int totalGuests = 0;
-    state.guestsBySlot.forEach((k, v) => totalGuests += v.length);
-
-    if (totalGuests == 0) return const SizedBox.shrink();
-
-    // Just show a quick summary e.g. "Morning: 2, Night: 5"
-    final summaryParts = <String>[];
-    if ((state.guestsBySlot['morning']?.length ?? 0) > 0) summaryParts.add('Morning: ${state.guestsBySlot['morning']!.length}');
-    if ((state.guestsBySlot['noon']?.length ?? 0) > 0) summaryParts.add('Noon: ${state.guestsBySlot['noon']!.length}');
-    if ((state.guestsBySlot['evening']?.length ?? 0) > 0) summaryParts.add('Evening: ${state.guestsBySlot['evening']!.length}');
-    if ((state.guestsBySlot['night']?.length ?? 0) > 0) summaryParts.add('Night: ${state.guestsBySlot['night']!.length}');
-
-    final summaryText = summaryParts.join(' • ');
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFD1FAE5), // Light Green
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF34D399).withOpacity(0.5)),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.group_add_rounded,
-              color: Color(0xFF065F46), // Dark Green
-              size: 22,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    '$totalGuests Extra Guest${totalGuests > 1 ? 's' : ''} Today',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF064E3B),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    summaryText,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF065F46),
+                  const Icon(Icons.search_rounded, size: 17, color: OwnerColors.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Search student or dish...',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: OwnerColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatsGrid(BuildContext context, OwnerDashboardState state) {
-    return Column(
-      children: [
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.35,
-          children: [
-            _StatCard(
-              icon: Icons.school_rounded,
-              iconBg: const Color(0xFFDCFCE7),
-              iconColor: const Color(0xFF16A34A),
-              label: 'Total Students',
-              value: '${state.activeStudents}',
-              badgeText: '',
-              badgeBg: Colors.transparent,
-              badgeColor: Colors.transparent,
-              subtitle: 'Active students',
-              subtitleColor: const Color(0xFF6B7280),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerStudentManagementPage(),
-                  ),
-                );
-              },
-            ),
-            _StatCard(
-              icon: Icons.dining_rounded,
-              iconBg: const Color(0xFFDCFCE7),
-              iconColor: const Color(0xFF16A34A),
-              label: 'Expected Headcount',
-              value: '${state.expectedHeadcount}',
-              badgeText: 'Live',
-              badgeBg: const Color(0xFFDCFCE7),
-              badgeColor: const Color(0xFF16A34A),
-              subtitle: 'Expected diners',
-              subtitleColor: const Color(0xFF16A34A),
-              isHighlighted: true,
-            ),
-            _StatCard(
-              icon: Icons.notifications_off_rounded,
-              iconBg: const Color(0xFFFEE2E2),
-              iconColor: const Color(0xFFEF4444),
-              label: 'Skipping Current Meal',
-              value: '${state.skippingCurrentMeal}',
-              badgeText: '',
-              badgeBg: Colors.transparent,
-              badgeColor: Colors.transparent,
-              subtitle: 'Total skipping',
-              subtitleColor: const Color(0xFFEF4444),
-              progressColor: const Color(0xFFEF4444),
-              progressValue: (state.mess?.capacity ?? 1) > 0
-                  ? state.skippingCurrentMeal / (state.mess?.capacity ?? 1)
-                  : 0,
-            ),
-            _StatCard(
-              icon: Icons.people_outline_rounded,
-              iconBg: const Color(0xFFEDE9FE),
-              iconColor: const Color(0xFF7C3AED),
-              label: 'Capacity',
-              value: '${state.mess?.capacity ?? 0}',
-              badgeText: '',
-              badgeBg: Colors.transparent,
-              badgeColor: Colors.transparent,
-              subtitle:
-                  '${state.mess != null && state.mess!.capacity > 0 ? ((state.activeStudents / state.mess!.capacity) * 100).toStringAsFixed(0) : 0}% filled',
-              subtitleColor: const Color(0xFF6B7280),
-              progressColor: const Color(0xFF7C3AED),
-              progressValue: (state.mess?.capacity ?? 1) > 0
-                  ? state.activeStudents / (state.mess?.capacity ?? 1)
-                  : 0,
-            ),
-          ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildAbsentSummaryCard(
+  // ── Hero Card with Wavy Hills and Expected Diners ──
+  Widget _buildHeroCard(
     BuildContext context,
+    WidgetRef ref,
     OwnerDashboardState state,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFEE2E2)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.event_busy_rounded,
-                color: Color(0xFFEF4444),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Today\'s Absent Summary',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              if (state.mess?.mealTimings['morning']?['enabled'] == 'true')
-                _buildAbsentPill(
-                  'Morning',
-                  '${state.morningAbsents}',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const OwnerAbsenteeTrackerPage(
-                        initialSlot: 'morning',
-                      ),
-                    ),
-                  ),
-                ),
-              if (state.mess?.mealTimings['noon']?['enabled'] == 'true') ...[
-                if (state.mess?.mealTimings['morning']?['enabled'] == 'true')
-                  const SizedBox(width: 8),
-                _buildAbsentPill(
-                  'Noon',
-                  '${state.noonAbsents}',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const OwnerAbsenteeTrackerPage(initialSlot: 'noon'),
-                    ),
-                  ),
-                ),
-              ],
-              if (state.mess?.mealTimings['evening']?['enabled'] == 'true') ...[
-                if (state.mess?.mealTimings['morning']?['enabled'] == 'true' ||
-                    state.mess?.mealTimings['noon']?['enabled'] == 'true')
-                  const SizedBox(width: 8),
-                _buildAbsentPill(
-                  'Evening',
-                  '${state.eveningAbsents}',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const OwnerAbsenteeTrackerPage(
-                        initialSlot: 'evening',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (state.mess?.mealTimings['night']?['enabled'] == 'true') ...[
-                if (state.mess?.mealTimings['morning']?['enabled'] == 'true' ||
-                    state.mess?.mealTimings['noon']?['enabled'] == 'true' ||
-                    state.mess?.mealTimings['evening']?['enabled'] == 'true')
-                  const SizedBox(width: 8),
-                _buildAbsentPill(
-                  'Night',
-                  '${state.nightAbsents}',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const OwnerAbsenteeTrackerPage(initialSlot: 'night'),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAbsentPill(String label, String count, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF2F2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            children: [
-              Text(
-                count,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFFEF4444),
-                ),
-              ),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: const Color(0xFF991B1B),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrentMealCard(BuildContext context, OwnerDashboardState state) {
-    if (state.currentSlot == 'closed') {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.nightlight_round,
-              color: Color(0xFF9CA3AF),
-              size: 48,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Mess Closed for Today',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: const Color(0xFF111827),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'All meals for today have concluded.',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF6B7280),
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final menu = state.currentMeal;
-    final slot = state.currentSlot;
+    final slot = state.currentSlot == 'closed' ? 'night' : state.currentSlot;
     final slotName = slot[0].toUpperCase() + slot.substring(1);
     final timings = state.mess?.mealTimings[slot];
     final startStr = timings?['start'] ?? '';
     final endStr = timings?['end'] ?? '';
-    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr - $endStr' : '';
+    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr-$endStr' : '19:30-22:00';
+
+    final menu = state.currentMeal;
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
         (menu.menuType == 'special' || menu.menuType == 'regular') &&
         menu.dishes.isNotEmpty;
-    final isSpecial = isExplicitlyPosted && menu.menuType == 'special';
     final dishes = menu?.dishes ?? [];
-
     final slotAsset = 'assets/images/slot_$slot.png';
-    final isNight = slot == 'night';
-
-    Color slotAccentColor;
-    Color slotBgBadgeColor;
-    IconData slotIconData;
-    switch (slot) {
-      case 'morning':
-        slotAccentColor = const Color(0xFFB45309);
-        slotBgBadgeColor = const Color(0xFFFEF3C7);
-        slotIconData = Icons.wb_sunny_rounded;
-        break;
-      case 'noon':
-        slotAccentColor = const Color(0xFF0284C7);
-        slotBgBadgeColor = const Color(0xFFE0F2FE);
-        slotIconData = Icons.wb_sunny_rounded;
-        break;
-      case 'evening':
-        slotAccentColor = const Color(0xFFEA580C);
-        slotBgBadgeColor = const Color(0xFFFFEDD5);
-        slotIconData = Icons.wb_twilight_rounded;
-        break;
-      case 'night':
-      default:
-        slotAccentColor = const Color(0xFF93C5FD);
-        slotBgBadgeColor = const Color(0xFF1E293B);
-        slotIconData = Icons.nightlight_round;
-        break;
-    }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSpecial
-              ? const Color(0xFFFDE68A)
-              : (isExplicitlyPosted ? const Color(0xFFA7F3D0) : const Color(0xFFE5E7EB)),
-          width: isExplicitlyPosted ? 1.5 : 1.0,
-        ),
+        color: OwnerColors.walnut,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 12,
-            offset: Offset(0, 3),
+            color: Color(0x2E000000),
+            blurRadius: 22,
+            offset: Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Thematic Slot Banner Header ──
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Image.asset(
-                    slotAsset,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: isNight ? const Color(0xFF19203A) : const Color(0xFFF8FAFC),
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          children: [
+            // Internal radial amber glow on top right
+            Positioned(
+              top: -40,
+              right: -40,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      OwnerColors.amber.withValues(alpha: 0.22),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                  child: Row(
+              ),
+            ),
+
+            // Organic Wavy Sage Hills at the bottom of the card (Screenshot 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SizedBox(
+                height: 90,
+                child: CustomPaint(
+                  painter: WavyHillsPainter(),
+                ),
+              ),
+            ),
+
+            // Foreground Content
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Overline Timing & Top-right Slot Image Frame
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Themed Icon Badge
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: slotBgBadgeColor,
-                          borderRadius: BorderRadius.circular(13),
-                          border: isNight ? Border.all(color: Colors.white24) : null,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            slotIconData,
-                            color: isNight ? const Color(0xFFFCD34D) : slotAccentColor,
-                            size: 24,
-                          ),
+                      Text(
+                        '${slot.toUpperCase()} SERVICE · $timeRange',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: OwnerColors.amber,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Text Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              slot.toUpperCase(),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                                color: slotAccentColor,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Current Meal: $slotName',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: isNight ? Colors.white : const Color(0xFF111827),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (timeRange.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.access_time_rounded,
-                                    size: 13,
-                                    color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Serving: $timeRange',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: isNight ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Status Badge
+
+                      // Circle thumbnail for slot image
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
-                          color: isNight
-                              ? Colors.white.withOpacity(0.18)
-                              : (isSpecial
-                                  ? const Color(0xFFFFFBEB)
-                                  : (isExplicitlyPosted
-                                      ? const Color(0xFFECFDF5)
-                                      : const Color(0xFFF1F5F9))),
-                          borderRadius: BorderRadius.circular(20),
+                          color: OwnerColors.walnutSurface,
+                          shape: BoxShape.circle,
                           border: Border.all(
-                            color: isNight
-                                ? Colors.white30
-                                : (isSpecial
-                                    ? const Color(0xFFFDE68A)
-                                    : (isExplicitlyPosted
-                                        ? const Color(0xFFA7F3D0)
-                                        : const Color(0xFFE2E8F0))),
+                            color: Colors.white.withValues(alpha: 0.15),
+                            width: 1.5,
                           ),
                         ),
-                        child: Text(
-                          isSpecial
-                              ? '✨ Special'
-                              : (isExplicitlyPosted ? 'Cooked Today' : 'Standard Menu'),
-                          style: GoogleFonts.inter(
-                            color: isNight
-                                ? Colors.white
-                                : (isSpecial
-                                    ? const Color(0xFFD97706)
-                                    : (isExplicitlyPosted
-                                        ? const Color(0xFF059669)
-                                        : const Color(0xFF64748B))),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.asset(
+                          slotAsset,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Text(
+                              'your $slotName\nimage',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                color: Colors.white70,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
+                  const SizedBox(height: 6),
 
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-
-          // ── Body: Either Posted Dishes or Unposted Info ──
-          if (isExplicitlyPosted) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: [
-                  Icon(
-                    isSpecial ? Icons.auto_awesome : Icons.check_circle_outline,
-                    size: 16,
-                    color: isSpecial ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                  // Expected Diner Count Numeral Row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        '${state.expectedHeadcount}',
+                        style: OwnerTypography.serifNumeral(
+                          fontSize: 68,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFFDE8CD),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'diner expected',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${state.skippingCurrentMeal} skipping · ${state.mess?.capacity ?? 150} seats',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(height: 12),
+
+                  // Menu status / dishes description
                   Text(
-                    isSpecial
-                        ? "Today's Special Dishes Announced:"
-                        : "Today's Cooked Dishes Announced:",
+                    isExplicitlyPosted
+                        ? dishes.map((d) => d.name).join(' • ')
+                        : 'Tonight\'s menu isn\'t posted. Students see your standard menu.',
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSpecial ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                      fontSize: 12.5,
+                      color: Colors.white.withValues(alpha: 0.85),
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Glowing Amber CTA Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (state.mess != null) {
+                          PostTodayMealSheet.show(
+                            context,
+                            mess: state.mess!,
+                            initialSlot: state.currentSlot,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: OwnerColors.amber,
+                        foregroundColor: OwnerColors.textDark,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                      ),
+                      child: Text(
+                        isExplicitlyPosted
+                            ? 'Edit ${slotName.toLowerCase()}\'s menu'
+                            : 'Post ${slotName.toLowerCase()}\'s menu',
+                        style: GoogleFonts.inter(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.textDark,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            // Clean dish summary text banner (no messy chips)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSpecial ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSpecial ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.restaurant_rounded,
-                      size: 16,
-                      color: isSpecial ? const Color(0xFFD97706) : const Color(0xFF10B981),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        dishes.map((d) => d.name).join(' • '),
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1F2937),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Edit button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    if (state.mess != null) {
-                      PostTodayMealSheet.show(
-                        context,
-                        mess: state.mess!,
-                        initialSlot: state.currentSlot,
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.edit_note_rounded, size: 18),
-                  label: Text(
-                    "Edit Today's Meal Post",
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF10B981),
-                    side: const BorderSide(color: Color(0xFF6EE7B7)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ),
-          ] else ...[
-            // State: Not posted for today yet
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Today's specific meal not posted yet. Students are shown your general template menu.",
-                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Post button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (state.mess != null) {
-                      PostTodayMealSheet.show(
-                        context,
-                        mess: state.mess!,
-                        initialSlot: state.currentSlot,
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.campaign_rounded, size: 18),
-                  label: Text(
-                    "Post What's Cooking Today (Regular / Special)",
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildUpcomingLeaves() {
+  // ── Today's Service Timeline / Stepper Card (Screenshot 1) ──
+  Widget _buildTodayServiceStepper(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    final current = state.currentSlot;
+    final timings = state.mess?.mealTimings ?? {};
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: OwnerColors.cardPure,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: OwnerColors.cardBorder),
+        boxShadow: OwnerColors.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Upcoming Long Leaves',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: const Color(0xFF111827),
+            'TODAY\'S SERVICE',
+            style: OwnerTypography.overline(
+              color: OwnerColors.textOverline,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 12),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'No upcoming leaves',
-                style: GoogleFonts.inter(color: const Color(0xFF9CA3AF)),
+          const SizedBox(height: 16),
+
+          // Stepper Row with connecting line
+          Row(
+            children: [
+              _buildStepItem(
+                label: 'Morning',
+                enabled: timings['morning']?['enabled'] == 'true',
+                isCurrent: current == 'morning',
+                color: OwnerColors.amber,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'morning'),
+                  ),
+                ),
+              ),
+              _buildStepLine(),
+              _buildStepItem(
+                label: 'Noon',
+                enabled: timings['noon']?['enabled'] == 'true',
+                isCurrent: current == 'noon',
+                color: OwnerColors.sage,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'noon'),
+                  ),
+                ),
+              ),
+              _buildStepLine(),
+              _buildStepItem(
+                label: (timings['evening']?['enabled'] == 'true') ? 'Evening' : 'Evening off',
+                enabled: timings['evening']?['enabled'] == 'true',
+                isCurrent: current == 'evening',
+                color: OwnerColors.sage,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'evening'),
+                  ),
+                ),
+              ),
+              _buildStepLine(),
+              _buildStepItem(
+                label: 'Night',
+                enabled: timings['night']?['enabled'] == 'true',
+                isCurrent: current == 'night' || current == 'closed',
+                color: OwnerColors.amber,
+                isGlow: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'night'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepItem({
+    required String label,
+    required bool enabled,
+    required bool isCurrent,
+    required Color color,
+    bool isGlow = false,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: isGlow ? 22 : 16,
+            height: isGlow ? 22 : 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: enabled ? (isGlow ? OwnerColors.amber : color) : Colors.transparent,
+              border: Border.all(
+                color: enabled ? Colors.transparent : const Color(0xFFC7BCB3),
+                width: 1.5,
+              ),
+              boxShadow: isGlow
+                  ? [
+                      BoxShadow(
+                        color: OwnerColors.amber.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
+              color: isCurrent
+                  ? OwnerColors.textDark
+                  : (enabled ? OwnerColors.textMuted : const Color(0xFFB8B3AA)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepLine() {
+    return Expanded(
+      child: Container(
+        height: 1.5,
+        color: const Color(0xFFE2DDD3),
+        margin: const EdgeInsets.only(bottom: 16),
+      ),
+    );
+  }
+
+  // ── Split Action Cards: Announce & Join (Screenshot 1) ──
+  Widget _buildSplitActionCards(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    return Row(
+      children: [
+        // Announce Card
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _showAnnouncementDialog(context, ref),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: OwnerColors.cardPure,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: OwnerColors.cardBorder),
+                boxShadow: OwnerColors.softShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ANNOUNCE',
+                    style: OwnerTypography.overline(
+                      fontSize: 10.5,
+                      color: OwnerColors.textOverline,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Message all students',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: OwnerColors.textDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // Join / Invite Card
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _showInviteDialog(context, ref, state),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: OwnerColors.cardPure,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: OwnerColors.cardBorder),
+                boxShadow: OwnerColors.softShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'JOIN',
+                    style: OwnerTypography.overline(
+                      fontSize: 10.5,
+                      color: OwnerColors.textOverline,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Invite a student',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: OwnerColors.textDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Absent Today Summary Card (Screenshot 1) ──
+  Widget _buildAbsentTodayCard(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: OwnerColors.cardPure,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: OwnerColors.cardBorder),
+        boxShadow: OwnerColors.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'ABSENT TODAY',
+                style: OwnerTypography.overline(
+                  fontSize: 11,
+                  color: OwnerColors.textOverline,
+                ),
+              ),
+              Text(
+                '${state.upcomingLeaves.length} on leave soon',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: OwnerColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Numbers Row
+          Row(
+            children: [
+              _buildAbsentNumber(
+                count: '${state.morningAbsents}',
+                slotName: 'Morning',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'morning'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              _buildAbsentNumber(
+                count: '${state.noonAbsents}',
+                slotName: 'Noon',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'noon'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              _buildAbsentNumber(
+                count: '${state.nightAbsents}',
+                slotName: 'Night',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerAbsenteeTrackerPage(initialSlot: 'night'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbsentNumber({
+    required String count,
+    required String slotName,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            count,
+            style: OwnerTypography.serifNumeral(
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: OwnerColors.textDark,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            slotName,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: OwnerColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Existing Dialogs Preserved 100% ──
+  void _showInviteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    final messCode = state.mess?.messCode ?? 'N/A';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: OwnerColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Invite a student',
+          style: OwnerTypography.serifHeading(fontSize: 20),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Share this unique mess code with your students to let them join your mess:',
+              style: OwnerTypography.body(fontSize: 13, color: OwnerColors.textMuted),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: OwnerColors.amberLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: OwnerColors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  messCode,
+                  style: GoogleFonts.newsreader(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 3,
+                    color: OwnerColors.amberText,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Close', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
           ),
         ],
       ),
@@ -1066,46 +972,56 @@ class OwnerDashboardPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: OwnerColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          'Send Announcement',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          'Send announcement',
+          style: OwnerTypography.serifHeading(fontSize: 20),
         ),
         content: TextField(
           controller: ctrl,
           decoration: InputDecoration(
             hintText: 'Type your message...',
-            hintStyle: GoogleFonts.inter(),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            hintStyle: GoogleFonts.inter(fontSize: 13, color: OwnerColors.textMuted),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: OwnerColors.cardBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: OwnerColors.cardBorder),
+            ),
           ),
           maxLines: 3,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.inter()),
+            child: Text('Cancel', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () async {
               if (ctrl.text.trim().isEmpty) return;
-              await ref
-                  .read(ownerDashboardProvider.notifier)
-                  .sendAnnouncement(ctrl.text);
+              await ref.read(ownerDashboardProvider.notifier).sendAnnouncement(ctrl.text);
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Announcement Sent!', style: GoogleFonts.inter(color: Colors.white)),
-                    backgroundColor: const Color(0xFF22C55E),
+                    content: const Text('Announcement Sent!'),
+                    backgroundColor: OwnerColors.sage,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E),
+              backgroundColor: OwnerColors.amber,
+              foregroundColor: OwnerColors.textDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
-            child: Text('Send', style: GoogleFonts.inter(color: Colors.white)),
+            child: const Text('Send'),
           ),
         ],
       ),
@@ -1115,9 +1031,9 @@ class OwnerDashboardPage extends ConsumerWidget {
   void _showPendingRequests(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: OwnerColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       isScrollControlled: true,
       builder: (ctx) {
@@ -1134,26 +1050,48 @@ class OwnerDashboardPage extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Pending Requests',
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        'Join requests',
+                        style: OwnerTypography.serifHeading(fontSize: 22),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(Icons.close_rounded),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   if (pending.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 28),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: OwnerColors.cardBorder,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
                       child: Center(
-                        child: Text(
-                          'No new requests.',
-                          style: GoogleFonts.inter(color: Colors.grey),
+                        child: Column(
+                          children: [
+                            Text(
+                              'No new requests',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: OwnerColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'New join requests will appear here',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: OwnerColors.textMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
@@ -1162,28 +1100,25 @@ class OwnerDashboardPage extends ConsumerWidget {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: pending.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final student = pending[index];
                         return Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: OwnerColors.cardBorder),
                           ),
                           child: Row(
                             children: [
                               CircleAvatar(
-                                radius: 24,
-                                backgroundColor: const Color(0xFFDCFCE7),
+                                radius: 22,
+                                backgroundColor: OwnerColors.amberLight,
                                 child: Text(
-                                  student.name.isNotEmpty
-                                      ? student.name[0]
-                                      : '?',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF16A34A),
+                                  student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                                  style: GoogleFonts.newsreader(
+                                    color: OwnerColors.amberText,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1197,16 +1132,17 @@ class OwnerDashboardPage extends ConsumerWidget {
                                     Text(
                                       student.name,
                                       style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: OwnerColors.textDark,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 3),
                                     Text(
-                                      'Room: ${student.roomNo} | ${student.college}',
+                                      'Room: ${student.roomNo} · ${student.college}',
                                       style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: const Color(0xFF6B7280),
+                                        fontSize: 11.5,
+                                        color: OwnerColors.textMuted,
                                       ),
                                     ),
                                   ],
@@ -1216,48 +1152,38 @@ class OwnerDashboardPage extends ConsumerWidget {
                                 children: [
                                   GestureDetector(
                                     onTap: () {
-                                      ref
-                                          .read(ownerStudentsProvider.notifier)
-                                          .accept(student.studentId);
-                                      if (pending.length == 1)
-                                        Navigator.pop(
-                                          context,
-                                        ); // close if last one
+                                      ref.read(ownerStudentsProvider.notifier).accept(student.studentId);
+                                      if (pending.length == 1) Navigator.pop(context);
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: const BoxDecoration(
-                                        color: Color(0xFFDCFCE7),
+                                        color: OwnerColors.sageLight,
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
-                                        Icons.check,
-                                        color: Color(0xFF16A34A),
-                                        size: 20,
+                                        Icons.check_rounded,
+                                        color: OwnerColors.sage,
+                                        size: 18,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   GestureDetector(
                                     onTap: () {
-                                      ref
-                                          .read(ownerStudentsProvider.notifier)
-                                          .reject(student.studentId);
-                                      if (pending.length == 1)
-                                        Navigator.pop(
-                                          context,
-                                        ); // close if last one
+                                      ref.read(ownerStudentsProvider.notifier).reject(student.studentId);
+                                      if (pending.length == 1) Navigator.pop(context);
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFEE2E2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFEE2E2),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
-                                        Icons.close,
+                                        Icons.close_rounded,
                                         color: Color(0xFFEF4444),
-                                        size: 20,
+                                        size: 18,
                                       ),
                                     ),
                                   ),
@@ -1275,135 +1201,6 @@ class OwnerDashboardPage extends ConsumerWidget {
           },
         );
       },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconBg, iconColor;
-  final String label, value, subtitle, badgeText;
-  final Color subtitleColor, badgeBg, badgeColor;
-  final bool isHighlighted;
-  final Color? progressColor;
-  final double progressValue;
-  final VoidCallback? onTap;
-
-  const _StatCard({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.subtitle,
-    required this.subtitleColor,
-    required this.badgeText,
-    required this.badgeBg,
-    required this.badgeColor,
-    this.isHighlighted = false,
-    this.progressColor,
-    this.progressValue = 0.14,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: isHighlighted
-              ? Border.all(color: const Color(0xFF22C55E), width: 1.5)
-              : null,
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 16),
-                ),
-                if (badgeText.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      badgeText,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                if (progressColor != null) ...[
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progressValue,
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      color: progressColor,
-                      minHeight: 3,
-                    ),
-                  ),
-                ],
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(fontSize: 10, color: subtitleColor),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1433,7 +1230,7 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFFEF4444)),
+            colorScheme: const ColorScheme.light(primary: OwnerColors.amber),
           ),
           child: child!,
         );
@@ -1457,22 +1254,22 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: OwnerColors.cardBorder),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF6B7280)),
+          icon: const Icon(Icons.arrow_drop_down, color: OwnerColors.textMuted),
           items: _slots
               .map(
                 (s) => DropdownMenuItem(
                   value: s,
                   child: Text(
                     s.toUpperCase(),
-                    style: GoogleFonts.inter(fontSize: 14),
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
               )
@@ -1480,10 +1277,11 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
           onChanged: (val) {
             if (val != null) {
               setState(() {
-                if (isStart)
+                if (isStart) {
                   _startSlot = val;
-                else
+                } else {
                   _endSlot = val;
+                }
               });
             }
           },
@@ -1499,9 +1297,9 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: OwnerColors.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1509,13 +1307,14 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
             Text(
               '${date.day}/${date.month}/${date.year}',
               style: GoogleFonts.inter(
-                fontSize: 14,
-                color: const Color(0xFF111827),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: OwnerColors.textDark,
               ),
             ),
             const Icon(
-              Icons.calendar_month,
-              color: Color(0xFF6B7280),
+              Icons.calendar_month_rounded,
+              color: OwnerColors.textMuted,
               size: 18,
             ),
           ],
@@ -1527,10 +1326,11 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: OwnerColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: Text(
-        'Schedule Closure',
-        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 20),
+        'Schedule closure',
+        style: OwnerTypography.serifHeading(fontSize: 20),
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -1538,13 +1338,10 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'From:',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF4B5563),
-              ),
+              'FROM',
+              style: OwnerTypography.overline(color: OwnerColors.textOverline),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(child: _buildDatePickerBtn(_startDate, true)),
@@ -1552,15 +1349,12 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
                 Expanded(child: _buildDropdown(_startSlot, true)),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
-              'To:',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF4B5563),
-              ),
+              'TO',
+              style: OwnerTypography.overline(color: OwnerColors.textOverline),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(child: _buildDatePickerBtn(_endDate, false)),
@@ -1568,13 +1362,10 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
                 Expanded(child: _buildDropdown(_endSlot, false)),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Text(
-              'This will close all meals between these two dates/slots and send an announcement to your students.',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: const Color(0xFF9CA3AF),
-              ),
+              'Closes every meal between these slots and notifies your students automatically.',
+              style: OwnerTypography.body(fontSize: 12, color: OwnerColors.textMuted),
             ),
           ],
         ),
@@ -1582,13 +1373,7 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text(
-            'Cancel',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF6B7280),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          child: Text('Cancel', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
         ),
         ElevatedButton(
           onPressed: _isLoading
@@ -1604,37 +1389,30 @@ class _ScheduleClosureDialogState extends State<_ScheduleClosureDialog> {
                         _endSlot,
                         "Emergency Closure",
                       );
-                  if (mounted) Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
                 },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: const Color(0xFFC2410C),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           ),
           child: _isLoading
               ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
-              : Text(
-                  'Confirm Closure',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+              : const Text(
+                  'Confirm closure',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
         ),
       ],
     );
   }
 }
-
 
 class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
   final List<StudentModel> students;
@@ -1643,14 +1421,26 @@ class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
   OwnerGlobalSearchDelegate({required this.students, required this.ref});
 
   @override
-  String get searchFieldLabel => 'Search student...';
+  String get searchFieldLabel => 'Search student or dish...';
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return ThemeData(
+      scaffoldBackgroundColor: OwnerColors.canvas,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: OwnerColors.canvas,
+        elevation: 0,
+        iconTheme: IconThemeData(color: OwnerColors.textDark),
+      ),
+    );
+  }
 
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [
       if (query.isNotEmpty)
         IconButton(
-          icon: const Icon(Icons.clear),
+          icon: const Icon(Icons.clear_rounded, color: OwnerColors.textDark),
           onPressed: () => query = '',
         ),
     ];
@@ -1659,7 +1449,7 @@ class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
   @override
   Widget? buildLeading(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(Icons.arrow_back_rounded, color: OwnerColors.textDark),
       onPressed: () => close(context, ''),
     );
   }
@@ -1676,77 +1466,72 @@ class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
       return Center(
         child: Text(
           'Type to search students...',
-          style: GoogleFonts.inter(color: Colors.grey),
+          style: OwnerTypography.body(color: OwnerColors.textMuted),
         ),
       );
     }
     final filteredStudents = students.where((s) {
       return s.name.toLowerCase().contains(lowerQuery) ||
-             s.email.toLowerCase().contains(lowerQuery) ||
-             s.roomNo.toLowerCase().contains(lowerQuery) ||
-             s.phone.contains(lowerQuery);
+          s.email.toLowerCase().contains(lowerQuery) ||
+          s.roomNo.toLowerCase().contains(lowerQuery) ||
+          s.phone.contains(lowerQuery);
     }).toList();
 
     if (filteredStudents.isEmpty) {
       return Center(
         child: Text(
-          'No results for ""',
-          style: GoogleFonts.inter(color: Colors.grey),
+          'No results found for "$query"',
+          style: OwnerTypography.body(color: OwnerColors.textMuted),
         ),
       );
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: filteredStudents.length,
       itemBuilder: (context, index) {
         final student = filteredStudents[index];
-        final joined = '${student.joinDate.day} ${_monthName(student.joinDate.month)} ${student.joinDate.year}';
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.2),
-            child: Text(
-              student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
-              style: const TextStyle(color: Color(0xFF16A34A)),
-            ),
+        final joined = '${student.joinDate.day}/${student.joinDate.month}/${student.joinDate.year}';
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: OwnerColors.cardPure,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: OwnerColors.cardBorder),
+            boxShadow: OwnerColors.softShadow,
           ),
-          title: Text(student.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-          subtitle: Text('${student.phone}  Room: ${student.roomNo}'),
-          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-          onTap: () {
-            close(context, '');
-            const OwnerStudentManagementPage().showStudentDetailsModal(
-              context, 
-              ref, 
-              student, 
-              joined,
-            );
-          },
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: OwnerColors.amberLight,
+              child: Text(
+                student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                style: GoogleFonts.newsreader(
+                  color: OwnerColors.amberText,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(
+              student.name,
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: OwnerColors.textDark),
+            ),
+            subtitle: Text(
+              '${student.phone} · Room: ${student.roomNo}',
+              style: GoogleFonts.inter(fontSize: 12, color: OwnerColors.textMuted),
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded, color: OwnerColors.textMuted),
+            onTap: () {
+              close(context, '');
+              const OwnerStudentManagementPage().showStudentDetailsModal(
+                context,
+                ref,
+                student,
+                joined,
+              );
+            },
+          ),
         );
       },
-    );
-  }
-
-  String _monthName(int m) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[m - 1];
-  }
-
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF6B7280)),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
-              Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

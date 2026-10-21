@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../models/app_models.dart';
+import '../../../../services/localization_service.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
+import '../theme/student_inspired_theme.dart';
 
 class ViewMessMenuSheet extends ConsumerStatefulWidget {
   final MessModel mess;
@@ -109,6 +111,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isHindi = ref.watch(localizationProvider) == 'hi';
     final enabledSlots = ['morning', 'noon', 'evening', 'night'].where((slot) {
       final timing = widget.mess.mealTimings[slot];
       return timing != null && timing['enabled'] == 'true';
@@ -130,7 +133,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
         maxHeight: MediaQuery.of(context).size.height * 0.88,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xFFF9FAFB),
+        color: StudentColors.canvasWarm,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
@@ -139,11 +142,11 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
           // Drag handle
           Center(
             child: Container(
-              width: 40,
+              width: 44,
               height: 4,
               margin: const EdgeInsets.only(top: 12, bottom: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFD1D5DB),
+                color: StudentColors.borderSubtle,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -151,15 +154,16 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
 
           // Header
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            color: Colors.transparent,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: StudentColors.sageLight,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: StudentColors.sageBorder),
                   ),
                   child: const Text('🍽️', style: TextStyle(fontSize: 22)),
                 ),
@@ -169,21 +173,22 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${widget.mess.name} Menu',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF111827),
+                        '${widget.mess.name} ${isHindi ? 'मेन्यू' : 'Menu'}',
+                        style: StudentTypography.serifHeading(
+                          fontSize: 20,
+                          color: StudentColors.walnut,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Regular offerings & meal timings (मेन्यू सूची)',
-                        style: GoogleFonts.inter(
+                        isHindi
+                            ? 'नियमित भोजन सूची एवं समय'
+                            : 'Regular offerings & meal timings',
+                        style: StudentTypography.body(
                           fontSize: 12,
-                          color: const Color(0xFF6B7280),
+                          color: StudentColors.textMuted,
                         ),
                       ),
                     ],
@@ -191,7 +196,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                  icon: const Icon(Icons.close, color: StudentColors.walnutMuted),
                 ),
               ],
             ),
@@ -199,7 +204,6 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
 
           // Meal Slot Tabs (Breakfast, Lunch, Dinner)
           Container(
-            color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -217,27 +221,20 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                     padding: const EdgeInsets.only(right: 8),
                     child: InkWell(
                       onTap: () => setState(() => _selectedSlot = slot),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                          horizontal: 16,
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: isSelected
-                              ? const [
-                                  BoxShadow(
-                                    color: Color(0x2010B981),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ]
-                              : null,
+                          color: isSelected ? StudentColors.walnut : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? StudentColors.walnut : StudentColors.borderSubtle,
+                          ),
+                          boxShadow: isSelected ? StudentColors.softShadow : null,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -246,19 +243,14 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(emoji,
-                                    style: const TextStyle(fontSize: 15)),
+                                Text(emoji, style: const TextStyle(fontSize: 14)),
                                 const SizedBox(width: 6),
                                 Text(
                                   name,
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : const Color(0xFF374151),
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                    color: isSelected ? Colors.white : StudentColors.textDark,
                                   ),
                                 ),
                               ],
@@ -270,8 +262,8 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   color: isSelected
-                                      ? Colors.white.withOpacity(0.9)
-                                      : const Color(0xFF6B7280),
+                                      ? Colors.white.withValues(alpha: 0.8)
+                                      : StudentColors.textMuted,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -286,22 +278,26 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             ),
           ),
 
-          const Divider(height: 1),
+          const Divider(height: 1, color: StudentColors.borderSubtle),
 
           // Body for Selected Slot
           Expanded(
             child: _isLoading && _templatesBySlot.isEmpty
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+                    child: CircularProgressIndicator(color: StudentColors.sage),
                   )
-                : _buildSelectedSlotContent(_selectedSlot!, allDishRatings),
+                : _buildSelectedSlotContent(_selectedSlot!, allDishRatings, isHindi),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSelectedSlotContent(String slot, List<DishRatingModel> allDishRatings) {
+  Widget _buildSelectedSlotContent(
+    String slot,
+    List<DishRatingModel> allDishRatings,
+    bool isHindi,
+  ) {
     final template = _templatesBySlot[slot];
     final todayPosted = _todayPostedBySlot[slot];
     final templateDishes = template?.dishes ?? [];
@@ -316,27 +312,17 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             padding: const EdgeInsets.all(14),
             margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              gradient: todayPosted.menuType == 'special'
-                  ? const LinearGradient(
-                      colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
-                    )
-                  : const LinearGradient(
-                      colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
-                    ),
+              color: todayPosted.menuType == 'special'
+                  ? StudentColors.amberLight
+                  : StudentColors.sageLight,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: todayPosted.menuType == 'special'
-                    ? const Color(0xFFFDE68A)
-                    : const Color(0xFFA7F3D0),
+                    ? StudentColors.amberPill
+                    : StudentColors.sageBorder,
                 width: 1.5,
               ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x08000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              boxShadow: StudentColors.softShadow,
             ),
             child: Row(
               children: [
@@ -351,32 +337,34 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                     children: [
                       Text(
                         todayPosted.menuType == 'special'
-                            ? 'TODAY\'S SPECIAL $slotTitle'.toUpperCase()
-                            : 'COOKED TODAY FOR $slotTitle'.toUpperCase(),
+                            ? (isHindi ? 'आज का विशेष $slotTitle' : 'TODAY\'S SPECIAL $slotTitle').toUpperCase()
+                            : (isHindi ? 'आज तैयार $slotTitle' : 'COOKED TODAY FOR $slotTitle').toUpperCase(),
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: todayPosted.menuType == 'special'
-                              ? const Color(0xFFD97706)
-                              : const Color(0xFF059669),
+                              ? StudentColors.amberDark
+                              : StudentColors.sageDark,
                           letterSpacing: 0.5,
                         ),
                       ),
                       Text(
-                        'Freshly announced by the mess owner for today',
+                        isHindi
+                            ? 'मेस संचालक द्वारा आज के लिए घोषित'
+                            : 'Freshly announced by the mess owner for today',
                         style: GoogleFonts.inter(
                           fontSize: 11,
-                          color: const Color(0xFF4B5563),
+                          color: StudentColors.textDark.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '${todayPosted.dishes.length} items',
@@ -384,8 +372,8 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: todayPosted.menuType == 'special'
-                          ? const Color(0xFFD97706)
-                          : const Color(0xFF059669),
+                          ? StudentColors.amberDark
+                          : StudentColors.sageDark,
                     ),
                   ),
                 ),
@@ -398,7 +386,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: todayPosted.dishes.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (ctx, i) {
               final dish = todayPosted.dishes[i];
               return _buildDishCard(
@@ -417,27 +405,27 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
           children: [
             Text(
               todayPosted != null && todayPosted.dishes.isNotEmpty
-                  ? 'Standard $slotTitle Repertoire'
-                  : 'Standard $slotTitle Offerings',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF111827),
+                  ? (isHindi ? 'मानक $slotTitle मेन्यू' : 'Standard $slotTitle Repertoire')
+                  : (isHindi ? 'मानक $slotTitle मेन्यू' : 'Standard $slotTitle Offerings'),
+              style: StudentTypography.serifHeading(
+                fontSize: 16,
+                color: StudentColors.walnut,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(6),
+                color: StudentColors.surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: StudentColors.borderSubtle),
               ),
               child: Text(
                 '${templateDishes.length}',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4B5563),
+                  color: StudentColors.walnut,
                 ),
               ),
             ),
@@ -445,10 +433,12 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Dishes regularly cooked by this mess for $slotTitle',
-          style: GoogleFonts.inter(
+          isHindi
+              ? '$slotTitle के लिए इस मेस के नियमित व्यंजन'
+              : 'Dishes regularly cooked by this mess for $slotTitle',
+          style: StudentTypography.body(
             fontSize: 12,
-            color: const Color(0xFF6B7280),
+            color: StudentColors.textMuted,
           ),
         ),
         const SizedBox(height: 12),
@@ -459,7 +449,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: templateDishes.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (ctx, i) {
               final dish = templateDishes[i];
               return _buildDishCard(
@@ -473,32 +463,33 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: StudentColors.borderSubtle),
             ),
             child: Column(
               children: [
                 const Icon(
                   Icons.restaurant_menu_rounded,
                   size: 40,
-                  color: Color(0xFF9CA3AF),
+                  color: StudentColors.walnutMuted,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Standard Homestyle Food',
-                  style: GoogleFonts.inter(
+                  isHindi ? 'घर जैसा शुद्ध भोजन' : 'Standard Homestyle Food',
+                  style: StudentTypography.bold(
                     fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF374151),
+                    color: StudentColors.walnut,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Fresh nutritious meals cooked daily with authentic ingredients.',
+                  isHindi
+                      ? 'ताजा और पौष्टिक भोजन प्रतिदिन प्रामाणिक मसालों के साथ पकाया जाता है।'
+                      : 'Fresh nutritious meals cooked daily with authentic ingredients.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
+                  style: StudentTypography.body(
                     fontSize: 12,
-                    color: const Color(0xFF6B7280),
+                    color: StudentColors.textMuted,
                   ),
                 ),
               ],
@@ -512,23 +503,26 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: StudentColors.borderSubtle),
           ),
           child: Row(
             children: [
               const Icon(
                 Icons.lightbulb_outline,
                 size: 16,
-                color: Color(0xFF6B7280),
+                color: StudentColors.amberDark,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Standard offerings are regular repertoire items. Active meals cooked today are highlighted above.',
+                  isHindi
+                      ? 'मानक व्यंजन नियमित मेन्यू सूची हैं। आज पकाए जा रहे विशेष व्यंजन ऊपर हाइलाइट किए गए हैं।'
+                      : 'Standard offerings are regular repertoire items. Active meals cooked today are highlighted above.',
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: const Color(0xFF4B5563),
+                    color: StudentColors.textMuted,
                   ),
                 ),
               ),
@@ -545,26 +539,33 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
     final name = dish.name.toLowerCase();
 
     if (cat.contains('dal') || name.contains('dal') || name.contains('sambar')) {
-      bg = const Color(0xFFFEF3C7);
+      bg = StudentColors.amberLight;
     } else if (cat.contains('roti') || name.contains('roti') || name.contains('paratha')) {
-      bg = const Color(0xFFFFF1F2);
+      bg = const Color(0xFFF9EAE1);
     } else if (cat.contains('rice') || name.contains('rice') || name.contains('biryani')) {
-      bg = const Color(0xFFEFF6FF);
+      bg = const Color(0xFFEFF3F8);
     } else if (cat.contains('sweet') || name.contains('kheer') || name.contains('halwa')) {
       bg = const Color(0xFFFCE7F3);
     } else if (cat.contains('non') || dish.dishFoodType == 'nonveg') {
-      bg = const Color(0xFFFEE2E2);
+      bg = StudentColors.brickRedLight;
     } else {
-      bg = const Color(0xFFDCFCE7);
+      bg = StudentColors.sageLight;
     }
 
     String emoji = '🥗';
-    if (cat.contains('dal') || name.contains('dal')) emoji = '🍲';
-    else if (cat.contains('roti') || name.contains('roti') || name.contains('naan')) emoji = '🫓';
-    else if (cat.contains('rice') || name.contains('rice') || name.contains('biryani')) emoji = '🍚';
-    else if (cat.contains('sweet') || name.contains('kheer')) emoji = '🍨';
-    else if (cat.contains('snack')) emoji = '🥟';
-    else if (dish.dishFoodType == 'nonveg' || cat.contains('non')) emoji = '🍗';
+    if (cat.contains('dal') || name.contains('dal')) {
+      emoji = '🍲';
+    } else if (cat.contains('roti') || name.contains('roti') || name.contains('naan')) {
+      emoji = '🫓';
+    } else if (cat.contains('rice') || name.contains('rice') || name.contains('biryani')) {
+      emoji = '🍚';
+    } else if (cat.contains('sweet') || name.contains('kheer')) {
+      emoji = '🍨';
+    } else if (cat.contains('snack')) {
+      emoji = '🥟';
+    } else if (dish.dishFoodType == 'nonveg' || cat.contains('non')) {
+      emoji = '🍗';
+    }
 
     return Container(
       color: bg,
@@ -587,17 +588,17 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
     final cat = dish.category.toLowerCase();
 
     if (cat.contains('veg') && !cat.contains('non')) {
-      badgeBg = const Color(0xFFDCFCE7);
-      badgeText = const Color(0xFF15803D);
+      badgeBg = StudentColors.sageLight;
+      badgeText = StudentColors.sageDark;
     } else if (cat.contains('non') || dish.dishFoodType == 'nonveg') {
-      badgeBg = const Color(0xFFFEE2E2);
-      badgeText = const Color(0xFFB91C1C);
+      badgeBg = StudentColors.brickRedLight;
+      badgeText = StudentColors.brickRed;
     } else if (cat.contains('roti') || cat.contains('bread')) {
       badgeBg = const Color(0xFFFFF1F2);
       badgeText = const Color(0xFFBE123C);
     } else if (cat.contains('dal')) {
-      badgeBg = const Color(0xFFFEF3C7);
-      badgeText = const Color(0xFFB45309);
+      badgeBg = StudentColors.amberLight;
+      badgeText = StudentColors.amberDark;
     } else if (cat.contains('rice')) {
       badgeBg = const Color(0xFFEFF6FF);
       badgeText = const Color(0xFF1D4ED8);
@@ -605,8 +606,8 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
       badgeBg = const Color(0xFFFCE7F3);
       badgeText = const Color(0xFF9D174D);
     } else {
-      badgeBg = const Color(0xFFF3F4F6);
-      badgeText = const Color(0xFF4B5563);
+      badgeBg = StudentColors.surfaceWarm;
+      badgeText = StudentColors.textDark;
     }
 
     final currentStudent = ref.watch(studentHomeProvider).student;
@@ -625,19 +626,11 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isTodayActive
-              ? (menuType == 'special' ? const Color(0xFFF59E0B) : const Color(0xFF10B981))
-              : const Color(0xFFE5E7EB),
+              ? (menuType == 'special' ? StudentColors.amber : StudentColors.sage)
+              : StudentColors.borderSubtle,
           width: isTodayActive ? 1.5 : 1.0,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isTodayActive
-                ? (menuType == 'special' ? const Color(0x15F59E0B) : const Color(0x1510B981))
-                : const Color(0x06000000),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: StudentColors.softShadow,
       ),
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -652,7 +645,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                   ? Image.network(
                       dish.imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(dish),
+                      errorBuilder: (context, error, stackTrace) => _buildFallbackFoodIcon(dish),
                     )
                   : _buildFallbackFoodIcon(dish),
             ),
@@ -672,7 +665,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF111827),
+                          color: StudentColors.walnut,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -681,12 +674,17 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                     if (isTodayActive) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: menuType == 'special'
-                              ? const Color(0xFFFEF3C7)
-                              : const Color(0xFFDCFCE7),
+                              ? StudentColors.amberLight
+                              : StudentColors.sageLight,
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: menuType == 'special'
+                                ? StudentColors.amberPill
+                                : StudentColors.sageBorder,
+                          ),
                         ),
                         child: Text(
                           menuType == 'special' ? '✨ Special' : 'Today',
@@ -694,8 +692,8 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: menuType == 'special'
-                                ? const Color(0xFFB45309)
-                                : const Color(0xFF15803D),
+                                ? StudentColors.amberDark
+                                : StudentColors.sageDark,
                           ),
                         ),
                       ),
@@ -728,7 +726,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                       'Homestyle Prepared',
                       style: GoogleFonts.inter(
                         fontSize: 11,
-                        color: const Color(0xFF9CA3AF),
+                        color: StudentColors.textMuted,
                       ),
                     ),
                   ],
@@ -739,7 +737,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
 
           const SizedBox(width: 8),
 
-          // Interactive Dish Rating Action (Replaces tick icon with stars / rating)
+          // Interactive Dish Rating Action
           InkWell(
             onTap: () => _openDishRatingDialog(dish, myRating, allDishRatings),
             borderRadius: BorderRadius.circular(20),
@@ -748,24 +746,15 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: myRating != null
-                    ? const Color(0xFFFEF3C7)
-                    : (dishRatings.isNotEmpty ? const Color(0xFFF3F4F6) : const Color(0xFFF9FAFB)),
+                    ? StudentColors.amberLight
+                    : (dishRatings.isNotEmpty ? StudentColors.canvasWarm : Colors.white),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: myRating != null
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFFD1D5DB),
+                      ? StudentColors.amber
+                      : StudentColors.borderSubtle,
                   width: myRating != null ? 1.5 : 1.0,
                 ),
-                boxShadow: myRating != null
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ]
-                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -773,7 +762,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                   Icon(
                     myRating != null ? Icons.star_rounded : Icons.star_outline_rounded,
                     size: 16,
-                    color: myRating != null ? const Color(0xFFD97706) : const Color(0xFF6B7280),
+                    color: myRating != null ? StudentColors.amberDark : StudentColors.textMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -784,8 +773,8 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                       fontSize: 12,
                       fontWeight: myRating != null ? FontWeight.bold : FontWeight.w600,
                       color: myRating != null
-                          ? const Color(0xFFB45309)
-                          : const Color(0xFF374151),
+                          ? StudentColors.amberDark
+                          : StudentColors.textDark,
                     ),
                   ),
                 ],
@@ -823,6 +812,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
     double selectedRating = existingRating?.rating ?? 5.0;
     final commentCtrl = TextEditingController(text: existingRating?.comment ?? '');
     bool isSubmitting = false;
+    final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -833,14 +823,14 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
           final isEditing = existingRating != null;
           return Container(
             decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              color: StudentColors.canvasWarm,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             padding: EdgeInsets.only(
               left: 20,
               right: 20,
               top: 16,
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -849,10 +839,10 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                 children: [
                   Center(
                     child: Container(
-                      width: 40,
+                      width: 44,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: StudentColors.borderSubtle,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -869,7 +859,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                               ? Image.network(
                                   dish.imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _buildFallbackFoodIcon(dish),
+                                  errorBuilder: (context, error, stackTrace) => _buildFallbackFoodIcon(dish),
                                 )
                               : _buildFallbackFoodIcon(dish),
                         ),
@@ -881,10 +871,9 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                           children: [
                             Text(
                               dish.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF111827),
+                              style: StudentTypography.serifHeading(
+                                fontSize: 18,
+                                color: StudentColors.walnut,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -892,9 +881,9 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                               dishRatings.isNotEmpty
                                   ? '⭐ ${avgRating.toStringAsFixed(1)} (${dishRatings.length} ratings)'
                                   : 'No ratings yet • Be the first to rate!',
-                              style: GoogleFonts.inter(
+                              style: StudentTypography.body(
                                 fontSize: 12,
-                                color: const Color(0xFF6B7280),
+                                color: StudentColors.textMuted,
                               ),
                             ),
                           ],
@@ -906,10 +895,9 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                   Center(
                     child: Text(
                       isEditing ? 'Update Your Rating' : 'Rate This Dish',
-                      style: GoogleFonts.inter(
+                      style: StudentTypography.bold(
                         fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF374151),
+                        color: StudentColors.textDark,
                       ),
                     ),
                   ),
@@ -924,7 +912,7 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         icon: Icon(
                           isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
-                          color: const Color(0xFFF59E0B),
+                          color: StudentColors.amber,
                         ),
                         onPressed: () {
                           setModalState(() {
@@ -935,20 +923,27 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                     }),
                   ),
                   Center(
-                    child: Text(
-                      selectedRating == 5
-                          ? '🤩 Delicious!'
-                          : selectedRating == 4
-                              ? '😋 Very Good'
-                              : selectedRating == 3
-                                  ? '😐 Average'
-                                  : selectedRating == 2
-                                      ? '🙁 Needs Improvement'
-                                      : '😞 Poor',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFD97706),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: StudentColors.amberLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        selectedRating == 5
+                            ? '🤩 Delicious!'
+                            : selectedRating == 4
+                                ? '😋 Very Good'
+                                : selectedRating == 3
+                                    ? '😐 Average'
+                                    : selectedRating == 2
+                                        ? '🙁 Needs Improvement'
+                                        : '😞 Poor',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: StudentColors.amberDark,
+                        ),
                       ),
                     ),
                   ),
@@ -956,22 +951,24 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                   TextField(
                     controller: commentCtrl,
                     maxLines: 2,
+                    style: StudentTypography.body(fontSize: 13),
                     decoration: InputDecoration(
                       hintText: 'Share feedback or note about taste, oil, salt... (optional)',
-                      hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF9CA3AF)),
+                      hintStyle: GoogleFonts.inter(fontSize: 13, color: StudentColors.textMuted),
                       filled: true,
-                      fillColor: const Color(0xFFF9FAFB),
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.all(14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: StudentColors.borderSubtle),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: StudentColors.borderSubtle),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF22C55E)),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: StudentColors.amber, width: 1.5),
                       ),
                     ),
                   ),
@@ -989,31 +986,33 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                                           widget.mess.messId,
                                           existingRating.ratingId,
                                         );
+                                    if (!mounted) return;
                                     if (sheetContext.mounted) {
                                       Navigator.pop(sheetContext);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text('Rating removed for ${dish.name}'),
-                                          backgroundColor: Colors.redAccent,
+                                          backgroundColor: StudentColors.brickRed,
                                         ),
                                       );
                                     }
                                   } catch (e) {
-                                    setModalState(() => isSubmitting = false);
+                                    if (!mounted) return;
                                     if (sheetContext.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      setModalState(() => isSubmitting = false);
+                                      messenger.showSnackBar(
                                         SnackBar(content: Text('Failed to delete: $e')),
                                       );
                                     }
                                   }
                                 },
-                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          icon: const Icon(Icons.delete_outline, size: 18, color: StudentColors.brickRed),
                           label: Text(
                             'Delete',
-                            style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.inter(color: StudentColors.brickRed, fontWeight: FontWeight.w600),
                           ),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
+                            side: const BorderSide(color: StudentColors.brickRedBorder),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -1037,30 +1036,33 @@ class _ViewMessMenuSheetState extends ConsumerState<ViewMessMenuSheet> {
                                       comment: commentCtrl.text.trim().isEmpty ? null : commentCtrl.text.trim(),
                                     );
                                     await ref.read(appServiceProvider).submitOrUpdateDishRating(ratingModel);
+                                    if (!mounted) return;
                                     if (sheetContext.mounted) {
                                       Navigator.pop(sheetContext);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             isEditing
                                                 ? 'Updated rating for ${dish.name}!'
                                                 : 'Rating saved for ${dish.name}!',
                                           ),
-                                          backgroundColor: const Color(0xFF22C55E),
+                                          backgroundColor: StudentColors.sage,
                                         ),
                                       );
                                     }
                                   } catch (e) {
-                                    setModalState(() => isSubmitting = false);
+                                    if (!mounted) return;
                                     if (sheetContext.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      setModalState(() => isSubmitting = false);
+                                      messenger.showSnackBar(
                                         SnackBar(content: Text('Failed to save rating: $e')),
                                       );
                                     }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF22C55E),
+                            backgroundColor: StudentColors.amber,
+                            elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),

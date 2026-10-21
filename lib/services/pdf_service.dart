@@ -96,6 +96,9 @@ class PdfService {
     );
   }
 
+  static Future<void> generateAndDownloadInvoice(BillModel bill) =>
+      generateAndDownloadBill(bill);
+
   static pw.Widget _buildRow(
     String label,
     String value, {

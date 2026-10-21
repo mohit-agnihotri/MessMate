@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import 'widgets/post_today_meal_sheet.dart';
+import 'theme/owner_inspired_theme.dart';
 
 class OwnerMenuPlannerV2Page extends ConsumerStatefulWidget {
   const OwnerMenuPlannerV2Page({super.key});
@@ -16,21 +17,6 @@ class OwnerMenuPlannerV2Page extends ConsumerStatefulWidget {
 
 class _OwnerMenuPlannerV2PageState
     extends ConsumerState<OwnerMenuPlannerV2Page> {
-
-  String _slotLabel(String slot) {
-    switch (slot) {
-      case 'morning':
-        return 'Morning (Breakfast)';
-      case 'noon':
-        return 'Noon (Lunch)';
-      case 'evening':
-        return 'Evening (Snacks)';
-      case 'night':
-        return 'Night (Dinner)';
-      default:
-        return slot[0].toUpperCase() + slot.substring(1);
-    }
-  }
 
   String _slotShortLabel(String slot) {
     switch (slot) {
@@ -47,21 +33,6 @@ class _OwnerMenuPlannerV2PageState
     }
   }
 
-  IconData _slotIcon(String slot) {
-    switch (slot) {
-      case 'morning':
-        return Icons.wb_twilight_rounded;
-      case 'noon':
-        return Icons.wb_sunny_rounded;
-      case 'evening':
-        return Icons.coffee_rounded;
-      case 'night':
-        return Icons.nightlight_round;
-      default:
-        return Icons.restaurant_rounded;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ownerMenuProvider);
@@ -69,282 +40,224 @@ class _OwnerMenuPlannerV2PageState
 
     final enabledSlots = (state.mess != null
             ? ['morning', 'noon', 'evening', 'night']
-                .where(
-                  (s) => state.mess!.mealTimings[s]?['enabled'] == 'true',
-                )
+                .where((s) => state.mess!.mealTimings[s]?['enabled'] == 'true')
                 .toList()
             : ['morning', 'noon', 'night']);
 
     final activeSlot = enabledSlots.contains(state.selectedSlot)
         ? state.selectedSlot
-        : (enabledSlots.isNotEmpty ? enabledSlots.first : 'noon');
+        : (enabledSlots.isNotEmpty ? enabledSlots.first : 'morning');
+
+    final slotName = _slotShortLabel(activeSlot);
+    final messName = state.mess?.name ?? 'Mahakal';
+    final dishes = state.selectedDishes;
+    final slotAsset = 'assets/images/slot_$activeSlot.png';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Regular Mess Menu',
-          style: GoogleFonts.inter(
-            color: const Color(0xFF111827),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFA7F3D0)),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.all_inclusive_rounded,
-                  size: 15,
-                  color: Color(0xFF059669),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Auto-repeats',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF059669),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: state.isLoading && state.weeklyTemplates.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Info Banner ──
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: Row(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: state.isLoading && state.weeklyTemplates.isEmpty
+            ? const Center(child: CircularProgressIndicator(color: OwnerColors.sage))
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                children: [
+                  // ── Top Header (Screenshot 2) ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Color(0xFF059669),
-                          size: 20,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'STANDARD DAILY MENU',
+                            style: OwnerTypography.overline(
+                              color: OwnerColors.textOverline,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Menu',
+                            style: OwnerTypography.serifHeading(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w700,
+                              color: OwnerColors.textDark,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Standard Daily Mess Menu',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF065F46),
-                              ),
+
+                      // Mahakal · Settings pill (opens Drawer)
+                      GestureDetector(
+                        onTap: () {
+                          Scaffold.of(context).openEndDrawer();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: OwnerColors.sageLight,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: OwnerColors.sageBorder.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            '$messName · Settings',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: OwnerColors.sageText,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Set standard dishes once for each meal. They repeat every day so students always see their menu!',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: const Color(0xFF047857),
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 14),
 
-                // ── Quick Action: Post Today's Menu ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: InkWell(
-                    onTap: () {
-                      if (state.mess != null) {
-                        PostTodayMealSheet.show(
-                          context,
-                          mess: state.mess!,
-                          initialSlot: activeSlot,
-                        );
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFF59E0B).withOpacity(0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
+                  // ── Standard vs Today's special Pill Toggle (Screenshot 2) ──
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: OwnerColors.sageLight,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Row(
+                      children: [
+                        // Standard (Active)
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD97706),
-                              borderRadius: BorderRadius.circular(10),
+                              color: OwnerColors.walnut,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1A000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: const Icon(
-                              Icons.campaign_rounded,
-                              color: Colors.white,
-                              size: 18,
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Standard',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFFDE8CD),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
+                        ),
+
+                        // Today's special (opens sheet)
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (state.mess != null) {
+                                PostTodayMealSheet.show(
+                                  context,
+                                  mess: state.mess!,
+                                  initialSlot: activeSlot,
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              alignment: Alignment.center,
+                              color: Colors.transparent,
+                              child: Text(
+                                "Today's special",
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: OwnerColors.sageText,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Slot Selector Cards: Morning / Noon / Night (Screenshot 2) ──
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: enabledSlots.map((s) {
+                        final isSelected = s == activeSlot;
+                        final timings = state.mess?.mealTimings[s];
+                        final start = timings?['start'] ?? '';
+                        final end = timings?['end'] ?? '';
+                        final timeRange = (start.isNotEmpty && end.isNotEmpty) ? '$start-$end' : (start.isNotEmpty ? start : '');
+
+                        // Distinct colors matching screenshot
+                        Color cardBg;
+                        Color textC;
+                        Color timeC;
+                        if (isSelected) {
+                          if (s == 'morning') {
+                            cardBg = OwnerColors.amber;
+                            textC = OwnerColors.textDark;
+                            timeC = OwnerColors.textDark.withValues(alpha: 0.7);
+                          } else if (s == 'noon') {
+                            cardBg = const Color(0xFF869E87);
+                            textC = Colors.white;
+                            timeC = Colors.white70;
+                          } else {
+                            cardBg = OwnerColors.walnut;
+                            textC = Colors.white;
+                            timeC = Colors.white70;
+                          }
+                        } else {
+                          cardBg = OwnerColors.cardPure;
+                          textC = OwnerColors.textDark;
+                          timeC = OwnerColors.textMuted;
+                        }
+
+                        return GestureDetector(
+                          onTap: () => viewModel.selectSlot(s),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 115,
+                            margin: const EdgeInsets.only(right: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? Colors.transparent : OwnerColors.cardBorder,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: cardBg.withValues(alpha: 0.35),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : OwnerColors.softShadow,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Post Today's Meal (आज का खाना)",
+                                  _slotShortLabel(s),
                                   style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF92400E),
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: textC,
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  "Choose Regular or Special for ${_slotShortLabel(activeSlot)}",
+                                  timeRange.isNotEmpty ? timeRange : '12:30',
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
-                                    color: const Color(0xFFB45309),
+                                    fontWeight: FontWeight.w500,
+                                    color: timeC,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 14,
-                            color: Color(0xFF92400E),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── Meal Slot Tabs (Derived Dynamically from Enabled Timings) ──
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: enabledSlots.map((slot) {
-                        final isSelected = slot == activeSlot;
-                        final timings = state.mess?.mealTimings[slot];
-                        final timeStr = (timings != null &&
-                                timings['start'] != null &&
-                                timings['end'] != null)
-                            ? '${timings['start']} - ${timings['end']}'
-                            : '';
-
-                        return GestureDetector(
-                          onTap: () => viewModel.selectSlot(slot),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.only(right: 10),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFF10B981)
-                                            .withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _slotIcon(slot),
-                                  size: 18,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF6B7280),
-                                ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _slotShortLabel(slot),
-                                      style: GoogleFonts.inter(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : const Color(0xFF1F2937),
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    if (timeStr.isNotEmpty)
-                                      Text(
-                                        timeStr,
-                                        style: GoogleFonts.inter(
-                                          color: isSelected
-                                              ? Colors.white.withOpacity(0.85)
-                                              : const Color(0xFF9CA3AF),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                  ],
                                 ),
                               ],
                             ),
@@ -353,290 +266,307 @@ class _OwnerMenuPlannerV2PageState
                       }).toList(),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
 
-                const SizedBox(height: 12),
-
-                // ── Dishes List ──
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                  // ── Hero Slot Banner Image (Screenshot 2) ──
+                  Container(
+                    height: 130,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: OwnerColors.softShadow,
                     ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${_slotLabel(activeSlot)} Dishes (${state.selectedDishes.length})',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF1F2937),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            slotAsset,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: OwnerColors.amber,
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Your existing $slotName image',
+                                style: GoogleFonts.inter(
+                                  color: OwnerColors.textDark,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                            if (state.selectedDishes.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDCFCE7),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Active Daily',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF15803D),
-                                  ),
-                                ),
+                          ),
+                        ),
+                        Positioned(
+                          left: 14,
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Standard $slotName Banner',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Section Title: Breakfast · X dishes & Repeats daily (Screenshot 2) ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$slotName · ${dishes.length} dishes',
+                        style: OwnerTypography.serifHeading(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.textDark,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: OwnerColors.sageLight,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: OwnerColors.sageBorder.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          'Repeats daily',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: OwnerColors.sageText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Dish Cards ──
+                  if (dishes.isEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: OwnerColors.cardPure,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: OwnerColors.cardBorder),
+                        boxShadow: OwnerColors.softShadow,
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.restaurant_menu_rounded,
+                              size: 38,
+                              color: OwnerColors.textMuted,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No dishes added for $slotName yet',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: OwnerColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add dishes from the catalog so students see the menu.',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: OwnerColors.textMuted,
+                              ),
+                            ),
                           ],
                         ),
                       ),
+                    )
+                  else
+                    ...dishes.map((dish) => _buildDishCard(dish, viewModel)),
 
-                      if (state.selectedDishes.isEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.restaurant_menu_outlined,
-                                size: 40,
-                                color: Color(0xFF9CA3AF),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'No dishes added for ${_slotShortLabel(activeSlot)} yet',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF4B5563),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Add dishes below so students can see today’s ${_slotShortLabel(activeSlot)} menu.',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF9CA3AF),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                  const SizedBox(height: 8),
+
+                  // ── Dashed "+ Add dish from catalog" Button (Screenshot 2) ──
+                  GestureDetector(
+                    onTap: () => _showGlobalSearchBottomSheet(context, ref),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: OwnerColors.sageLight.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: OwnerColors.sage.withValues(alpha: 0.6),
+                          width: 1.5,
+                          style: BorderStyle.solid,
                         ),
-
-                      ...state.selectedDishes.map(
-                        (dish) => _buildDishCard(dish, viewModel),
                       ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '+ Add dish from catalog',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.sageText,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-                      const SizedBox(height: 8),
-
-                      // Add Dish Button
-                      GestureDetector(
-                        onTap: () =>
-                            _showGlobalSearchBottomSheet(context, ref),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDF4),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFF86EFAC),
-                              width: 1.5,
-                              style: BorderStyle.solid,
+                  // ── Solid "Save breakfast menu" Button (Screenshot 2) ──
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await viewModel.saveTemplate();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$slotName menu saved and active for all days!'),
+                              backgroundColor: OwnerColors.sage,
+                              behavior: SnackBarBehavior.floating,
                             ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.add_circle_outline,
-                                color: Color(0xFF16A34A),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Add Dish from Global Catalog',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF16A34A),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: OwnerColors.sage,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Save ${slotName.toLowerCase()} menu',
+                        style: GoogleFonts.inter(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
                       ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 
-                      const SizedBox(
-                        height: 100,
-                      ), // Padding for floating button
-                    ],
+  // ── Dish Card matching Screenshot 2 ──
+  Widget _buildDishCard(DishModel dish, OwnerMenuViewModel viewModel) {
+    final isVeg = dish.category.toLowerCase().contains('veg');
+    final thumbColor = isVeg ? OwnerColors.amber : const Color(0xFF869E87);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: OwnerColors.cardPure,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: OwnerColors.cardBorder),
+        boxShadow: OwnerColors.softShadow,
+      ),
+      child: Row(
+        children: [
+          // Left rounded square thumbnail (Screenshot 2)
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: thumbColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              isVeg ? Icons.eco_rounded : Icons.restaurant_rounded,
+              color: OwnerColors.textDark.withValues(alpha: 0.8),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Dish Name & Category
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dish.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: OwnerColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dish.category.toLowerCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: OwnerColors.textMuted,
                   ),
                 ),
               ],
             ),
-      // Save Button
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: state.isLoading
-          ? const CircularProgressIndicator()
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FloatingActionButton.extended(
-                  onPressed: () async {
-                    await viewModel.saveTemplate();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${_slotShortLabel(activeSlot)} menu saved and active for all days!',
-                          ),
-                          backgroundColor: const Color(0xFF10B981),
-                        ),
-                      );
-                    }
-                  },
-                  backgroundColor: const Color(0xFF10B981),
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  icon: const Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    'Save ${_slotShortLabel(activeSlot)} Menu',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildDishCard(DishModel dish, OwnerMenuViewModel viewModel) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Dish Image
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(16),
-            ),
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: Image.network(
-                (dish.imageUrl?.isNotEmpty ?? false)
-                    ? dish.imageUrl!
-                    : 'https://via.placeholder.com/100',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.restaurant, color: Colors.grey),
-                ),
-              ),
-            ),
           ),
 
-          // Dish Info
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dish.name,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: dish.category == 'Veg'
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          dish.category,
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: dish.category == 'Veg'
-                                ? Colors.green[700]
-                                : Colors.red[700],
-                          ),
-                        ),
+          // Rating pill (4.0 ★) or Remove text (Screenshot 2)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: OwnerColors.amberLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '4.0',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: OwnerColors.amberText,
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Remove Button
-          GestureDetector(
-            onTap: () => viewModel.removeDish(dish),
-            child: Container(
-              width: 48,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.05),
-                borderRadius: const BorderRadius.horizontal(
-                  right: Radius.circular(16),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: OwnerColors.amber,
+                    ),
+                  ],
                 ),
               ),
-              child: const Icon(
-                Icons.close_rounded,
-                color: Colors.red,
-                size: 24,
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => viewModel.removeDish(dish),
+                child: Text(
+                  'Remove',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: OwnerColors.textMuted,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -648,13 +578,12 @@ class _OwnerMenuPlannerV2PageState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return const _GlobalSearchBottomSheet();
-      },
+      builder: (context) => const _GlobalSearchBottomSheet(),
     );
   }
 }
 
+// ── Global Search & Add Dish Bottom Sheet (Screenshot 12) ──
 class _GlobalSearchBottomSheet extends ConsumerStatefulWidget {
   const _GlobalSearchBottomSheet();
 
@@ -679,183 +608,169 @@ class _GlobalSearchBottomSheetState
     final viewModel = ref.read(ownerMenuProvider.notifier);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.82,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: OwnerColors.card,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 16),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+          // Handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 14),
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
 
-          // Header
+          // Header: "Add dish"
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Add Dish',
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Add dish',
+                  style: OwnerTypography.serifHeading(fontSize: 24),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close_rounded, color: OwnerColors.textDark),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
 
-          // Custom Dish Action Button
+          // Custom Dish Action Button (Screenshot 12)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  _showCreateCustomDishDialog(context, ref);
-                },
-                icon: const Icon(Icons.add, size: 18, color: Color(0xFF10B981)),
-                label: Text(
-                  '+ Create Custom Dish for My Mess',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: const Color(0xFF10B981),
-                  ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GestureDetector(
+              onTap: () {
+                _showCreateCustomDishDialog(context, ref);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: OwnerColors.sageLight,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: OwnerColors.sage.withValues(alpha: 0.5)),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                alignment: Alignment.center,
+                child: Text(
+                  '+ Create custom dish for my mess',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: OwnerColors.sageText,
                   ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 12),
 
-          // Search Bar
+          // Search Field (Screenshot 12)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
               controller: _searchController,
-              onChanged: (val) {
-                if (val.length >= 2) {
-                  viewModel.searchGlobalDishes(val);
-                }
-              },
+              onChanged: (val) => viewModel.searchGlobalDishes(val),
               decoration: InputDecoration(
-                hintText: 'e.g. Paneer, Dal, Rice...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintText: 'Search e.g. Paneer, Dal, Rice...',
+                hintStyle: GoogleFonts.inter(color: OwnerColors.textMuted, fontSize: 13),
                 filled: true,
-                fillColor: const Color(0xFFF3F4F6),
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: OwnerColors.cardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: OwnerColors.cardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: OwnerColors.sage),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 10),
 
-          // Results
+          // Results / Empty state
           Expanded(
-            child: state.isSearching
-                ? const Center(child: CircularProgressIndicator())
-                : state.searchResults.isEmpty
+            child: state.searchResults.isEmpty && _searchController.text.isEmpty
                 ? Center(
                     child: Text(
-                      _searchController.text.isEmpty
-                          ? 'Type to search global dishes'
-                          : 'No dishes found',
-                      style: GoogleFonts.inter(color: Colors.grey),
+                      'Type to search global dishes\nor create a custom dish',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: OwnerColors.textMuted,
+                        height: 1.4,
+                      ),
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     itemCount: state.searchResults.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final dish = state.searchResults[index];
-                      final isAlreadyAdded = state.selectedDishes.any(
-                        (d) => d.dishId == dish.dishId,
-                      );
-
+                      final isSelected = state.selectedDishes.any((d) => d.dishId == dish.dishId);
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[200]!),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: OwnerColors.cardBorder),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(8),
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: SizedBox(
-                              width: 60,
-                              height: 60,
-                              child: Image.network(
-                                (dish.imageUrl?.isNotEmpty ?? false)
-                                    ? dish.imageUrl!
-                                    : 'https://via.placeholder.com/60',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                      color: Colors.grey[200],
-                                      child: const Icon(
-                                        Icons.restaurant,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            dish.name,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            dish.category,
-                            style: GoogleFonts.inter(
-                              color: dish.category == 'Veg'
-                                  ? Colors.green
-                                  : Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                          trailing: isAlreadyAdded
-                              ? const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                )
-                              : ElevatedButton(
-                                  onPressed: () {
-                                    viewModel.addDish(dish);
-                                    Navigator.pop(context);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    dish.name,
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: OwnerColors.textDark,
                                     ),
                                   ),
-                                  child: const Text('Add'),
+                                  Text(
+                                    dish.category,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      color: OwnerColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: isSelected ? null : () => viewModel.addDish(dish),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isSelected ? Colors.grey[200] : OwnerColors.amber,
+                                foregroundColor: isSelected ? Colors.grey : OwnerColors.textDark,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                              child: Text(isSelected ? 'Added' : 'Add'),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -865,232 +780,109 @@ class _GlobalSearchBottomSheetState
       ),
     );
   }
-}
 
+  void _showCreateCustomDishDialog(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    String category = 'Sabzi';
+    final categories = ['Sabzi', 'Dal', 'Roti', 'Rice', 'Snacks', 'Dessert'];
 
-// ─── Create Custom Dish Dialog ────────────────────────────────────────────────
-void _showCreateCustomDishDialog(BuildContext context, WidgetRef ref) {
-  final nameCtrl = TextEditingController();
-  final formKey = GlobalKey<FormState>();
-  final state = ref.read(ownerMenuProvider);
-  final mess = state.mess;
-  final foodType = mess?.foodType ?? 'both';
-
-  String selectedCategory = 'sabzi';
-  String selectedDishFoodType = foodType == 'pure_veg'
-      ? 'veg'
-      : (foodType == 'non_veg' ? 'nonveg' : 'veg');
-
-  const defaultCategoryImages = {
-    'dal': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop',
-    'roti': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop',
-    'rice': 'https://images.unsplash.com/photo-1516684732162-798a0062be99?q=80&w=800&auto=format&fit=crop',
-    'sabzi': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=800&auto=format&fit=crop',
-    'sweet': 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=800&auto=format&fit=crop',
-    'snack': 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=800&auto=format&fit=crop',
-    'curry': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?q=80&w=800&auto=format&fit=crop',
-  };
-
-  bool isSaving = false;
-
-  showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (context, setDialogState) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: OwnerColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text(
-            'Create Custom Dish',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+            'Create custom dish',
+            style: OwnerTypography.serifHeading(fontSize: 20),
           ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Dish Name *',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('DISH NAME *', style: OwnerTypography.overline(color: OwnerColors.textOverline)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Shahi Paneer',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: OwnerColors.cardBorder),
                   ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: nameCtrl,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter dish name' : null,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Shahi Paneer, Dal Makhani...',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Category',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    value: selectedCategory,
-                    items: ['dal', 'roti', 'rice', 'sabzi', 'sweet', 'snack', 'curry']
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(cat[0].toUpperCase() + cat.substring(1)),
-                            ))
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('CATEGORY', style: OwnerTypography.overline(color: OwnerColors.textOverline)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: OwnerColors.cardBorder),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: category,
+                    isExpanded: true,
+                    items: categories
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedCategory = val);
-                      }
+                      if (val != null) setDialogState(() => category = val);
                     },
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Food Type',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  if (foodType == 'pure_veg')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '🌱 Pure Veg (Locked by Mess Setting)',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF16A34A),
-                          fontSize: 12,
-                        ),
-                      ),
-                    )
-                  else if (foodType == 'non_veg')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '🍗 Non-Veg (Locked by Mess Setting)',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFDC2626),
-                          fontSize: 12,
-                        ),
-                      ),
-                    )
-                  else
-                    Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('🌱 Veg'),
-                          selected: selectedDishFoodType == 'veg',
-                          selectedColor: const Color(0xFFDCFCE7),
-                          onSelected: (val) {
-                            if (val) setDialogState(() => selectedDishFoodType = 'veg');
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        ChoiceChip(
-                          label: const Text('🍗 Non-Veg'),
-                          selected: selectedDishFoodType == 'nonveg',
-                          selectedColor: const Color(0xFFFEE2E2),
-                          onSelected: (val) {
-                            if (val) setDialogState(() => selectedDishFoodType = 'nonveg');
-                          },
-                        ),
-                      ],
-                    ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 14),
+              Text('FOOD TYPE', style: OwnerTypography.overline(color: OwnerColors.textOverline)),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: OwnerColors.cardBorder),
+                ),
+                child: Text(
+                  'Pure Veg · locked by mess setting',
+                  style: GoogleFonts.inter(fontSize: 13, color: OwnerColors.textMuted),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
             ),
             ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      setDialogState(() => isSaving = true);
-
-                      try {
-                        final dishId = 'dish_${DateTime.now().millisecondsSinceEpoch}';
-                        final newDish = DishModel(
-                          dishId: dishId,
-                          name: nameCtrl.text.trim(),
-                          category: selectedCategory,
-                          imageUrl: defaultCategoryImages[selectedCategory] ?? 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800',
-                          dishFoodType: selectedDishFoodType,
-                        );
-
-                        final appService = ref.read(appServiceProvider);
-                        final messId = state.messId;
-
-                        // 1. Add to mess subcollection /messes/{messId}/dishes/{dishId}
-                        await appService.addDishToMess(messId, newDish);
-
-                        // 2. Update masterDishNames cache on MessModel
-                        if (mess != null) {
-                          final names = List<String>.from(mess.masterDishNames);
-                          if (!names.contains(newDish.name)) {
-                            names.add(newDish.name);
-                            final updatedMess = mess.copyWith(masterDishNames: names);
-                            await appService.updateMess(updatedMess);
-                          }
-                        }
-
-                        // 3. Add to current day's selected template
-                        ref.read(ownerMenuProvider.notifier).addDish(newDish);
-
-                        if (context.mounted) {
-                          Navigator.pop(ctx); // Close dialog
-                          Navigator.pop(context); // Close search sheet
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('"${newDish.name}" created and added!'),
-                              backgroundColor: const Color(0xFF10B981),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        setDialogState(() => isSaving = false);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error saving dish: $e'),
-                              backgroundColor: const Color(0xFFEF4444),
-                            ),
-                          );
-                        }
-                      }
-                    },
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                if (name.isNotEmpty) {
+                  final newDish = DishModel(
+                    dishId: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: name,
+                    category: category,
+                  );
+                  ref.read(ownerMenuProvider.notifier).addDish(newDish);
+                  Navigator.pop(ctx);
+                }
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: OwnerColors.amber,
+                foregroundColor: OwnerColors.textDark,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
               ),
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text('Save & Add'),
+              child: const Text('Create & add'),
             ),
           ],
-        );
-      },
-    ),
-  );
+        ),
+      ),
+    );
+  }
 }

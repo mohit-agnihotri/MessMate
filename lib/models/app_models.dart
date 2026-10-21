@@ -564,6 +564,10 @@ class MessModel {
     );
   }
 
+  bool get isOpen =>
+      temporarilyClosedUntil == null ||
+      temporarilyClosedUntil!.isBefore(DateTime.now());
+
   factory MessModel.fromMap(Map<String, dynamic> map) {
     Map<String, Map<String, String>> timings = {
       'morning': {'start': '08:00', 'end': '10:00', 'enabled': 'true'},

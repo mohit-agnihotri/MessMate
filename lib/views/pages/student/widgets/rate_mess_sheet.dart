@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../models/app_models.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
+import '../theme/student_inspired_theme.dart';
 
 /// Interactive Bottom Sheet for Students/Diners to Rate and Review their Mess.
 class RateMessSheet extends ConsumerStatefulWidget {
@@ -120,13 +121,13 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                   ? 'Review updated successfully!'
                   : 'Thanks for rating ${widget.mess.name}!',
             ),
-            backgroundColor: const Color(0xFF22C55E),
+            backgroundColor: StudentColors.sage,
           ),
         );
       }
     } catch (e) {
-      setState(() => _isSubmitting = false);
       if (mounted) {
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to submit review: $e')),
         );
@@ -138,26 +139,42 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
     final review = widget.existingReview;
     if (review == null) return;
 
+    final isHindi = ref.read(localizationProvider) == 'hi';
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: StudentColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Delete Review?',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          isHindi ? 'रिव्यू हटाएं?' : 'Delete Review?',
+          style: StudentTypography.serifHeading(fontSize: 20),
         ),
         content: Text(
-          'Are you sure you want to remove your review for ${widget.mess.name}?',
+          isHindi
+              ? 'क्या आप वाकई ${widget.mess.name} के लिए अपना रिव्यू हटाना चाहते हैं?'
+              : 'Are you sure you want to remove your review for ${widget.mess.name}?',
+          style: StudentTypography.body(fontSize: 14, color: StudentColors.textMuted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(
+              isHindi ? 'रद्द करें' : 'Cancel',
+              style: StudentTypography.bold(fontSize: 13, color: StudentColors.textMuted),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StudentColors.brickRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: Text(
+              isHindi ? 'हटाएं' : 'Delete',
+              style: StudentTypography.bold(fontSize: 13, color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -171,15 +188,15 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review deleted successfully.'),
-            backgroundColor: Colors.redAccent,
+          SnackBar(
+            content: Text(isHindi ? 'रिव्यू हटा दिया गया है।' : 'Review deleted successfully.'),
+            backgroundColor: StudentColors.brickRed,
           ),
         );
       }
     } catch (e) {
-      setState(() => _isSubmitting = false);
       if (mounted) {
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete review: $e')),
         );
@@ -194,14 +211,14 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: StudentColors.canvasWarm,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        top: 14,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -211,10 +228,10 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
             // Handle bar
             Center(
               child: Container(
-                width: 40,
+                width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: StudentColors.borderSubtle,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -225,12 +242,13 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(10),
+                    color: StudentColors.amberLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: StudentColors.amberPill),
                   ),
-                  child: const Icon(Icons.star_rounded, color: Color(0xFFD97706), size: 24),
+                  child: const Icon(Icons.star_rounded, color: StudentColors.amberDark, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -241,10 +259,9 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                         isEditing
                             ? (isHindi ? 'अपना रिव्यू बदलें' : 'Edit Your Review')
                             : (isHindi ? '${widget.mess.name} को रेटिंग दें' : 'Rate ${widget.mess.name}'),
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF111827),
+                        style: StudentTypography.serifHeading(
+                          fontSize: 20,
+                          color: StudentColors.walnut,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -252,9 +269,9 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                         isHindi
                             ? 'खाने का स्वाद, सफाई और सर्विस का अनुभव शेयर करें'
                             : 'Share your experience with food quality, hygiene & service',
-                        style: GoogleFonts.inter(
+                        style: StudentTypography.body(
                           fontSize: 12,
-                          color: const Color(0xFF6B7280),
+                          color: StudentColors.textMuted,
                         ),
                       ),
                     ],
@@ -272,11 +289,11 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                   final starValue = (index + 1).toDouble();
                   final isSelected = starValue <= _selectedRating;
                   return IconButton(
-                    iconSize: 38,
+                    iconSize: 42,
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     icon: Icon(
                       isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: const Color(0xFFF59E0B),
+                      color: StudentColors.amber,
                     ),
                     onPressed: () {
                       setState(() {
@@ -291,33 +308,33 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
             // Dynamic Description Label
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
+                  color: StudentColors.amberLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: StudentColors.amberPill),
                 ),
                 child: Text(
                   _getRatingLabel(_selectedRating, isHindi),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFD97706),
+                    color: StudentColors.amberText,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Quick Tags
             Text(
               isHindi ? 'क्विक टैग्स (टैप करके जोड़ें):' : 'Quick Tags (tap to add):',
-              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563)),
+              style: StudentTypography.bold(fontSize: 12, color: StudentColors.textDark),
             ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              runSpacing: 6,
+              runSpacing: 8,
               children: _quickTags.map((tag) {
                 final isContained = _commentCtrl.text.contains(tag);
                 return InkWell(
@@ -336,12 +353,13 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isContained ? const Color(0xFFDCFCE7) : const Color(0xFFF3F4F6),
+                      color: isContained ? StudentColors.sageLight : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isContained ? const Color(0xFF16A34A) : const Color(0xFFE5E7EB),
+                        color: isContained ? StudentColors.sage : StudentColors.borderSubtle,
+                        width: isContained ? 1.5 : 1.0,
                       ),
                     ),
                     child: Text(
@@ -349,44 +367,46 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: isContained ? FontWeight.w700 : FontWeight.w500,
-                        color: isContained ? const Color(0xFF15803D) : const Color(0xFF374151),
+                        color: isContained ? StudentColors.sageDark : StudentColors.textDark,
                       ),
                     ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
             // Comment Box
             TextField(
               controller: _commentCtrl,
               maxLines: 3,
+              style: StudentTypography.body(fontSize: 13, color: StudentColors.textDark),
               decoration: InputDecoration(
                 hintText: isHindi
                     ? 'खाने का स्वाद, स्वच्छता, बैठने की जगह और टाइमिंग के बारे में लिखें (वैकल्पिक)...'
                     : 'Describe how meals taste, seating, hygiene, timings, etc. (optional)...',
                 hintStyle: GoogleFonts.inter(
                   fontSize: 13,
-                  color: const Color(0xFF9CA3AF),
+                  color: StudentColors.textMuted,
                 ),
                 filled: true,
-                fillColor: const Color(0xFFF9FAFB),
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.all(14),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: StudentColors.borderSubtle),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: StudentColors.borderSubtle),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF22C55E)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: StudentColors.amber, width: 1.5),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
             // Action Buttons
             Row(
@@ -394,15 +414,15 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                 if (isEditing) ...[
                   OutlinedButton.icon(
                     onPressed: _isSubmitting ? null : _deleteReview,
-                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    icon: const Icon(Icons.delete_outline, size: 18, color: StudentColors.brickRed),
                     label: Text(
-                      isHindi ? 'डिलीट' : 'Delete',
-                      style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600),
+                      isHindi ? 'हटाएं' : 'Delete',
+                      style: GoogleFonts.inter(color: StudentColors.brickRed, fontWeight: FontWeight.w600),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      side: const BorderSide(color: StudentColors.brickRedBorder),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -411,9 +431,10 @@ class _RateMessSheetState extends ConsumerState<RateMessSheet> {
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : _submitReview,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF22C55E),
+                      backgroundColor: StudentColors.amber,
+                      elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     child: _isSubmitting
                         ? const SizedBox(

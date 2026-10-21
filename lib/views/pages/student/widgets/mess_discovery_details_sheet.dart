@@ -1,11 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../models/app_models.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
-import 'view_mess_menu_sheet.dart';
+import '../theme/student_inspired_theme.dart';
 import 'rate_mess_sheet.dart';
 
 class MessDiscoveryItem {
@@ -15,7 +15,7 @@ class MessDiscoveryItem {
   final String currentOrNextMealDishes;
   final bool isServingNow;
   final String? timeUntilNext;
-  final String slotType; // 'Morning', 'Noon', 'Night'
+  final String slotType;
   final MenuModel? activePostedMenu;
   final List<MenuModel> allMenus;
 
@@ -100,37 +100,39 @@ class _MessDiscoveryDetailsSheetState
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.90,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xFFFCFCFC),
+        color: StudentColors.canvas,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(
+        top: false,
         child: Column(
           children: [
             const SizedBox(height: 12),
-            // Handle
+            // Drag Handle
             Center(
               child: Container(
                 width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
+                  color: StudentColors.walnutMuted.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-            // Top Segmented Bar: [ 📋 Mess Details ] | [ ⭐ Ratings & Reviews ]
+            // Top Segmented Pill Bar: [ 📋 Details ] | [ ⭐ Reviews ]
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(16),
+                  color: StudentColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: StudentColors.borderSubtle),
                 ),
                 child: Row(
                   children: [
@@ -142,18 +144,9 @@ class _MessDiscoveryDetailsSheetState
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: _selectedTabIndex == 0
-                                ? Colors.white
+                                ? StudentColors.walnut
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: _selectedTabIndex == 0
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.06),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ]
-                                : null,
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -162,20 +155,20 @@ class _MessDiscoveryDetailsSheetState
                                 Icons.storefront_rounded,
                                 size: 16,
                                 color: _selectedTabIndex == 0
-                                    ? const Color(0xFF111827)
-                                    : const Color(0xFF6B7280),
+                                    ? Colors.white
+                                    : StudentColors.textDark,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Mess Details',
+                                'Details',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   fontWeight: _selectedTabIndex == 0
-                                      ? FontWeight.bold
+                                      ? FontWeight.w700
                                       : FontWeight.w500,
                                   color: _selectedTabIndex == 0
-                                      ? const Color(0xFF111827)
-                                      : const Color(0xFF6B7280),
+                                      ? Colors.white
+                                      : StudentColors.textDark,
                                 ),
                               ),
                             ],
@@ -191,18 +184,9 @@ class _MessDiscoveryDetailsSheetState
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: _selectedTabIndex == 1
-                                ? Colors.white
+                                ? StudentColors.walnut
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: _selectedTabIndex == 1
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.06),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ]
-                                : null,
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -211,22 +195,22 @@ class _MessDiscoveryDetailsSheetState
                                 Icons.star_rounded,
                                 size: 17,
                                 color: _selectedTabIndex == 1
-                                    ? const Color(0xFFD97706)
-                                    : const Color(0xFF6B7280),
+                                    ? StudentColors.amber
+                                    : StudentColors.amberDark,
                               ),
                               const SizedBox(width: 5),
                               Text(
                                 reviewCount > 0
                                     ? 'Reviews ($reviewCount)'
-                                    : 'Ratings & Reviews',
+                                    : 'Reviews',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   fontWeight: _selectedTabIndex == 1
-                                      ? FontWeight.bold
+                                      ? FontWeight.w700
                                       : FontWeight.w500,
                                   color: _selectedTabIndex == 1
-                                      ? const Color(0xFF111827)
-                                      : const Color(0xFF6B7280),
+                                      ? Colors.white
+                                      : StudentColors.textDark,
                                 ),
                               ),
                             ],
@@ -238,10 +222,10 @@ class _MessDiscoveryDetailsSheetState
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: StudentColors.borderSubtle),
 
-            // View Content
+            // Tab View Content
             Expanded(
               child: _selectedTabIndex == 0
                   ? _buildDetailsTab(mess, displayRating, reviewCount)
@@ -275,58 +259,12 @@ class _MessDiscoveryDetailsSheetState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero / Photo Carousel
+          // Photo Carousel Banner
           if (mess.messPhotos.isNotEmpty)
-            _buildPhotoCarousel(mess.messPhotos, widget.item, isClosed)
-          else
-            Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=1000&auto=format&fit=crop',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xCC000000),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        isClosed
-                            ? 'CLOSED TILL ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}'
-                            : (widget.item.currentOrNextMealName == 'No meal set'
-                                ? '🍽️ DAILY FRESH MEALS'
-                                : '${widget.item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${widget.item.slotType.toUpperCase()} ${widget.item.isServingNow ? 'NOW' : 'NEXT'}'),
-                        style: GoogleFonts.inter(
-                          color: isClosed
-                              ? const Color(0xFFFCA5A5)
-                              : Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 20),
+            _buildPhotoCarousel(mess.messPhotos, widget.item, isClosed),
+          const SizedBox(height: 16),
 
-          // Mess Name & Code
+          // Mess Name & Rating
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -336,38 +274,56 @@ class _MessDiscoveryDetailsSheetState
                   children: [
                     Text(
                       mess.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
-                      ),
+                      style: StudentTypography.serifHeading(fontSize: 26),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Mess Code: ${mess.messCode}',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF6B7280),
-                      ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: StudentColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            mess.ownerName.isNotEmpty
+                                ? 'Managed by ${mess.ownerName}'
+                                : 'Verified Mess Partner',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              color: StudentColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              // Rating Badge (Clickable to switch to Ratings Tab)
+              const SizedBox(width: 10),
+
+              // Rating Pill Badge (Clickable to switch to Ratings Tab)
               InkWell(
                 onTap: () => setState(() => _selectedTabIndex = 1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
+                    color: StudentColors.amberLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: StudentColors.amberPill),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star_rounded, size: 16, color: Color(0xFFD97706)),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: StudentColors.amber,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         displayRating > 0
@@ -375,8 +331,8 @@ class _MessDiscoveryDetailsSheetState
                             : 'New',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFB45309),
+                          fontWeight: FontWeight.w700,
+                          color: StudentColors.amberText,
                         ),
                       ),
                     ],
@@ -387,396 +343,243 @@ class _MessDiscoveryDetailsSheetState
           ),
           const SizedBox(height: 14),
 
-          // Specs chips
+          // Specs Badges Row
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildChip(
-                Icons.location_on,
-                '${widget.item.distanceKm?.toStringAsFixed(1) ?? '--'} km',
+              _buildBadge(
+                Icons.location_searching_rounded,
+                '${widget.item.distanceKm?.toStringAsFixed(1) ?? '--'} km away',
+                StudentColors.walnut,
+                StudentColors.canvas,
               ),
-              _buildChip(Icons.people, '${mess.capacity} seats'),
-              _buildChip(
-                mess.foodType == 'pure_veg'
-                    ? Icons.eco_rounded
-                    : mess.foodType == 'non_veg'
-                        ? Icons.restaurant_rounded
-                        : Icons.lunch_dining_rounded,
-                mess.foodType == 'pure_veg'
-                    ? '🌱 Pure Veg'
-                    : mess.foodType == 'non_veg'
-                        ? '🍗 Non-Veg'
-                        : '🍃 Veg & Non-Veg',
+              _buildBadge(
+                Icons.people_outline_rounded,
+                '${mess.capacity} seats',
+                StudentColors.sageDark,
+                StudentColors.sageLight,
+              ),
+              _buildBadge(
+                mess.foodType == 'pure_veg' ? Icons.eco_rounded : Icons.restaurant_rounded,
+                mess.foodType == 'pure_veg' ? 'Pure Veg' : 'Veg & Non-Veg',
+                StudentColors.sageDark,
+                StudentColors.sageLight,
               ),
             ],
           ),
           const SizedBox(height: 20),
 
-          // Closed message or Menu Button
-          if (isClosed)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFECACA)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Mess is Temporarily Closed',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFEF4444),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Closed until ${mess.temporarilyClosedUntil!.day}/${mess.temporarilyClosedUntil!.month}/${mess.temporarilyClosedUntil!.year}. You can still contact the owner.',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFB91C1C),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            InkWell(
-              onTap: () {
-                ViewMessMenuSheet.show(
-                  context,
-                  mess: mess,
-                  initialMenus: widget.item.allMenus,
-                );
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x06000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+          // Quick Action Cards (Call, Directions, About)
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionTile(
+                  icon: Icons.phone_outlined,
+                  label: 'Call Owner',
+                  onTap: () => widget.onCallOwner(mess.ownerPhone),
+                  bgColor: StudentColors.surfaceLight,
+                  iconColor: StudentColors.walnut,
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildActionTile(
+                  icon: Icons.navigation_outlined,
+                  label: 'Directions',
+                  onTap: () => widget.onOpenDirections(mess.gpsLat, mess.gpsLng),
+                  bgColor: StudentColors.sageLight,
+                  iconColor: StudentColors.sageDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildActionTile(
+                  icon: Icons.info_outline_rounded,
+                  label: 'About Mess',
+                  onTap: () => widget.onShowAbout(mess),
+                  bgColor: StudentColors.amberLight,
+                  iconColor: StudentColors.amberDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+
+          // Monthly Plans Section
+          Text(
+            'MONTHLY PLANS',
+            style: StudentTypography.overline(fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          FutureBuilder<List<MealPlanModel>>(
+            future: ref.read(appServiceProvider).getMealPlans(mess.messId),
+            builder: (context, snapshot) {
+              final plans = snapshot.data?.where((p) => p.isActive).toList() ?? [];
+              if (plans.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: StudentColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: StudentColors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.payments_outlined,
+                        color: StudentColors.walnut,
+                        size: 22,
                       ),
-                      child: const Text('📋', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Standard Plan',
+                              style: StudentTypography.bold(fontSize: 14),
+                            ),
+                            Text(
+                              'All daily meals included',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: StudentColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '₹${mess.monthlyFee.toInt()}/mo',
+                        style: StudentTypography.serifNumeral(
+                          fontSize: 20,
+                          color: StudentColors.walnut,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Column(
+                children: plans.map((p) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: StudentColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: StudentColors.borderSubtle),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Mess Menu (मेन्यू देखें)',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF111827),
-                                ),
+                                p.name,
+                                style: StudentTypography.bold(fontSize: 14),
                               ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF22C55E),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'ALL SLOTS',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${p.mealsIncludedPerDay} meals daily • Fixed & Flexible',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: StudentColors.textSecondary,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Tap to view standard breakfast, lunch & dinner offerings',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF4B5563),
-                            ),
+                        ),
+                        Text(
+                          '₹${p.monthlyFee.toInt()}/mo',
+                          style: StudentTypography.serifNumeral(
+                            fontSize: 18,
+                            color: StudentColors.walnut,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Color(0xFF16A34A),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
           const SizedBox(height: 20),
 
-          // Pricing Cards
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
+          // Meal Timings Section
+          Text(
+            'MEAL TIMINGS',
+            style: StudentTypography.overline(fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: StudentColors.surfaceLight,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: StudentColors.borderSubtle),
+            ),
+            child: Column(
+              children: ['morning', 'noon', 'evening', 'night'].map((slot) {
+                final timing = mess.mealTimings[slot];
+                final isEnabled = timing?['enabled'] == 'true';
+                final start = timing?['start'] ?? '--:--';
+                final end = timing?['end'] ?? '--:--';
+                final label = '${slot[0].toUpperCase()}${slot.substring(1)}';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Monthly Plan',
+                        label,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF166534),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isEnabled
+                              ? StudentColors.textDark
+                              : StudentColors.textMuted,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        '₹${mess.monthlyFee.toStringAsFixed(0)}/mo',
+                        isEnabled ? '$start - $end' : 'Closed',
                         style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF16A34A),
+                          fontSize: 12.5,
+                          color: isEnabled
+                              ? StudentColors.sageDark
+                              : StudentColors.textMuted,
+                          fontWeight: isEnabled ? FontWeight.w600 : FontWeight.w400,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Per Meal',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF1E40AF),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '₹${mess.perMealRate.toStringAsFixed(0)}/meal',
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF2563EB),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Center(
-            child: Text(
-              'Includes ${mess.mealsIncludedPerDay} meals daily',
-              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6B7280)),
+                );
+              }).toList(),
             ),
           ),
+          const SizedBox(height: 26),
 
-          // More about mess button
-          if (mess.aboutContent != null && mess.aboutContent!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => widget.onShowAbout(mess),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16A34A).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.info_outline_rounded,
-                        color: Color(0xFF16A34A),
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'More About This Mess',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF15803D),
-                          ),
-                        ),
-                        Text(
-                          'Rules, specials, food details & more',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: const Color(0xFF4ADE80),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF16A34A)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-
-          // Contact Row
-          Row(
-            children: [
-              const Icon(Icons.person, color: Color(0xFF6B7280), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                mess.ownerName,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                mess.ownerPhone,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF22C55E),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Action buttons: Call Now & Open in Maps
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => widget.onCallOwner(mess.ownerPhone),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.call, color: Colors.white, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Call Now',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () => widget.onOpenDirections(mess.gpsLat, mess.gpsLng),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.map, color: Colors.white, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Open in Maps',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Request to Join Mess button
+          // Primary Join CTA Button
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
+                backgroundColor: StudentColors.amber,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+              icon: const Icon(Icons.group_add_rounded, size: 20),
               label: Text(
                 'Request to Join Mess',
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               onPressed: () => widget.onJoinRequest(mess),
             ),
@@ -803,162 +606,109 @@ class _MessDiscoveryDetailsSheetState
       distribution[rounded] = (distribution[rounded] ?? 0) + 1;
     }
 
-    final Map<String, List<double>> dishMap = {};
-    for (var dr in dishRatings) {
-      dishMap.putIfAbsent(dr.dishName, () => []).add(dr.rating);
-    }
-    final topDishes = dishMap.entries.map((e) {
-      final avg = e.value.reduce((a, b) => a + b) / e.value.length;
-      return {'name': e.key, 'avg': avg, 'count': e.value.length};
-    }).where((d) => (d['avg'] as double) >= 3.5).toList();
-    topDishes.sort((a, b) => (b['avg'] as double).compareTo(a['avg'] as double));
-
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mess Score Card
+          // Overall Rating Card in Dark Walnut
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x2522C55E),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              color: StudentColors.walnut,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: StudentColors.elevated,
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Left Numeral & Stars
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Overall Mess Rating',
-                      style: GoogleFonts.inter(
+                      displayRating > 0 ? displayRating.toStringAsFixed(1) : 'New',
+                      style: StudentTypography.serifNumeral(
+                        fontSize: 42,
                         color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          displayRating > 0 ? displayRating.toStringAsFixed(1) : 'New',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (displayRating > 0) ...[
-                          const SizedBox(width: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              '/ 5.0',
-                              style: GoogleFonts.inter(
-                                color: Colors.white70,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
                     const SizedBox(height: 4),
+                    Row(
+                      children: List.generate(5, (i) {
+                        return const Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: StudentColors.amber,
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       reviewCount > 0
-                          ? 'Based on $reviewCount student reviews'
+                          ? 'Based on $reviewCount reviews'
                           : 'No reviews yet',
-                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
                 ),
-                const Icon(Icons.stars_rounded, color: Colors.white, size: 52),
+                const SizedBox(width: 24),
+
+                // Right 5★ to 1★ Distribution Bars
+                Expanded(
+                  child: Column(
+                    children: List.generate(5, (i) {
+                      final star = 5 - i;
+                      final count = distribution[star] ?? 0;
+                      final pct = reviews.isNotEmpty ? count / reviews.length : 0.0;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Text(
+                              '$star★',
+                              style: GoogleFonts.inter(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: LinearProgressIndicator(
+                                  value: pct,
+                                  minHeight: 6,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.12),
+                                  valueColor: const AlwaysStoppedAnimation(
+                                    StudentColors.amber,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-          // Rating Breakdown bars
-          if (reviews.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: List.generate(5, (i) {
-                  final star = 5 - i;
-                  final count = distribution[star] ?? 0;
-                  final pct = reviews.isNotEmpty ? count / reviews.length : 0.0;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2.5),
-                    child: Row(
-                      children: [
-                        Text(
-                          '$star★',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4B5563),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: pct,
-                              minHeight: 7,
-                              backgroundColor: const Color(0xFFF3F4F6),
-                              valueColor:
-                                  const AlwaysStoppedAnimation(Color(0xFFF59E0B)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 24,
-                          child: Text(
-                            '$count',
-                            textAlign: TextAlign.end,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: const Color(0xFF6B7280),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-            const SizedBox(height: 18),
-          ],
-
-          // Student Review Liability Section (Create / Edit / Delete)
+          // User's Own Review Banner (if already reviewed)
           if (myReview != null) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF86EFAC)),
+                color: StudentColors.surfaceLight,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: StudentColors.amberPill),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -966,23 +716,9 @@ class _MessDiscoveryDetailsSheetState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.verified_user_rounded,
-                            size: 16,
-                            color: Color(0xFF16A34A),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Your Review',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF15803D),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'Your Review',
+                        style: StudentTypography.bold(fontSize: 14),
                       ),
                       Row(
                         children: [
@@ -990,22 +726,17 @@ class _MessDiscoveryDetailsSheetState
                             icon: const Icon(
                               Icons.edit_outlined,
                               size: 18,
-                              color: Color(0xFF15803D),
+                              color: StudentColors.walnut,
                             ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
                             onPressed: () =>
-                                _openMessReviewDialog(context, mess, myReview),
+                                RateMessSheet.show(context, mess: mess, existingReview: myReview),
                           ),
-                          const SizedBox(width: 12),
                           IconButton(
                             icon: const Icon(
-                              Icons.delete_outline,
+                              Icons.delete_outline_rounded,
                               size: 18,
-                              color: Colors.red,
+                              color: StudentColors.brickRed,
                             ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
                             onPressed: () =>
                                 _confirmDeleteReview(context, mess, myReview),
                           ),
@@ -1013,7 +744,6 @@ class _MessDiscoveryDetailsSheetState
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
                   Row(
                     children: [
                       ...List.generate(5, (index) {
@@ -1022,27 +752,27 @@ class _MessDiscoveryDetailsSheetState
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
                           size: 16,
-                          color: const Color(0xFFF59E0B),
+                          color: StudentColors.amber,
                         );
                       }),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
-                        '${myReview.rating.toStringAsFixed(1)} • ${myReview.updatedAt.day}/${myReview.updatedAt.month}/${myReview.updatedAt.year}',
+                        myReview.rating.toStringAsFixed(1),
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: const Color(0xFF6B7280),
+                          fontWeight: FontWeight.bold,
+                          color: StudentColors.textDark,
                         ),
                       ),
                     ],
                   ),
-                  if (myReview.comment != null &&
-                      myReview.comment!.isNotEmpty) ...[
+                  if (myReview.comment != null && myReview.comment!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
                       myReview.comment!,
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: const Color(0xFF374151),
+                        color: StudentColors.textDark,
                         height: 1.4,
                       ),
                     ),
@@ -1054,311 +784,133 @@ class _MessDiscoveryDetailsSheetState
           ] else ...[
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: StudentColors.walnut),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  elevation: 0,
                 ),
-                icon: const Icon(Icons.rate_review_rounded, size: 18),
+                icon: const Icon(Icons.rate_review_outlined, size: 18, color: StudentColors.walnut),
                 label: Text(
-                  'Rate & Review This Mess',
+                  'Write a Review',
                   style: GoogleFonts.inter(
                     fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
+                    color: StudentColors.walnut,
                   ),
                 ),
-                onPressed: () => _openMessReviewDialog(context, mess, null),
+                onPressed: () => RateMessSheet.show(context, mess: mess, existingReview: null),
               ),
             ),
             const SizedBox(height: 18),
           ],
 
-          // Top Rated Food Items
-          if (topDishes.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Top Rated Dishes',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    ViewMessMenuSheet.show(
-                      context,
-                      mess: mess,
-                      initialMenus: widget.item.allMenus,
-                    );
-                  },
-                  child: Text(
-                    'View Menu >',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF16A34A),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: topDishes.take(6).map((d) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        d['name'] as String,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
-                      Text(
-                        (d['avg'] as double).toStringAsFixed(1),
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFB45309),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
-
-          // All Reviews List
+          // All Student Reviews List
           Text(
-            'Student Reviews (${reviews.length})',
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
-            ),
+            'STUDENT REVIEWS',
+            style: StudentTypography.overline(fontSize: 11),
           ),
           const SizedBox(height: 10),
-
           if (reviews.isEmpty)
             Container(
-              width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: StudentColors.surfaceLight,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                border: Border.all(color: StudentColors.borderSubtle),
               ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 36,
-                    color: Color(0xFF9CA3AF),
+              child: Center(
+                child: Text(
+                  'No reviews posted yet. Be the first to review!',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: StudentColors.textSecondary,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'No reviews yet',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF4B5563),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Be the first student to review ${mess.name}!',
-                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9CA3AF)),
-                  ),
-                ],
+                ),
               ),
             )
           else
-            ...reviews.map((r) {
-              final isMe = r.studentId == currentUid;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isMe ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: reviews.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final r = reviews[index];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: StudentColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: StudentColors.borderSubtle),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: const Color(0xFFDCFCE7),
-                          child: Text(
-                            r.studentName.isNotEmpty
-                                ? r.studentName[0].toUpperCase()
-                                : 'S',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF16A34A),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
                             children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    r.studentName,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: StudentColors.walnut,
+                                child: Text(
+                                  r.studentName.isNotEmpty
+                                      ? r.studentName[0].toUpperCase()
+                                      : 'S',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  if (isMe) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 1,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFDCFCE7),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'YOU',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF15803D),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
-                                '${r.updatedAt.day}/${r.updatedAt.month}/${r.updatedAt.year}',
+                                r.studentName,
+                                style: StudentTypography.bold(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: StudentColors.amber,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                r.rating.toStringAsFixed(1),
                                 style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Row(
-                          children: List.generate(5, (i) {
-                            return Icon(
-                              i < r.rating.round()
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
-                              size: 15,
-                              color: const Color(0xFFF59E0B),
-                            );
-                          }),
+                        ],
+                      ),
+                      if (r.comment != null && r.comment!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          r.comment!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: StudentColors.textDark,
+                            height: 1.4,
+                          ),
                         ),
                       ],
-                    ),
-                    if (r.comment != null && r.comment!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        r.comment!,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: const Color(0xFF374151),
-                          height: 1.35,
-                        ),
-                      ),
                     ],
-                  ],
-                ),
-              );
-            }),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  // ─── REVIEW DIALOG ─────────────────────────────────────────────────────────
-  void _openMessReviewDialog(
-    BuildContext context,
-    MessModel mess,
-    MessReviewModel? existingReview,
-  ) {
-    RateMessSheet.show(context, mess: mess, existingReview: existingReview);
-  }
-
-  void _confirmDeleteReview(
-    BuildContext context,
-    MessModel mess,
-    MessReviewModel review,
-  ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Review?',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Are you sure you want to remove your review for ${mess.name}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref
-                    .read(appServiceProvider)
-                    .deleteMessReview(mess.messId, review.reviewId);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Review deleted successfully.')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -1369,127 +921,158 @@ class _MessDiscoveryDetailsSheetState
     MessDiscoveryItem item,
     bool isClosed,
   ) {
-    final pageController = PageController();
     return Column(
       children: [
-        Stack(
-          children: [
-            SizedBox(
-              height: 190,
-              width: double.infinity,
-              child: ClipRRect(
+        SizedBox(
+          height: 180,
+          child: PageView.builder(
+            itemCount: photos.length,
+            onPageChanged: (i) => setState(() => _carouselPage = i),
+            itemBuilder: (context, i) {
+              return ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: PageView.builder(
-                  controller: pageController,
-                  itemCount: photos.length,
-                  onPageChanged: (i) => setState(() => _carouselPage = i),
-                  itemBuilder: (ctx, i) => Container(
-                    color: const Color(0xFFF9FAFB),
-                    child: Image.network(
-                      photos[i],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFF3F4F6),
-                        child: const Icon(
-                          Icons.broken_image_rounded,
-                          color: Color(0xFF9CA3AF),
-                          size: 48,
-                        ),
-                      ),
+                child: Image.network(
+                  photos[i],
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: StudentColors.surfaceWarm,
+                    child: const Icon(
+                      Icons.image_not_supported_rounded,
+                      color: StudentColors.walnutMuted,
+                      size: 40,
                     ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xCC000000),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isClosed
-                      ? 'CLOSED TILL ${item.mess.temporarilyClosedUntil!.day}/${item.mess.temporarilyClosedUntil!.month}'
-                      : (item.currentOrNextMealName == 'No meal set'
-                          ? '🍽️ DAILY FRESH MEALS'
-                          : '${item.slotType == 'Night' ? '🌙' : '☀️'} SERVING ${item.slotType.toUpperCase()} ${item.isServingNow ? 'NOW' : 'NEXT'}'),
-                  style: GoogleFonts.inter(
-                    color: isClosed ? const Color(0xFFFCA5A5) : Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            if (photos.length > 1)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xCC000000),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${_carouselPage + 1}/${photos.length}',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+              );
+            },
+          ),
         ),
         if (photos.length > 1) ...[
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              photos.length,
-              (i) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
+            children: List.generate(photos.length, (i) {
+              return Container(
                 width: _carouselPage == i ? 16 : 6,
-                height: 5,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 2.5),
                 decoration: BoxDecoration(
                   color: _carouselPage == i
-                      ? const Color(0xFF22C55E)
-                      : const Color(0xFFD1D5DB),
-                  borderRadius: BorderRadius.circular(4),
+                      ? StudentColors.walnut
+                      : StudentColors.walnutMuted.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(3),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildChip(IconData icon, String label) {
+  Widget _buildBadge(IconData icon, String text, Color fg, Color bg) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF4B5563)),
+          Icon(icon, size: 14, color: fg),
           const SizedBox(width: 4),
           Text(
-            label,
+            text,
             style: GoogleFonts.inter(
-              fontSize: 12,
-              color: const Color(0xFF4B5563),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: fg,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color bgColor,
+    required Color iconColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: StudentColors.borderSubtle),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: StudentColors.walnut,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteReview(
+    BuildContext context,
+    MessModel mess,
+    MessReviewModel review,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StudentColors.canvas,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Review?',
+          style: StudentTypography.serifHeading(fontSize: 20),
+        ),
+        content: Text(
+          'Are you sure you want to remove your rating and feedback for this mess?',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: StudentColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: StudentColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref
+                  .read(appServiceProvider)
+                  .deleteMessReview(mess.messId, review.reviewId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StudentColors.brickRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Delete'),
           ),
         ],
       ),

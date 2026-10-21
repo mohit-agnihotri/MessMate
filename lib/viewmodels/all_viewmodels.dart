@@ -193,6 +193,7 @@ class OwnerDashboardState {
   // Lists for absentee tracker
   final List<MealRecordModel> todayRecords;
   final List<StudentModel> activeStudentsList;
+  final List<LeaveModel> upcomingLeaves;
 
   // Guest meals: slot -> list of guest records
   final Map<String, List<MealRecordModel>> guestsBySlot;
@@ -214,6 +215,7 @@ class OwnerDashboardState {
     this.nightAbsents = 0,
     this.todayRecords = const [],
     this.activeStudentsList = const [],
+    this.upcomingLeaves = const [],
     this.guestsBySlot = const {},
   });
 
@@ -234,6 +236,7 @@ class OwnerDashboardState {
     int? nightAbsents,
     List<MealRecordModel>? todayRecords,
     List<StudentModel>? activeStudentsList,
+    List<LeaveModel>? upcomingLeaves,
     Map<String, List<MealRecordModel>>? guestsBySlot,
     bool clearCurrentMeal = false,
   }) => OwnerDashboardState(
@@ -253,6 +256,7 @@ class OwnerDashboardState {
     nightAbsents: nightAbsents ?? this.nightAbsents,
     todayRecords: todayRecords ?? this.todayRecords,
     activeStudentsList: activeStudentsList ?? this.activeStudentsList,
+    upcomingLeaves: upcomingLeaves ?? this.upcomingLeaves,
     guestsBySlot: guestsBySlot ?? this.guestsBySlot,
   );
 }
@@ -378,6 +382,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
 
       final leaves = await _service.getUpcomingLeaves(mess.messId);
       _activeLeaves = leaves.where((l) => l.status == 'active').toList();
+      state = state.copyWith(upcomingLeaves: _activeLeaves);
 
       final announcements = await _service.getAnnouncements(mess.messId);
       state = state.copyWith(
@@ -1886,16 +1891,29 @@ final ownerSettingsProvider =
 class StudentProfileState {
   final StudentModel? student;
   final MessModel? mess;
+  final MealPlanModel? plan;
+  final List<MealPlanModel> availablePlans;
   final bool isLoading;
 
-  const StudentProfileState({this.student, this.mess, this.isLoading = true});
+  const StudentProfileState({
+    this.student,
+    this.mess,
+    this.plan,
+    this.availablePlans = const [],
+    this.isLoading = true,
+  });
+
   StudentProfileState copyWith({
     StudentModel? student,
     MessModel? mess,
+    MealPlanModel? plan,
+    List<MealPlanModel>? availablePlans,
     bool? isLoading,
   }) => StudentProfileState(
     student: student ?? this.student,
     mess: mess ?? this.mess,
+    plan: plan ?? this.plan,
+    availablePlans: availablePlans ?? this.availablePlans,
     isLoading: isLoading ?? this.isLoading,
   );
 }
@@ -1915,7 +1933,24 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
     final mess = student != null
         ? await _service.getMessById(student.messId)
         : null;
-    state = state.copyWith(student: student, mess: mess, isLoading: false);
+    MealPlanModel? plan;
+    List<MealPlanModel> plans = [];
+    if (student != null && mess != null && mess.messId.isNotEmpty) {
+      try {
+        plans = await _service.getMealPlans(mess.messId);
+        if (student.assignedPlanId != null && student.assignedPlanId!.isNotEmpty) {
+          plan = plans.where((p) => p.planId == student.assignedPlanId).firstOrNull ??
+              await _service.getMealPlanById(mess.messId, student.assignedPlanId!);
+        }
+      } catch (_) {}
+    }
+    state = state.copyWith(
+      student: student,
+      mess: mess,
+      plan: plan,
+      availablePlans: plans,
+      isLoading: false,
+    );
 
     // Sync FCM topic subscriptions to match persisted prefs
     if (student != null && student.messId.isNotEmpty) {
@@ -2019,6 +2054,8 @@ class StudentProfileViewModel extends StateNotifier<StudentProfileState> {
       state = state.copyWith(student: updated);
     }
   }
+
+  Future<void> changeMealPlan(String newPlanId) => requestPlanChange(newPlanId);
 
   Future<void> leaveMess() async {
 

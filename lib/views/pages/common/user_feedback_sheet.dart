@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../models/app_models.dart';
 import '../../../services/admin_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import '../owner/theme/owner_inspired_theme.dart';
 
 /// User-facing In-App Feedback, Bug Report, & Feature Suggestion Sheet.
 /// Allows students and mess owners to report issues or send suggestions.
@@ -100,15 +101,15 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: const Color(0xFF065F46),
+          backgroundColor: OwnerColors.walnutDark,
           content: Row(
             children: [
               const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF34D399), size: 20),
+                  color: OwnerColors.amberGlow, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Your complaint / feedback has been submitted successfully!',
+                  'Your feedback has been submitted successfully!',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -136,11 +137,8 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0B0F19),
+        color: OwnerColors.canvas,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(
-          top: BorderSide(color: Color(0xFF10B981), width: 1.5),
-        ),
       ),
       child: SafeArea(
         child: Padding(
@@ -148,7 +146,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
             left: 20,
             right: 20,
-            top: 16,
+            top: 14,
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -160,115 +158,117 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                     width: 44,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: OwnerColors.walnutMuted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
                 Text(
-                  'Help & Feature Suggestions',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                  'Help & feedback',
+                  style: OwnerTypography.editorialSerif(
+                    size: 24,
+                    weight: FontWeight.w700,
+                    color: OwnerColors.walnutDark,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Send your complaints, suggestions, or billing issues directly.',
+                  'Send complaints, suggestions or billing issues directly.',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF94A3B8),
+                    fontSize: 13,
+                    color: OwnerColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 18),
 
-                // Category Selector
+                // Category Selector (matching inspired screenshot pills)
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildCategoryChip(
-                          '🐛 Bug Report', 'bug', const Color(0xFFF43F5E)),
+                      _buildCategoryChip('Bug report', 'bug'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip(
-                          '💡 Suggestion', 'suggestion', const Color(0xFF8B5CF6)),
+                      _buildCategoryChip('Suggestion', 'suggestion'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip(
-                          '🍽️ Mess Issue', 'mess_issue', const Color(0xFF06B6D4)),
+                      _buildCategoryChip('Mess issue', 'mess_issue'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('💰 Bill Dispute', 'billing_dispute',
-                          const Color(0xFFF59E0B)),
+                      _buildCategoryChip('Bill dispute', 'billing_dispute'),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
                 // Message input box
                 TextField(
                   controller: _msgCtrl,
                   maxLines: 4,
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  style: GoogleFonts.inter(
+                    color: OwnerColors.textPrimary,
+                    fontSize: 14,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Describe your issue or suggestion in detail...',
                     hintStyle: GoogleFonts.inter(
-                      color: const Color(0xFF64748B),
+                      color: OwnerColors.textMuted,
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                      borderSide: const BorderSide(
+                        color: OwnerColors.borderSubtle,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: OwnerColors.borderSubtle,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                        color: Color(0xFF10B981),
+                        color: OwnerColors.amberGlow,
                         width: 1.5,
                       ),
                     ),
-                    contentPadding: const EdgeInsets.all(14),
+                    contentPadding: const EdgeInsets.all(16),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
 
                 // Submit Button
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
+                  height: 52,
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: const Color(0xFF041E15),
+                      backgroundColor: OwnerColors.amberGlow,
+                      foregroundColor: OwnerColors.textDark,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(26),
                       ),
                     ),
                     onPressed: _isSubmitting ? null : _submitFeedback,
-                    icon: _isSubmitting
-                        ? const SizedBox.shrink()
-                        : const Icon(Icons.send_rounded, size: 18),
-                    label: _isSubmitting
+                    child: _isSubmitting
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
-                              color: Color(0xFF041E15),
+                              color: OwnerColors.textDark,
                               strokeWidth: 2.5,
                             ),
                           )
                         : Text(
-                            'SUBMIT COMPLAINT',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
+                            'Submit',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: OwnerColors.textDark,
                             ),
                           ),
                   ),
@@ -281,29 +281,28 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
     );
   }
 
-  Widget _buildCategoryChip(String label, String value, Color color) {
+  Widget _buildCategoryChip(String label, String value) {
     final isSelected = _category == value;
     return InkWell(
       onTap: () => setState(() => _category = value),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withValues(alpha: 0.2)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 1.5 : 1.0,
-          ),
+              ? OwnerColors.walnutDark
+              : const Color(0xFFE2E8DE), // light sage
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: GoogleFonts.inter(
             fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+            fontWeight: FontWeight.w600,
+            color: isSelected
+                ? Colors.white
+                : const Color(0xFF2C3E2D), // dark sage text
           ),
         ),
       ),

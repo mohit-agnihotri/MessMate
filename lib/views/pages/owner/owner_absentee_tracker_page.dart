@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../viewmodels/all_viewmodels.dart';
 import '../../../models/app_models.dart';
+import '../../../viewmodels/all_viewmodels.dart';
+import 'theme/owner_inspired_theme.dart';
+import 'widgets/owner_drawer.dart';
 
 class OwnerAbsenteeTrackerPage extends ConsumerStatefulWidget {
   final String? initialSlot;
@@ -18,6 +19,7 @@ class OwnerAbsenteeTrackerPage extends ConsumerStatefulWidget {
 class _OwnerAbsenteeTrackerPageState
     extends ConsumerState<OwnerAbsenteeTrackerPage> {
   final _searchCtrl = TextEditingController();
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
@@ -26,6 +28,7 @@ class _OwnerAbsenteeTrackerPageState
       setState(() {});
     });
   }
+
 
   @override
   void dispose() {
@@ -36,20 +39,20 @@ class _OwnerAbsenteeTrackerPageState
   IconData _getTabIconData(String slot) {
     switch (slot) {
       case 'morning':
-        return Icons.wb_twilight;
+        return Icons.wb_twilight_rounded;
       case 'noon':
-        return Icons.wb_sunny;
+        return Icons.wb_sunny_rounded;
       case 'evening':
         return Icons.nights_stay_outlined;
       case 'night':
-        return Icons.bedtime;
+        return Icons.bedtime_rounded;
       default:
-        return Icons.calendar_today;
+        return Icons.calendar_today_rounded;
     }
   }
 
   String _getTabLabel(String slot) {
-    if (slot == 'fullday') return 'Full Day Off';
+    if (slot == 'fullday') return 'Full Day';
     return slot[0].toUpperCase() + slot.substring(1);
   }
 
@@ -57,10 +60,13 @@ class _OwnerAbsenteeTrackerPageState
   Widget build(BuildContext context) {
     final state = ref.watch(ownerDashboardProvider);
     final mess = state.mess;
+    final messName = mess?.name ?? 'Mahakal';
+
     if (mess == null) {
       return const Scaffold(
+        backgroundColor: OwnerColors.canvasWarm,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF22C55E)),
+          child: CircularProgressIndicator(color: OwnerColors.sageGreen),
         ),
       );
     }
@@ -71,101 +77,54 @@ class _OwnerAbsenteeTrackerPageState
         .toList();
     final allTabs = [...dynamicSlots, 'fullday'];
 
-    int initialIndex = 0;
+    // Ensure selected tab is in range
+    if (_selectedTabIndex >= allTabs.length) {
+      _selectedTabIndex = 0;
+    }
+
+    // Initialize slot if passed
     if (widget.initialSlot != null && allTabs.contains(widget.initialSlot)) {
-      initialIndex = allTabs.indexOf(widget.initialSlot!);
-    } else {
-      final hour = DateTime.now().hour;
-      if (hour < 11 && allTabs.contains('morning')) {
-        initialIndex = allTabs.indexOf('morning');
-      } else if (hour < 15 && allTabs.contains('noon')) {
-        initialIndex = allTabs.indexOf('noon');
-      } else if (hour < 19 && allTabs.contains('evening')) {
-        initialIndex = allTabs.indexOf('evening');
-      } else if (allTabs.contains('night')) {
-        initialIndex = allTabs.indexOf('night');
+      final idx = allTabs.indexOf(widget.initialSlot!);
+      if (idx != _selectedTabIndex && _searchCtrl.text.isEmpty) {
+        // Only override on fresh view
       }
     }
 
-    return DefaultTabController(
-      length: allTabs.length,
-      initialIndex: initialIndex,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          title: Text(
-            'Absentee Tracker',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 22),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          bottom: TabBar(
-            labelColor: const Color(0xFF22C55E),
-            unselectedLabelColor: const Color(0xFF6B7280),
-            indicatorColor: const Color(0xFF22C55E),
-            labelStyle: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: allTabs
-                .map(
-                  (slot) => Tab(
-                    icon: Icon(_getTabIconData(slot), size: 18),
-                    text: _getTabLabel(slot),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-        body: Column(
+    final currentSlot = allTabs[_selectedTabIndex];
+
+    return Scaffold(
+      backgroundColor: OwnerColors.canvasWarm,
+      endDrawer: const OwnerDrawer(),
+      body: SafeArea(
+        child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18, color: Color(0xFF9CA3AF)),
-                          onPressed: () => _searchCtrl.clear(),
-                        )
-                      : null,
-                  hintText: 'Search student name...',
-                  hintStyle: GoogleFonts.inter(color: const Color(0xFF9CA3AF), fontSize: 14),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF22C55E)),
-                  ),
-                ),
-              ),
-            ),
+            _buildHeader(context, messName),
             Expanded(
-              child: TabBarView(
-                children: allTabs
-                    .map(
-                      (slot) => _AbsenteeList(
-                        slot: slot,
-                        searchQuery: _searchCtrl.text.trim().toLowerCase(),
-                      ),
-                    )
-                    .toList(),
+              child: RefreshIndicator(
+                color: OwnerColors.sageGreen,
+                backgroundColor: OwnerColors.surfaceLight,
+                onRefresh: () async {
+                  ref.invalidate(ownerDashboardProvider);
+                },
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  children: [
+                    // Segmented Filter Pills (Screenshot 9)
+                    _buildSlotPills(allTabs, state),
+                    const SizedBox(height: 14),
+
+                    // Search Input (Screenshot 9)
+                    _buildSearchBar(),
+                    const SizedBox(height: 18),
+
+                    // List or Empty State for current slot
+                    _buildSlotAbsentees(
+                      slot: currentSlot,
+                      state: state,
+                      searchQuery: _searchCtrl.text.trim().toLowerCase(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -173,20 +132,217 @@ class _OwnerAbsenteeTrackerPageState
       ),
     );
   }
-}
 
-class _AbsenteeList extends ConsumerWidget {
-  final String slot;
-  final String searchQuery;
+  // ─── Header (Screenshot 9) ─────────────────────────────────────────────────
+  Widget _buildHeader(BuildContext context, String messName) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+      decoration: const BoxDecoration(
+        color: OwnerColors.canvasWarm,
+        border: Border(
+          bottom: BorderSide(color: OwnerColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                "TODAY'S TURNOUT",
+                style: OwnerTypography.overline(color: OwnerColors.walnutMuted),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => Scaffold.of(context).openEndDrawer(),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: OwnerColors.surfaceWarm,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: OwnerColors.borderSubtle),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$messName · Settings',
+                        style: OwnerTypography.regular(
+                          size: 12,
+                          color: OwnerColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.settings_outlined,
+                        size: 14,
+                        color: OwnerColors.walnutMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (Navigator.canPop(context)) ...[
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: OwnerColors.walnutDark,
+                    size: 18,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                'Absentees',
+                style: OwnerTypography.editorialSerif(
+                  size: 28,
+                  weight: FontWeight.w700,
+                  color: OwnerColors.walnutDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-  const _AbsenteeList({required this.slot, required this.searchQuery});
+  // ─── Slot Pills Row (Screenshot 9) ─────────────────────────────────────────
+  Widget _buildSlotPills(List<String> allTabs, OwnerDashboardState state) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: List.generate(allTabs.length, (index) {
+          final slot = allTabs[index];
+          final isSelected = _selectedTabIndex == index;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ownerDashboardProvider);
+          // Count absentees for this slot
+          final count = state.todayRecords
+              .where((r) =>
+                  (slot == 'fullday' || r.mealSlot == slot) &&
+                  (r.status == 'absent_self' || r.status == 'absent_owner'))
+              .length;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _selectedTabIndex = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? OwnerColors.walnutDark
+                      : OwnerColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? OwnerColors.walnutDark
+                        : OwnerColors.borderSubtle,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getTabIconData(slot),
+                      size: 14,
+                      color: isSelected
+                          ? OwnerColors.amberGlow
+                          : OwnerColors.walnutMuted,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_getTabLabel(slot)} ($count)',
+                      style: OwnerTypography.bold(
+                        size: 12,
+                        color: isSelected
+                            ? OwnerColors.textLight
+                            : OwnerColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ─── Search Bar (Screenshot 9) ─────────────────────────────────────────────
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: OwnerColors.borderSubtle),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: OwnerColors.walnutMuted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              style: OwnerTypography.regular(
+                size: 13,
+                color: OwnerColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search student name or room...',
+                hintStyle: OwnerTypography.regular(
+                  size: 13,
+                  color: OwnerColors.walnutMuted,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          if (_searchCtrl.text.isNotEmpty)
+            GestureDetector(
+              onTap: () => _searchCtrl.clear(),
+              child: const Icon(
+                Icons.cancel,
+                size: 16,
+                color: OwnerColors.walnutMuted,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Slot Absentees List & Empty State (Screenshot 9) ──────────────────────
+  Widget _buildSlotAbsentees({
+    required String slot,
+    required OwnerDashboardState state,
+    required String searchQuery,
+  }) {
     final allStudents = state.activeStudentsList;
 
-    // Filter records for this slot
     final slotRecords = state.todayRecords
         .where(
           (r) =>
@@ -195,7 +351,6 @@ class _AbsenteeList extends ConsumerWidget {
         )
         .toList();
 
-    // Map each record to student and apply search query
     final absentees = <_AbsenteeItem>[];
     for (final r in slotRecords) {
       final student = allStudents.firstWhere(
@@ -203,7 +358,8 @@ class _AbsenteeList extends ConsumerWidget {
         orElse: () => StudentModel(
           studentId: r.studentId,
           messId: '',
-          name: 'Diner ${r.studentId.substring(0, r.studentId.length.clamp(0, 5))}',
+          name:
+              'Diner ${r.studentId.substring(0, r.studentId.length.clamp(0, 5))}',
           phone: '',
           status: 'active',
           college: '',
@@ -215,7 +371,8 @@ class _AbsenteeList extends ConsumerWidget {
       );
 
       if (searchQuery.isNotEmpty &&
-          !student.name.toLowerCase().contains(searchQuery)) {
+          !student.name.toLowerCase().contains(searchQuery) &&
+          !student.roomNo.toLowerCase().contains(searchQuery)) {
         continue;
       }
 
@@ -227,60 +384,62 @@ class _AbsenteeList extends ConsumerWidget {
           ? 'Today'
           : '${slot[0].toUpperCase()}${slot.substring(1)}';
 
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDCFCE7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_outline,
-                  size: 48,
-                  color: Color(0xFF22C55E),
-                ),
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Circular Sage Green badge with checkmark (Screenshot 9)
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: OwnerColors.sageLight,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'All present for $slotTitle! 🎉',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
-                ),
-                textAlign: TextAlign.center,
+              child: const Icon(
+                Icons.check_rounded,
+                size: 38,
+                color: OwnerColors.sageDark,
               ),
-              const SizedBox(height: 8),
-              Text(
-                searchQuery.isNotEmpty
-                    ? 'No absentees match "$searchQuery"'
-                    : 'Zero cancellations recorded for this slot',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF6B7280),
-                ),
-                textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Everyone's here for $slotTitle! 🎉",
+              textAlign: TextAlign.center,
+              style: OwnerTypography.editorialSerif(
+                size: 20,
+                weight: FontWeight.w700,
+                color: OwnerColors.walnutDark,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              searchQuery.isNotEmpty
+                  ? 'No absentees match "$searchQuery"'
+                  : 'Zero cancellations recorded for this meal slot.',
+              textAlign: TextAlign.center,
+              style: OwnerTypography.regular(
+                size: 13,
+                color: OwnerColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: absentees.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final item = absentees[index];
-        return AbsenteeTile(
+        return _AbsenteeTile(
           name: item.student.name,
           roomNo: item.student.roomNo,
-          photoUrl: item.student.photoUrl,
           phone: item.student.phone,
           status: item.record.status,
           cancelledAt: item.record.cancelledAt ?? item.record.date,
@@ -297,27 +456,25 @@ class _AbsenteeItem {
   _AbsenteeItem({required this.record, required this.student});
 }
 
-class AbsenteeTile extends StatelessWidget {
+class _AbsenteeTile extends StatelessWidget {
   final String name;
   final String roomNo;
-  final String? photoUrl;
   final String phone;
-  final String status; // 'absent_self' or 'absent_owner'
+  final String status;
   final DateTime cancelledAt;
 
-  const AbsenteeTile({
-    super.key,
+  const _AbsenteeTile({
     required this.name,
     required this.roomNo,
-    this.photoUrl,
     required this.phone,
     required this.status,
     required this.cancelledAt,
   });
 
   Future<void> _makeCall(String phoneNumber) async {
-    if (phoneNumber.trim().isEmpty) return;
-    final uri = Uri.parse('tel:$phoneNumber');
+    final clean = phoneNumber.replaceAll(RegExp(r'\D'), '');
+    if (clean.isEmpty) return;
+    final uri = Uri.parse('tel:$clean');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
@@ -333,41 +490,30 @@ class AbsenteeTile extends StatelessWidget {
     final isOwnerClosed = status == 'absent_owner';
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: OwnerColors.surfaceLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
       ),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 22,
+            radius: 20,
             backgroundColor: isOwnerClosed
-                ? const Color(0xFFDBEAFE)
-                : const Color(0xFFFEF3C7),
-            backgroundImage: (photoUrl != null && photoUrl!.isNotEmpty)
-                ? NetworkImage(photoUrl!)
-                : null,
-            child: (photoUrl == null || photoUrl!.isEmpty)
-                ? Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      color: isOwnerClosed
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFFD97706),
-                    ),
-                  )
-                : null,
+                ? OwnerColors.surfaceWarm
+                : OwnerColors.amberGlow.withValues(alpha: 0.18),
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: OwnerTypography.editorialSerif(
+                size: 16,
+                weight: FontWeight.w700,
+                color: isOwnerClosed
+                    ? OwnerColors.walnutDark
+                    : OwnerColors.amberDark,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -376,33 +522,32 @@ class AbsenteeTile extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: const Color(0xFF111827),
+                  style: OwnerTypography.bold(
+                    size: 14,
+                    color: OwnerColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Room: $roomNo',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF6B7280),
+                  style: OwnerTypography.regular(
+                    size: 12,
+                    color: OwnerColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                // Separate visual badges: Student Cancelled vs Mess Closed
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: isOwnerClosed
-                        ? const Color(0xFFDBEAFE)
-                        : const Color(0xFFFEF3C7),
+                        ? OwnerColors.surfaceWarm
+                        : OwnerColors.amberLight,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isOwnerClosed
-                          ? const Color(0xFF93C5FD)
-                          : const Color(0xFFFDE68A),
+                          ? OwnerColors.borderSubtle
+                          : OwnerColors.amberGlow.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -412,22 +557,21 @@ class AbsenteeTile extends StatelessWidget {
                         isOwnerClosed
                             ? Icons.storefront_outlined
                             : Icons.person_off_outlined,
-                        size: 12,
+                        size: 11,
                         color: isOwnerClosed
-                            ? const Color(0xFF2563EB)
-                            : const Color(0xFFD97706),
+                            ? OwnerColors.walnutMuted
+                            : OwnerColors.amberDark,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isOwnerClosed
                             ? 'Mess Closed'
                             : 'Student Cancelled ($h:$minute $ampm)',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                        style: OwnerTypography.bold(
+                          size: 10,
                           color: isOwnerClosed
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFFD97706),
+                              ? OwnerColors.walnutDark
+                              : OwnerColors.amberDark,
                         ),
                       ),
                     ],
@@ -439,7 +583,7 @@ class AbsenteeTile extends StatelessWidget {
           if (phone.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.phone_outlined),
-              color: const Color(0xFF22C55E),
+              color: OwnerColors.sageGreen,
               tooltip: 'Call $name',
               onPressed: () => _makeCall(phone),
             ),

@@ -1,21 +1,20 @@
-import '../../../services/localization_service.dart';
-import 'owner_plan_builder_page.dart';
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import '../auth/login_page.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'dart:typed_data';
-
 import '../../../models/app_models.dart';
+import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import '../auth/login_page.dart';
 import '../common/user_feedback_sheet.dart';
-import 'widgets/owner_launch_partner_sheet.dart';
 import 'owner_about_mess_page.dart';
+import 'owner_plan_builder_page.dart';
+import 'theme/owner_inspired_theme.dart';
+import 'widgets/owner_drawer.dart';
+import 'widgets/owner_launch_partner_sheet.dart';
 
 class OwnerSettingsPage extends ConsumerWidget {
   const OwnerSettingsPage({super.key});
@@ -24,106 +23,156 @@ class OwnerSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ownerSettingsProvider);
     final MessModel? mess = state.mess;
+    final isHi = ref.watch(localizationProvider) == 'hi';
+    final messName = mess?.name ?? 'Mahakal';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: OwnerColors.canvasWarm,
+      endDrawer: const OwnerDrawer(),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                child: Text(
-                  'Settings',
-                  style: GoogleFonts.inter(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-              ),
+        child: Column(
+          children: [
+            _buildHeader(context, messName, isHi),
+            Expanded(
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: OwnerColors.sageGreen,
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: OwnerColors.sageGreen,
+                      backgroundColor: OwnerColors.surfaceLight,
+                      onRefresh: () async {
+                        ref.invalidate(ownerSettingsProvider);
+                      },
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                        children: [
+                          _buildMessInfoCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildMealPlansCard(context, ref, mess, isHi),
+                          const SizedBox(height: 18),
+                          _buildMessTimingsCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildToggleCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildSkipPolicyCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildMessPhotosCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildAboutMessCard(context, ref, mess),
+                          const SizedBox(height: 18),
+                          _buildActionsCard(context, ref, mess, isHi),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
             ),
-            if (state.isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF22C55E)),
-                ),
-              )
-            else ...[
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverToBoxAdapter(
-                  child: _buildMessInfoCard(context, ref, mess),
-                ),
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: 16)),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildMessTimingsCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildMealPlansCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildToggleCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildSkipPolicyCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildMessPhotosCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildAboutMessCard(context, ref, mess),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                sliver: SliverToBoxAdapter(
-                  child: _buildActionsCard(context, ref, mess),
-                ),
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: 32)),
-            ],
           ],
         ),
       ),
     );
   }
 
+  // ─── Header (Screenshot 6) ─────────────────────────────────────────────────
+  Widget _buildHeader(BuildContext context, String messName, bool isHi) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+      decoration: const BoxDecoration(
+        color: OwnerColors.canvasWarm,
+        border: Border(
+          bottom: BorderSide(color: OwnerColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'MESS PROFILE',
+                style: OwnerTypography.overline(color: OwnerColors.walnutMuted),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => Scaffold.of(context).openEndDrawer(),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: OwnerColors.surfaceWarm,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: OwnerColors.borderSubtle),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$messName · Settings',
+                        style: OwnerTypography.regular(
+                          size: 12,
+                          color: OwnerColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.settings_outlined,
+                        size: 14,
+                        color: OwnerColors.walnutMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (Navigator.canPop(context)) ...[
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: OwnerColors.walnutDark,
+                    size: 18,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                isHi ? 'सेटिंग्स' : 'Settings',
+                style: OwnerTypography.editorialSerif(
+                  size: 28,
+                  weight: FontWeight.w700,
+                  color: OwnerColors.walnutDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Mess Info Hero Card (Screenshot 6) ───────────────────────────────────
   Widget _buildMessInfoCard(
     BuildContext context,
     WidgetRef ref,
     MessModel? mess,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,51 +182,75 @@ class OwnerSettingsPage extends ConsumerWidget {
               if (mess?.ownerPhotoUrl != null &&
                   mess!.ownerPhotoUrl!.isNotEmpty)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: Image.network(
                     mess.ownerPhotoUrl!,
-                    width: 44,
-                    height: 44,
+                    width: 52,
+                    height: 52,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildDefaultMessIcon(),
+                    errorBuilder: (ctx, err, stack) => _buildDefaultMessAvatar(mess),
                   ),
                 )
               else
-                _buildDefaultMessIcon(),
-              const SizedBox(width: 12),
+                _buildDefaultMessAvatar(mess),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       mess?.name ?? 'Loading...',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                      style: OwnerTypography.editorialSerif(
+                        size: 18,
+                        weight: FontWeight.w700,
+                        color: OwnerColors.walnutDark,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      mess?.ownerName ?? 'Loading...',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF6B7280),
+                      mess?.ownerName ?? 'Owner',
+                      style: OwnerTypography.regular(
+                        size: 13,
+                        color: OwnerColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(
-                  Icons.edit,
-                  color: Color(0xFF6B7280),
-                  size: 20,
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => _showEditDialog(context, ref, mess),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: OwnerColors.surfaceWarm,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: OwnerColors.borderSubtle),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.edit_outlined,
+                        size: 13,
+                        color: OwnerColors.walnutDark,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Edit',
+                        style: OwnerTypography.bold(
+                          size: 11,
+                          color: OwnerColors.walnutDark,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                onPressed: () => _showEditDialog(context, ref, mess),
               ),
             ],
           ),
-          const Divider(height: 24, color: Color(0xFFF3F4F6)),
+          const Divider(height: 28, color: OwnerColors.borderSubtle),
           _buildInfoRow(
             'Food Type',
             mess?.foodType == 'non_veg'
@@ -186,17 +259,17 @@ class OwnerSettingsPage extends ConsumerWidget {
                     ? '🍃 Both (Veg & Non-Veg)'
                     : '🌱 Pure Veg',
           ),
-          _buildInfoRow('Monthly Fee', 'Rs ${mess?.monthlyFee.toInt() ?? 0}'),
+          _buildInfoRow('Monthly Fee', '₹${mess?.monthlyFee.toInt() ?? 0}'),
           _buildInfoRow(
             'Plan Includes',
             '${mess?.mealsIncludedPerDay ?? 3} meals daily',
           ),
           _buildInfoRow(
             'Per Meal Rate',
-            'Rs ${mess?.perMealRate.toInt() ?? 0}',
+            '₹${mess?.perMealRate.toInt() ?? 0}',
           ),
           _buildInfoRow('Capacity', '${mess?.capacity ?? 0} students'),
-          _buildInfoRow('Mess Code', mess?.messCode ?? 'N/A'),
+          _buildInfoRow('Mess Join Code', mess?.messCode ?? 'N/A'),
           _buildInfoRow(
             'Cutoff Hours',
             '${mess?.cutoffHours ?? 0} hours before meal',
@@ -206,17 +279,18 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildDefaultMessIcon() {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+  Widget _buildDefaultMessAvatar(MessModel? mess) {
+    return CircleAvatar(
+      radius: 26,
+      backgroundColor: OwnerColors.amberGlow.withValues(alpha: 0.18),
+      child: Text(
+        (mess?.name.isNotEmpty == true) ? mess!.name[0].toUpperCase() : 'M',
+        style: OwnerTypography.editorialSerif(
+          size: 20,
+          weight: FontWeight.w700,
+          color: OwnerColors.walnutDark,
         ),
-        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Icon(Icons.restaurant, color: Colors.white, size: 22),
     );
   }
 
@@ -228,9 +302,9 @@ class OwnerSettingsPage extends ConsumerWidget {
         children: [
           Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: const Color(0xFF6B7280),
+            style: OwnerTypography.regular(
+              size: 13,
+              color: OwnerColors.textSecondary,
             ),
           ),
           const SizedBox(width: 8),
@@ -238,10 +312,9 @@ class OwnerSettingsPage extends ConsumerWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
+              style: OwnerTypography.bold(
+                size: 13,
+                color: OwnerColors.textPrimary,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -251,23 +324,20 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  // ─── Meal Plans Card ───────────────────────────────────────────────────────
   Widget _buildMealPlansCard(
     BuildContext context,
     WidgetRef ref,
     MessModel? mess,
+    bool isHi,
   ) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: OwnerColors.surfaceLight,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,11 +346,15 @@ class OwnerSettingsPage extends ConsumerWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                decoration: const BoxDecoration(
+                  color: OwnerColors.sageLight,
+                  shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF10B981), size: 22),
+                child: const Icon(
+                  Icons.restaurant_menu_rounded,
+                  color: OwnerColors.sageDark,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -288,19 +362,20 @@ class OwnerSettingsPage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ref.watch(localizationProvider) == 'hi' ? 'खाने के प्लान' : 'Meal Plans',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111827),
+                      isHi ? 'खाने के प्लान' : 'Meal Plans & Pricing',
+                      style: OwnerTypography.bold(
+                        size: 15,
+                        color: OwnerColors.walnutDark,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      ref.watch(localizationProvider) == 'hi' ? 'महीने की फीस, चॉइस ग्रुप और प्लान की दरें बदलें' : 'Manage fees, choice groups and meal plans pricing',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF6B7280),
+                      isHi
+                          ? 'महीने की फीस और प्लान की दरें बदलें'
+                          : 'Manage fees, custom plans & pricing tiers',
+                      style: OwnerTypography.regular(
+                        size: 12,
+                        color: OwnerColors.textSecondary,
                       ),
                     ),
                   ],
@@ -308,21 +383,23 @@ class OwnerSettingsPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
+                backgroundColor: OwnerColors.sageGreen,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              icon: const Icon(Icons.tune_rounded, size: 18),
+              icon: const Icon(Icons.tune_rounded, size: 16),
               label: Text(
-                ref.watch(localizationProvider) == 'hi' ? 'प्लान बिल्डर खोलें' : 'Open Plan Builder',
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                isHi ? 'प्लान बिल्डर खोलें' : 'Open Plan Builder',
+                style: OwnerTypography.bold(size: 13, color: Colors.white),
               ),
               onPressed: () {
                 if (mess != null) {
@@ -341,6 +418,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  // ─── Mess Timings Section (Screenshot 10) ──────────────────────────────────
   Widget _buildMessTimingsCard(
     BuildContext context,
     WidgetRef ref,
@@ -352,37 +430,32 @@ class OwnerSettingsPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
             'Mess Timings',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
+            style: OwnerTypography.editorialSerif(
+              size: 20,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 10,
-                offset: Offset(0, 2),
-              ),
-            ],
+            color: OwnerColors.surfaceLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: OwnerColors.borderSubtle),
+            boxShadow: OwnerShadows.card,
           ),
           child: Column(
             children: [
               _buildTimingSlot(context, ref, mess, 'Morning', 'morning'),
-              const Divider(height: 32, color: Color(0xFFF3F4F6)),
+              const Divider(height: 28, color: OwnerColors.borderSubtle),
               _buildTimingSlot(context, ref, mess, 'Noon', 'noon'),
-              const Divider(height: 32, color: Color(0xFFF3F4F6)),
+              const Divider(height: 28, color: OwnerColors.borderSubtle),
               _buildTimingSlot(context, ref, mess, 'Evening', 'evening'),
-              const Divider(height: 32, color: Color(0xFFF3F4F6)),
+              const Divider(height: 28, color: OwnerColors.borderSubtle),
               _buildTimingSlot(context, ref, mess, 'Night', 'night'),
             ],
           ),
@@ -410,17 +483,16 @@ class OwnerSettingsPage extends ConsumerWidget {
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+              style: OwnerTypography.bold(
+                size: 15,
                 color: isEnabled
-                    ? const Color(0xFF111827)
-                    : const Color(0xFF9CA3AF),
+                    ? OwnerColors.textPrimary
+                    : OwnerColors.walnutMuted,
               ),
             ),
             CupertinoSwitch(
               value: isEnabled,
-              activeTrackColor: const Color(0xFF22C55E),
+              activeTrackColor: OwnerColors.sageGreen,
               onChanged: (val) {
                 final newTimings = Map<String, Map<String, String>>.from(
                   mess.mealTimings,
@@ -437,7 +509,7 @@ class OwnerSettingsPage extends ConsumerWidget {
           ],
         ),
         if (isEnabled) ...[
-          const Divider(height: 24, color: Color(0xFFF3F4F6)),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -448,11 +520,11 @@ class OwnerSettingsPage extends ConsumerWidget {
                 ),
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
-                  '-',
+                  '→',
                   style: TextStyle(
-                    color: Color(0xFF9CA3AF),
+                    color: OwnerColors.walnutMuted,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -472,7 +544,6 @@ class OwnerSettingsPage extends ConsumerWidget {
   }
 
   Widget _buildTimeDisplay(String label, String time24) {
-    // Simple 24h to 12h formatting
     final parts = time24.split(':');
     int h = int.tryParse(parts[0]) ?? 0;
     String m = parts.length > 1 ? parts[1] : '00';
@@ -481,37 +552,43 @@ class OwnerSettingsPage extends ConsumerWidget {
     if (h12 == 0) h12 = 12;
     String time12 = '${h12.toString().padLeft(2, '0')}:$m $period';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: const Color(0xFF9CA3AF),
-            fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: OwnerColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: OwnerColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: OwnerTypography.regular(
+              size: 11,
+              color: OwnerColors.walnutMuted,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(
-              Icons.access_time_rounded,
-              size: 16,
-              color: Color(0xFF22C55E),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              time12,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF111827),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              const Icon(
+                Icons.access_time_rounded,
+                size: 14,
+                color: OwnerColors.sageGreen,
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 5),
+              Text(
+                time12,
+                style: OwnerTypography.bold(
+                  size: 13,
+                  color: OwnerColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -535,7 +612,11 @@ class OwnerSettingsPage extends ConsumerWidget {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF22C55E)),
+            colorScheme: const ColorScheme.light(
+              primary: OwnerColors.sageGreen,
+              onPrimary: Colors.white,
+              surface: OwnerColors.surfaceLight,
+            ),
           ),
           child: child!,
         );
@@ -548,7 +629,8 @@ class OwnerSettingsPage extends ConsumerWidget {
       final newTimings = Map<String, Map<String, String>>.from(
         mess.mealTimings,
       );
-      newTimings[slotKey] = Map<String, String>.from(newTimings[slotKey] ?? {});
+      newTimings[slotKey] =
+          Map<String, String>.from(newTimings[slotKey] ?? {});
       newTimings[slotKey]![field] = newTime;
       ref
           .read(ownerSettingsProvider.notifier)
@@ -556,74 +638,73 @@ class OwnerSettingsPage extends ConsumerWidget {
     }
   }
 
+  // ─── Visibility & Notifications Toggles ───────────────────────────────────
   Widget _buildToggleCard(
     BuildContext context,
     WidgetRef ref,
     MessModel? mess,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Visibility',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF111827),
+            'Visibility & Discovery',
+            style: OwnerTypography.editorialSerif(
+              size: 16,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _buildToggle('Listed on Discovery Map', mess?.isListedOnMap ?? true, (
             val,
           ) {
-            if (mess != null)
+            if (mess != null) {
               ref
                   .read(ownerSettingsProvider.notifier)
                   .save(mess.copyWith(isListedOnMap: val));
+            }
           }),
           _buildToggle(
             'Show Menu to Outsiders',
             mess?.showMenuToOutsiders ?? true,
             (val) {
-              if (mess != null)
+              if (mess != null) {
                 ref
                     .read(ownerSettingsProvider.notifier)
                     .save(mess.copyWith(showMenuToOutsiders: val));
+              }
             },
           ),
           _buildToggle(
             'Show Menu to Students',
             mess?.showMenuToStudents ?? true,
             (val) {
-              if (mess != null)
+              if (mess != null) {
                 ref
                     .read(ownerSettingsProvider.notifier)
                     .save(mess.copyWith(showMenuToStudents: val));
+              }
             },
           ),
-          const Divider(height: 24, color: Color(0xFFF3F4F6)),
+          const Divider(height: 24, color: OwnerColors.borderSubtle),
           Text(
-            'Notifications',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF111827),
+            'Push Notifications',
+            style: OwnerTypography.editorialSerif(
+              size: 16,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _buildToggle(
             'Skip Alert (near cutoff)',
             mess?.ownerNotificationPrefs['skipAlert'] ?? true,
@@ -645,28 +726,29 @@ class OwnerSettingsPage extends ConsumerWidget {
 
   Widget _buildToggle(String title, bool value, ValueChanged<bool> onChanged) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: const Color(0xFF374151),
+              style: OwnerTypography.regular(
+                size: 13,
+                color: OwnerColors.textPrimary,
               ),
             ),
           ),
           CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: const Color(0xFF22C55E),
+            activeTrackColor: OwnerColors.sageGreen,
           ),
         ],
       ),
     );
   }
 
+  // ─── Skip Policy Card ─────────────────────────────────────────────────────
   Widget _buildSkipPolicyCard(
     BuildContext context,
     WidgetRef ref,
@@ -674,30 +756,25 @@ class OwnerSettingsPage extends ConsumerWidget {
   ) {
     if (mess == null) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Meal Skipping Policy',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
+            style: OwnerTypography.editorialSerif(
+              size: 16,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildToggle(
             'Allow Students to Skip Meals',
             mess.allowMealSkipping,
@@ -710,6 +787,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  // ─── Mess Gallery Card ────────────────────────────────────────────────────
   Widget _buildMessPhotosCard(
     BuildContext context,
     WidgetRef ref,
@@ -723,46 +801,40 @@ class OwnerSettingsPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
             'Mess Gallery',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
+            style: OwnerTypography.editorialSerif(
+              size: 20,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 10,
-                offset: Offset(0, 2),
-              ),
-            ],
+            color: OwnerColors.surfaceLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: OwnerColors.borderSubtle),
+            boxShadow: OwnerShadows.card,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Add up to 4 photos of your mess. Students will see these when browsing.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF6B7280),
+                'Add up to 4 photos of your dining hall, kitchen & meals.',
+                style: OwnerTypography.regular(
+                  size: 12,
+                  color: OwnerColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               SizedBox(
-                height: 100,
+                height: 96,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    // Existing photos
                     ...photos.asMap().entries.map((entry) {
                       final idx = entry.key;
                       final url = entry.value;
@@ -771,22 +843,22 @@ class OwnerSettingsPage extends ConsumerWidget {
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                               child: Image.network(
                                 url,
-                                width: 100,
-                                height: 100,
+                                width: 96,
+                                height: 96,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 100,
-                                  height: 100,
+                                errorBuilder: (ctx, err, stack) => Container(
+                                  width: 96,
+                                  height: 96,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: OwnerColors.surfaceWarm,
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: const Icon(
                                     Icons.broken_image_rounded,
-                                    color: Color(0xFF9CA3AF),
+                                    color: OwnerColors.walnutMuted,
                                   ),
                                 ),
                               ),
@@ -806,20 +878,14 @@ class OwnerSettingsPage extends ConsumerWidget {
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEF4444),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
                                     shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                      ),
-                                    ],
                                   ),
                                   child: const Icon(
                                     Icons.close,
                                     color: Colors.white,
-                                    size: 12,
+                                    size: 11,
                                   ),
                                 ),
                               ),
@@ -828,7 +894,6 @@ class OwnerSettingsPage extends ConsumerWidget {
                         ),
                       );
                     }),
-                    // Add button
                     if (canAdd)
                       GestureDetector(
                         onTap: () async {
@@ -841,6 +906,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                           final bytes = await file.readAsBytes();
                           final ext = file.name.split('.').last;
                           try {
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Uploading photo...'),
@@ -861,7 +927,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Photo added! ✅'),
-                                  backgroundColor: Color(0xFF22C55E),
+                                  backgroundColor: OwnerColors.sageGreen,
                                 ),
                               );
                             }
@@ -872,22 +938,21 @@ class OwnerSettingsPage extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('Upload failed: $e'),
-                                  backgroundColor: const Color(0xFFEF4444),
+                                  backgroundColor: Colors.red,
                                 ),
                               );
                             }
                           }
                         },
                         child: Container(
-                          width: 100,
-                          height: 100,
+                          width: 96,
+                          height: 96,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDF4),
-                            borderRadius: BorderRadius.circular(12),
+                            color: OwnerColors.sageLight,
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: const Color(0xFF22C55E),
+                              color: OwnerColors.sageGreen.withValues(alpha: 0.4),
                               width: 1.5,
-                              style: BorderStyle.solid,
                             ),
                           ),
                           child: Column(
@@ -895,16 +960,15 @@ class OwnerSettingsPage extends ConsumerWidget {
                             children: [
                               const Icon(
                                 Icons.add_photo_alternate_rounded,
-                                color: Color(0xFF22C55E),
-                                size: 28,
+                                color: OwnerColors.sageDark,
+                                size: 26,
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'Add Photo',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF22C55E),
+                                style: OwnerTypography.bold(
+                                  size: 10,
+                                  color: OwnerColors.sageDark,
                                 ),
                               ),
                             ],
@@ -916,12 +980,12 @@ class OwnerSettingsPage extends ConsumerWidget {
               ),
               if (photos.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     '${photos.length}/4 photos added',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: const Color(0xFF9CA3AF),
+                    style: OwnerTypography.regular(
+                      size: 11,
+                      color: OwnerColors.walnutMuted,
                     ),
                   ),
                 ),
@@ -932,6 +996,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  // ─── Mess Description Card ────────────────────────────────────────────────
   Widget _buildAboutMessCard(
     BuildContext context,
     WidgetRef ref,
@@ -943,266 +1008,270 @@ class OwnerSettingsPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
             'Mess Description',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF111827),
+            style: OwnerTypography.editorialSerif(
+              size: 20,
+              weight: FontWeight.w700,
+              color: OwnerColors.walnutDark,
             ),
           ),
         ),
-        Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          elevation: 1,
-          shadowColor: const Color(0x14000000),
-          child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.description_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 22,
-                ),
-              ),
-              title: Text(
-                'More About My Mess',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-              subtitle: Text(
-                hasContent
-                    ? 'Tap to edit your mess description'
-                    : 'Add rules, specials, food details & more',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF6B7280),
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (hasContent)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Added ✓',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF16A34A),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ],
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OwnerAboutMessPage(
-                      initialDeltaJson: mess?.aboutContent,
-                    ),
-                  ),
-                );
-              },
-            ),
+        Container(
+          decoration: BoxDecoration(
+            color: OwnerColors.surfaceLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: OwnerColors.borderSubtle),
+            boxShadow: OwnerShadows.card,
           ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            leading: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: const BoxDecoration(
+                color: OwnerColors.sageLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.description_rounded,
+                color: OwnerColors.sageDark,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              'More About My Mess',
+              style: OwnerTypography.bold(
+                size: 14,
+                color: OwnerColors.walnutDark,
+              ),
+            ),
+            subtitle: Text(
+              hasContent
+                  ? 'Tap to edit rich text description'
+                  : 'Add rules, food specials & details',
+              style: OwnerTypography.regular(
+                size: 11,
+                color: OwnerColors.textSecondary,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasContent)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: OwnerColors.sageLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Added ✓',
+                      style: OwnerTypography.bold(
+                        size: 10,
+                        color: OwnerColors.sageDark,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: OwnerColors.walnutMuted,
+                  size: 20,
+                ),
+              ],
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OwnerAboutMessPage(
+                    initialDeltaJson: mess?.aboutContent,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
 
+  // ─── Actions Card ─────────────────────────────────────────────────────────
   Widget _buildActionsCard(
-      BuildContext context, WidgetRef ref, MessModel? mess) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            if (mess != null) ...[
-              _buildActionTile(
-                Icons.star_rounded,
-                'My VIP Launch Partner Benefits',
-                const Color(0xFF10B981),
-                () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    builder: (_) => OwnerLaunchPartnerSheet(mess: mess),
-                  );
-                },
-              ),
-              const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
-            ],
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+    bool isHi,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
+      ),
+      child: Column(
+        children: [
+          if (mess != null) ...[
             _buildActionTile(
-              Icons.location_on_rounded,
-              'Update Mess Location (GPS)',
-              const Color(0xFF2563EB),
-              () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(
-                      'Update Location',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-                    ),
-                    content: Text(
-                      'Are you currently standing inside your mess? This will instantly update your mess coordinates on the map.',
-                      style: GoogleFonts.inter(),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                        ),
-                        child: const Text(
-                          'Yes, I am at the mess',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (confirm == true && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fetching GPS...')),
-                  );
-                  final success = await ref
-                      .read(ownerSettingsProvider.notifier)
-                      .updateGpsLocation();
-                  if (context.mounted) {
-                    if (success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'GPS Coordinates updated successfully!',
-                          ),
-                          backgroundColor: Color(0xFF22C55E),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Failed to update GPS. Please check permissions.',
-                          ),
-                          backgroundColor: Color(0xFFEF4444),
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-            ),
-            const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
-            _buildActionTile(
-              Icons.language_rounded,
-              ref.watch(localizationProvider) == 'hi' ? 'भाषा (Language)' : 'Language',
-              const Color(0xFF10B981),
-              () => _showLanguageModal(context, ref),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    ref.watch(localizationProvider) == 'hi' ? 'हिंदी (Hindi)' : 'English',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF6B7280),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF9CA3AF),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
-            _buildActionTile(
-              Icons.support_agent_rounded,
-              ref.watch(localizationProvider) == 'hi'
-                  ? 'सहायता और शिकायत (Help & Complaints)'
-                  : 'Help & Complaints',
-              const Color(0xFF06B6D4),
+              Icons.star_rounded,
+              'My VIP Launch Partner Benefits',
+              OwnerColors.amberGlow,
               () {
                 showModalBottomSheet(
                   context: context,
                   backgroundColor: Colors.transparent,
                   isScrollControlled: true,
-                  builder: (_) => UserFeedbackSheet(
-                    userRole: 'owner',
-                    messId: mess?.messId ?? '',
-                    messName: mess?.name ?? '',
-                  ),
+                  builder: (_) => OwnerLaunchPartnerSheet(mess: mess),
                 );
               },
             ),
+            const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
+          ],
+          _buildActionTile(
+            Icons.location_on_rounded,
+            'Update Mess Location (GPS)',
+            const Color(0xFF2563EB),
+            () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: OwnerColors.canvas,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                  title: Text(
+                    'Update location',
+                    style: OwnerTypography.editorialSerif(
+                      size: 22,
+                      weight: FontWeight.w700,
+                      color: OwnerColors.walnutDark,
+                    ),
+                  ),
+                  content: Text(
+                    'Are you standing inside your mess right now? This instantly updates your mess coordinates on the map.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: OwnerColors.textSecondary,
+                    ),
+                  ),
+                  actionsPadding: const EdgeInsets.fromLTRB(16, 8, 20, 16),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          color: OwnerColors.walnutDark,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: OwnerColors.amberGlow,
+                        foregroundColor: OwnerColors.walnutDark,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Text(
+                        "Yes, I'm at the mess",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
 
-            const Divider(height: 1, indent: 52, color: Color(0xFFF3F4F6)),
-            _buildActionTile(
-              Icons.logout_rounded,
-              ref.watch(localizationProvider) == 'hi' ? 'लॉगआउट' : 'Sign Out',
-              const Color(0xFFEF4444),
-              () async {
-                await ref.read(authProvider.notifier).signOut();
+              if (confirm == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Fetching GPS...')),
+                );
+                final success = await ref
+                    .read(ownerSettingsProvider.notifier)
+                    .updateGpsLocation();
                 if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'GPS Coordinates updated successfully!'
+                            : 'Failed to update GPS. Check permissions.',
+                      ),
+                      backgroundColor:
+                          success ? OwnerColors.sageGreen : Colors.red,
+                    ),
                   );
                 }
-              },
+              }
+            },
+          ),
+          const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
+          _buildActionTile(
+            Icons.language_rounded,
+            isHi ? 'भाषा (Language)' : 'Language',
+            OwnerColors.sageDark,
+            () => _showLanguageModal(context, ref),
+            trailing: Text(
+              isHi ? 'हिंदी (Hindi)' : 'English',
+              style: OwnerTypography.bold(
+                size: 12,
+                color: OwnerColors.textSecondary,
+              ),
             ),
-          ],
-        ),
+          ),
+          const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
+          _buildActionTile(
+            Icons.support_agent_rounded,
+            isHi
+                ? 'सहायता और शिकायत (Help & Support)'
+                : 'Help & Feedback',
+            const Color(0xFF06B6D4),
+            () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) => UserFeedbackSheet(
+                  userRole: 'owner',
+                  messId: mess?.messId ?? '',
+                  messName: mess?.name ?? '',
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
+          _buildActionTile(
+            Icons.logout_rounded,
+            isHi ? 'लॉगआउट' : 'Sign Out',
+            Colors.red,
+            () async {
+              await ref.read(authProvider.notifier).signOut();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
     );
   }
@@ -1218,29 +1287,29 @@ class OwnerSettingsPage extends ConsumerWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: color, size: 20),
+        child: Icon(icon, color: color, size: 18),
       ),
       title: Text(
         title,
-        style: GoogleFonts.inter(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF111827),
+        style: OwnerTypography.bold(
+          size: 14,
+          color: OwnerColors.textPrimary,
         ),
       ),
       trailing: trailing ??
           const Icon(
             Icons.chevron_right_rounded,
-            color: Color(0xFF9CA3AF),
-            size: 20,
+            color: OwnerColors.walnutMuted,
+            size: 18,
           ),
       onTap: onTap,
     );
   }
 
+  // ─── Edit Mess Dialog / Sheet (Screenshot 11) ─────────────────────────────
   void _showEditDialog(BuildContext context, WidgetRef ref, MessModel? mess) {
     if (mess == null) return;
     final nameCtrl = TextEditingController(text: mess.name);
@@ -1264,11 +1333,16 @@ class OwnerSettingsPage extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
+            backgroundColor: OwnerColors.surfaceLight,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
             title: Text(
               'Edit Mess Profile',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+              style: OwnerTypography.editorialSerif(
+                size: 20,
+                weight: FontWeight.w700,
+                color: OwnerColors.walnutDark,
               ),
             ),
             content: SingleChildScrollView(
@@ -1293,10 +1367,10 @@ class OwnerSettingsPage extends ConsumerWidget {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: OwnerColors.surfaceWarm,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFFE5E7EB),
+                          color: OwnerColors.borderSubtle,
                           width: 2,
                         ),
                         image: selectedImageBytes != null
@@ -1306,20 +1380,19 @@ class OwnerSettingsPage extends ConsumerWidget {
                               )
                             : (mess.ownerPhotoUrl != null &&
                                   mess.ownerPhotoUrl!.isNotEmpty)
-                            ? DecorationImage(
-                                image: NetworkImage(mess.ownerPhotoUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
+                                ? DecorationImage(
+                                    image: NetworkImage(mess.ownerPhotoUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
                       ),
-                      child:
-                          (selectedImageBytes == null &&
+                      child: (selectedImageBytes == null &&
                               (mess.ownerPhotoUrl == null ||
                                   mess.ownerPhotoUrl!.isEmpty))
                           ? const Icon(
                               Icons.add_a_photo,
-                              color: Color(0xFF9CA3AF),
-                              size: 28,
+                              color: OwnerColors.walnutMuted,
+                              size: 26,
                             )
                           : null,
                     ),
@@ -1327,35 +1400,48 @@ class OwnerSettingsPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   TextField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(
+                    style: OwnerTypography.regular(size: 13),
+                    decoration: InputDecoration(
                       labelText: 'Mess Name',
-                      border: OutlineInputBorder(),
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: ownerNameCtrl,
-                    decoration: const InputDecoration(
+                    style: OwnerTypography.regular(size: 13),
+                    decoration: InputDecoration(
                       labelText: 'Owner Name',
-                      border: OutlineInputBorder(),
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 12),
                   TextField(
                     controller: feeCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Monthly Base Fee (Rs)',
-                      border: OutlineInputBorder(),
+                    style: OwnerTypography.regular(size: 13),
+                    decoration: InputDecoration(
+                      labelText: 'Monthly Base Fee (₹)',
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 12),
                   InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Meals Included in Fee',
-                      border: OutlineInputBorder(),
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
@@ -1363,14 +1449,15 @@ class OwnerSettingsPage extends ConsumerWidget {
                         isDense: true,
                         isExpanded: true,
                         items: const [
-                          DropdownMenuItem(value: 4, child: Text('4')),
-                          DropdownMenuItem(value: 3, child: Text('3')),
-                          DropdownMenuItem(value: 2, child: Text('2')),
-                          DropdownMenuItem(value: 1, child: Text('1')),
+                          DropdownMenuItem(value: 4, child: Text('4 meals')),
+                          DropdownMenuItem(value: 3, child: Text('3 meals')),
+                          DropdownMenuItem(value: 2, child: Text('2 meals')),
+                          DropdownMenuItem(value: 1, child: Text('1 meal')),
                         ],
                         onChanged: (val) {
-                          if (val != null)
+                          if (val != null) {
                             setState(() => selectedMealsIncluded = val);
+                          }
                         },
                       ),
                     ),
@@ -1378,18 +1465,26 @@ class OwnerSettingsPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   TextField(
                     controller: rateCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Per Meal Deduction Rate (Rs)',
-                      border: OutlineInputBorder(),
+                    style: OwnerTypography.regular(size: 13),
+                    decoration: InputDecoration(
+                      labelText: 'Per Meal Deduction Rate (₹)',
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: cutoffCtrl,
-                    decoration: const InputDecoration(
+                    style: OwnerTypography.regular(size: 13),
+                    decoration: InputDecoration(
                       labelText: 'Cut-off Time (hours before meal)',
-                      border: OutlineInputBorder(),
+                      labelStyle: OwnerTypography.regular(size: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -1440,15 +1535,12 @@ class OwnerSettingsPage extends ConsumerWidget {
                             showMenuToOutsiders: mess.showMenuToOutsiders,
                             showMenuToStudents: mess.showMenuToStudents,
                             language: mess.language,
-                            monthlyFee:
-                                double.tryParse(feeCtrl.text) ??
+                            monthlyFee: double.tryParse(feeCtrl.text) ??
                                 mess.monthlyFee,
                             mealsIncludedPerDay: selectedMealsIncluded,
-                            perMealRate:
-                                double.tryParse(rateCtrl.text) ??
+                            perMealRate: double.tryParse(rateCtrl.text) ??
                                 mess.perMealRate,
-                            cutoffHours:
-                                int.tryParse(cutoffCtrl.text) ??
+                            cutoffHours: int.tryParse(cutoffCtrl.text) ??
                                 mess.cutoffHours,
                             foodType: selectedFoodType,
                             mealTimings: mess.mealTimings,
@@ -1467,6 +1559,13 @@ class OwnerSettingsPage extends ConsumerWidget {
                           }
                         }
                       },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: OwnerColors.sageGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 child: isUploading
                     ? const SizedBox(
                         width: 16,
@@ -1485,11 +1584,12 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
+  // ─── Language Modal ───────────────────────────────────────────────────────
   void _showLanguageModal(BuildContext context, WidgetRef ref) {
     final currentLang = ref.read(localizationProvider);
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: OwnerColors.surfaceLight,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1502,34 +1602,37 @@ class OwnerSettingsPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
                     currentLang == 'hi' ? 'भाषा चुनें' : 'Choose Language',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
+                    style: OwnerTypography.editorialSerif(
+                      size: 20,
+                      weight: FontWeight.w700,
+                      color: OwnerColors.walnutDark,
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
+                  leading: const Text('🇬🇧', style: TextStyle(fontSize: 22)),
                   title: Text(
                     'English',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
-                    ),
+                    style: OwnerTypography.bold(size: 14),
                   ),
                   subtitle: Text(
                     'Clean & simple English',
-                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+                    style: OwnerTypography.regular(
+                      size: 11,
+                      color: OwnerColors.textSecondary,
+                    ),
                   ),
                   trailing: currentLang == 'en'
-                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981))
+                      ? const Icon(Icons.check_circle,
+                          color: OwnerColors.sageGreen)
                       : null,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   onTap: () {
                     ref.read(localizationProvider.notifier).toggleLanguage('en');
                     Navigator.pop(ctx);
@@ -1537,7 +1640,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Language switched to English'),
-                          backgroundColor: Color(0xFF10B981),
+                          backgroundColor: OwnerColors.sageGreen,
                           duration: Duration(seconds: 2),
                         ),
                       );
@@ -1545,22 +1648,24 @@ class OwnerSettingsPage extends ConsumerWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Text('🇮🇳', style: TextStyle(fontSize: 24)),
+                  leading: const Text('🇮🇳', style: TextStyle(fontSize: 22)),
                   title: Text(
                     'हिंदी (Hindi)',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
-                    ),
+                    style: OwnerTypography.bold(size: 14),
                   ),
                   subtitle: Text(
                     'सरल एवं आसान बोलचाल की हिंदी',
-                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+                    style: OwnerTypography.regular(
+                      size: 11,
+                      color: OwnerColors.textSecondary,
+                    ),
                   ),
                   trailing: currentLang == 'hi'
-                      ? const Icon(Icons.check_circle, color: Color(0xFF10B981))
+                      ? const Icon(Icons.check_circle,
+                          color: OwnerColors.sageGreen)
                       : null,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   onTap: () {
                     ref.read(localizationProvider.notifier).toggleLanguage('hi');
                     Navigator.pop(ctx);
@@ -1568,7 +1673,7 @@ class OwnerSettingsPage extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('भाषा बदलकर हिंदी कर दी गई है'),
-                          backgroundColor: Color(0xFF10B981),
+                          backgroundColor: OwnerColors.sageGreen,
                           duration: Duration(seconds: 2),
                         ),
                       );
