@@ -462,6 +462,185 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
     );
   }
 
+  Future<void> _openMessByCodePrompt() async {
+    final codeController = TextEditingController();
+    bool isSearching = false;
+    String? errorText;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: StudentColors.canvas,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: StudentColors.walnutMuted.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: StudentColors.sageLight,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: StudentColors.sageDark,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Enter Mess Code',
+                          style: StudentTypography.serifHeading(fontSize: 20),
+                        ),
+                        Text(
+                          'From counter standee or shared link',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: StudentColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: codeController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                style: GoogleFonts.newsreader(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2,
+                  color: StudentColors.walnut,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g. 102938 or mezzo.app link',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 13,
+                    letterSpacing: 0,
+                    color: StudentColors.textMuted,
+                  ),
+                  filled: true,
+                  fillColor: StudentColors.surfaceLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: StudentColors.borderSubtle),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: StudentColors.borderSubtle),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: StudentColors.sageDark, width: 1.5),
+                  ),
+                  errorText: errorText,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSearching
+                      ? null
+                      : () async {
+                          final input = codeController.text.trim();
+                          if (input.isEmpty) return;
+                          setModalState(() {
+                            isSearching = true;
+                            errorText = null;
+                          });
+
+                          String cleanCode = input;
+                          if (input.contains('code=')) {
+                            cleanCode = Uri.tryParse(input)?.queryParameters['code'] ?? input;
+                          }
+
+                          final mess = await ref.read(appServiceProvider).getMessByCode(cleanCode);
+                          if (!mounted) return;
+
+                          if (mess == null) {
+                            setModalState(() {
+                              isSearching = false;
+                              errorText = 'No mess found with code "$cleanCode"';
+                            });
+                            return;
+                          }
+
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                          final pos = await _getUserLocation();
+                          final items = await _processMesses([mess], pos);
+                          if (!mounted) return;
+                          if (items.isNotEmpty) {
+                            _showMessDetails(context, items.first);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudentColors.walnut,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: isSearching
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'View Mess Details',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showAboutMessSheet(BuildContext context, MessModel mess) {
     QuillController? controller;
     try {
@@ -647,52 +826,77 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                 ),
               ),
 
-              // ── Search Input Box ──
+              // ── Search Input Box + QR Action ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: StudentColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: StudentColors.borderSubtle),
-                    boxShadow: StudentColors.softShadow,
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      _searchQuery = val;
-                      _filterItems();
-                    },
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: StudentColors.textDark,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search by mess name, area...',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: StudentColors.textMuted,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: StudentColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: StudentColors.borderSubtle),
+                          boxShadow: StudentColors.softShadow,
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            _searchQuery = val;
+                            _filterItems();
+                          },
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: StudentColors.textDark,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search by mess name, area...',
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: StudentColors.textMuted,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: StudentColors.walnutMuted,
+                              size: 20,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                      _filterItems();
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
                       ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: StudentColors.walnutMuted,
-                        size: 20,
-                      ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                _searchQuery = '';
-                                _filterItems();
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: StudentColors.walnut,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: StudentColors.softShadow,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Colors.white,
+                          size: 21,
+                        ),
+                        tooltip: 'Enter Mess Code / QR',
+                        onPressed: _openMessByCodePrompt,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),

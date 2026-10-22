@@ -59,6 +59,8 @@ class OwnerSettingsPage extends ConsumerWidget {
                           const SizedBox(height: 18),
                           _buildSkipPolicyCard(context, ref, mess),
                           const SizedBox(height: 18),
+                          _buildSpecialMealCard(context, ref, mess),
+                          const SizedBox(height: 18),
                           _buildMessPhotosCard(context, ref, mess),
                           const SizedBox(height: 18),
                           _buildAboutMessCard(context, ref, mess),
@@ -782,6 +784,263 @@ class OwnerSettingsPage extends ConsumerWidget {
                 .read(ownerSettingsProvider.notifier)
                 .save(mess.copyWith(allowMealSkipping: val)),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Special Meal Settings Card ──────────────────────────────────────────
+  Widget _buildSpecialMealCard(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+  ) {
+    if (mess == null) return const SizedBox.shrink();
+    final notifier = ref.read(ownerSettingsProvider.notifier);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: OwnerColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: OwnerShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Special Feast Policy (2x Rebate)',
+                  style: OwnerTypography.editorialSerif(
+                    size: 16,
+                    weight: FontWeight.w700,
+                    color: OwnerColors.walnutDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Configure your feast days (e.g. Sunday), cooked meal slots, and skip deduction multiplier.',
+            style: OwnerTypography.regular(
+              size: 12,
+              color: OwnerColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildToggle(
+            'Enable Special Meals',
+            mess.specialMealEnabled,
+            (val) => notifier.save(mess.copyWith(specialMealEnabled: val)),
+          ),
+          if (mess.specialMealEnabled) ...[
+            const Divider(height: 24, color: OwnerColors.borderSubtle),
+            Text(
+              'SPECIAL FEAST DAYS',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+                color: OwnerColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                'Monday',
+                'Tuesday',
+                'Wednesday',
+                'Thursday',
+                'Friday',
+                'Saturday',
+                'Sunday',
+              ].map((day) {
+                final isSelected = mess.specialMealDays.contains(day);
+                final shortName = day.substring(0, 3);
+                return InkWell(
+                  onTap: () {
+                    final updatedDays = List<String>.from(mess.specialMealDays);
+                    if (isSelected) {
+                      if (updatedDays.length > 1) {
+                        updatedDays.remove(day);
+                        notifier.save(mess.copyWith(specialMealDays: updatedDays));
+                      }
+                    } else {
+                      updatedDays.add(day);
+                      notifier.save(mess.copyWith(specialMealDays: updatedDays));
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isSelected ? OwnerColors.sageGreen.withValues(alpha: 0.15) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? OwnerColors.sageGreen : OwnerColors.borderSubtle,
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      isSelected ? '✓ $shortName' : shortName,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? OwnerColors.walnutDark : OwnerColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'DESIGNATED SPECIAL SLOT',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+                color: OwnerColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: ['morning', 'noon', 'night'].map((slot) {
+                final isSelected = mess.specialMealSlot == slot;
+                final label = slot == 'morning'
+                    ? 'Breakfast'
+                    : slot == 'noon'
+                        ? 'Lunch'
+                        : 'Dinner';
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      onTap: () => notifier.save(mess.copyWith(specialMealSlot: slot)),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFFDF8EE) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? OwnerColors.amberGlow : OwnerColors.borderSubtle,
+                            width: isSelected ? 1.6 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            isSelected ? '★ $label' : label,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? OwnerColors.walnutDark : OwnerColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'SKIP DEDUCTION VALUE',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+                color: OwnerColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => notifier.save(
+                      mess.copyWith(
+                        specialMealMultiplier: 2.0,
+                        specialMealFlatRate: null,
+                      ),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null
+                            ? const Color(0xFFFDF8EE)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null
+                              ? OwnerColors.amberGlow
+                              : OwnerColors.borderSubtle,
+                          width: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null ? 1.6 : 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '2x Value (Double)',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: OwnerColors.walnutDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => notifier.save(
+                      mess.copyWith(
+                        specialMealMultiplier: 1.0,
+                        specialMealFlatRate: null,
+                      ),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null
+                            ? const Color(0xFFFDF8EE)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null
+                              ? OwnerColors.amberGlow
+                              : OwnerColors.borderSubtle,
+                          width: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null ? 1.6 : 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '1x (Normal Rate)',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: OwnerColors.walnutDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

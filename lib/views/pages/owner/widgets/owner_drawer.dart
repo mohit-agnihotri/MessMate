@@ -16,6 +16,7 @@ import '../theme/owner_inspired_theme.dart';
 import 'owner_launch_partner_sheet.dart';
 import 'schedule_closure_dialog.dart';
 import 'manage_closed_slots_sheet.dart';
+import 'mess_qr_standee_sheet.dart';
 
 class OwnerDrawer extends ConsumerWidget {
   const OwnerDrawer({super.key});
@@ -301,6 +302,16 @@ class OwnerDrawer extends ConsumerWidget {
                   MaterialPageRoute(
                       builder: (_) => const OwnerAboutMessPage()),
                 );
+              },
+            ),
+            _buildDrawerItem(
+              title: 'Counter QR standee',
+              badge: 'NEW',
+              onTap: () {
+                Navigator.pop(context);
+                if (mess != null) {
+                  MessQrStandeeSheet.show(context, mess);
+                }
               },
             ),
             const SizedBox(height: 16),

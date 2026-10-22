@@ -695,11 +695,17 @@ class _StudentHistoryPageState extends ConsumerState<StudentHistoryPage> {
                     Color badgeBg = StudentColors.canvas;
 
                     if (r.status == 'absent_self') {
-                      typeStr = 'You Cancelled';
-                      badgeColor = StudentColors.amberDark;
-                      badgeBg = StudentColors.amberLight;
+                      if (r.isSpecial) {
+                        typeStr = '✨ Special Feast (2x)';
+                        badgeColor = const Color(0xFFC26E00);
+                        badgeBg = const Color(0xFFFFF3DC);
+                      } else {
+                        typeStr = 'You Cancelled';
+                        badgeColor = StudentColors.amberDark;
+                        badgeBg = StudentColors.amberLight;
+                      }
                     } else if (r.status == 'absent_owner') {
-                      typeStr = 'Mess Closed';
+                      typeStr = r.isSpecial ? '✨ Special Mess Closed' : 'Mess Closed';
                       badgeColor = StudentColors.brickRed;
                       badgeBg = StudentColors.brickRedLight;
                     } else if (r.status == 'guest') {

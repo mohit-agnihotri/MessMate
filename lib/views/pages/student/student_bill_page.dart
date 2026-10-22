@@ -386,7 +386,24 @@ class StudentBillPage extends ConsumerWidget {
               isCredit: true,
             ),
           ],
-          if (bill.totalDeductions > 0) ...[
+          if (bill.specialSkipsCount > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              '✨ Special Feast Skips (${bill.specialSkipsCount} meal${bill.specialSkipsCount > 1 ? "s" : ""})',
+              'Double value feast rebate',
+              '-₹${bill.specialSkipsDeduction.toInt()}',
+              isCredit: true,
+            ),
+          ],
+          if (bill.normalSkipsCount > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Regular Meal Skips (${bill.normalSkipsCount} meal${bill.normalSkipsCount > 1 ? "s" : ""})',
+              'Standard per-meal rebate',
+              '-₹${bill.normalSkipsDeduction.toInt()}',
+              isCredit: true,
+            ),
+          ] else if (bill.totalDeductions > 0 && bill.specialSkipsCount == 0) ...[
             const SizedBox(height: 12),
             _buildBreakdownRow(
               'Skipped Meal Credits',

@@ -10,6 +10,7 @@ import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
 import 'widgets/manage_closed_slots_sheet.dart';
+import 'widgets/mess_qr_standee_sheet.dart';
 import 'theme/owner_inspired_theme.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -1032,6 +1033,28 @@ class OwnerDashboardPage extends ConsumerWidget {
                     letterSpacing: 3,
                     color: OwnerColors.amberText,
                   ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  if (state.mess != null) {
+                    MessQrStandeeSheet.show(context, state.mess!);
+                  }
+                },
+                icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+                label: const Text('View Counter QR Standee'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: OwnerColors.walnutDark,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),

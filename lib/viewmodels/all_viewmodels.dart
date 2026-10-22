@@ -92,10 +92,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
 
         // Trigger the authentication flow
         final googleUser = await googleSignIn.authenticate();
-        if (googleUser == null) {
-          state = state.copyWith(isLoading: false, error: null);
-          return;
-        }
+
 
         // v7: idToken from .authentication, accessToken from authorizationClient
         final String? idToken = googleUser.authentication.idToken;
@@ -561,14 +558,15 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
 
     for (var r in _todayRecords) {
       if (r.status == 'absent_self' || r.status == 'absent_owner') {
-        if (r.mealSlot == 'morning')
+        if (r.mealSlot == 'morning') {
           morning++;
-        else if (r.mealSlot == 'noon')
+        } else if (r.mealSlot == 'noon') {
           noon++;
-        else if (r.mealSlot == 'evening')
+        } else if (r.mealSlot == 'evening') {
           evening++;
-        else if (r.mealSlot == 'night')
+        } else if (r.mealSlot == 'night') {
           night++;
+        }
       }
     }
 
@@ -1015,6 +1013,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
       mealSlot: slot,
       dishes: dishes,
       menuType: menuType,
+      isFullDayEquivalent: menuType == 'special',
       isPublished: true,
     );
     await _service.publishDailyMenu(menu);
@@ -1435,16 +1434,48 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
       final mealDate = date ?? _today;
-      final currentSkipRate = state.assignedPlan?.deductionPolicy.flatRate ?? state.mess?.perMealRate;
+      final mess = state.mess;
+      final currentSkipRate = state.assignedPlan?.deductionPolicy.flatRate ?? mess?.perMealRate ?? 40.0;
+
+      const dayNames = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+      ];
+      final dayName = dayNames[mealDate.weekday - 1];
+      final isSpecialDay = mess?.specialMealEnabled == true &&
+          (mess?.specialMealDays.contains(dayName) ?? false);
+      final isSpecialSlot = isSpecialDay && mess?.specialMealSlot == mealSlot;
+      final isSpecialPosted = state.todayMenus[mealSlot]?.menuType == 'special' ||
+          (state.todayMenus[mealSlot]?.isFullDayEquivalent ?? false);
+      final isSpecial = isSpecialPosted || isSpecialSlot;
+
+      final double effectiveCost;
+      if (isSpecial) {
+        if (mess?.specialMealFlatRate != null && mess!.specialMealFlatRate! > 0) {
+          effectiveCost = mess.specialMealFlatRate!;
+        } else {
+          final multiplier = mess?.specialMealMultiplier ?? 2.0;
+          effectiveCost = currentSkipRate * multiplier;
+        }
+      } else {
+        effectiveCost = currentSkipRate;
+      }
+
       final record = MealRecordModel(
         recordId:
             '${uid}_${mealSlot}_${mealDate.toIso8601String().substring(0, 10)}',
         studentId: uid,
-        messId: state.mess?.messId ?? '',
+        messId: mess?.messId ?? '',
         date: mealDate,
         mealSlot: mealSlot,
         status: 'absent_self',
-        cost: currentSkipRate,
+        cost: effectiveCost,
+        isSpecial: isSpecial,
         cancelledAt: DateTime.now(),
       );
       await _service.skipMeal(record);

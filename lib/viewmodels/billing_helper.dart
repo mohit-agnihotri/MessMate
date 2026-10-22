@@ -9,6 +9,31 @@ bool isSlotActiveForStudent(
   String slot,
   DateTime date,
 ) {
+  // 0. Special Day Schedule Override:
+  const dayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
+  final dayName = dayNames[date.weekday - 1];
+  final isSpecialDay =
+      mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
+
+  if (isSpecialDay) {
+    // Designated Special Feast is universally active for all enrolled students
+    if (mess.specialMealSlot == slot) {
+      return true;
+    }
+    // Slots not cooked on special days per owner schedule are inactive
+    if (!mess.specialMealCookedSlots.contains(slot)) {
+      return false;
+    }
+  }
+
   if (plan == null) {
     return mess.mealTimings[slot]?['enabled'] == 'true';
   }
@@ -104,6 +129,10 @@ BillModel generateAdvancedBill({
   double extraFeesAddon = 0.0;
   double proratedDiscount = 0.0;
   List<DeductionItem> items = [];
+  int normalSkipsCount = 0;
+  double normalSkipsDeduction = 0.0;
+  int specialSkipsCount = 0;
+  double specialSkipsDeduction = 0.0;
 
   // Effective base fee and allowed meals from plan or mess defaults
   final double baseFee = plan?.monthlyFee ?? mess.monthlyFee;
@@ -251,7 +280,7 @@ BillModel generateAdvancedBill({
           if (!skippedSlotMap.containsKey(slot) &&
               isSlotActiveForStudent(student, plan, mess, slot, currentDate)) {
             skippedSlotMap[slot] = MealRecordModel(
-              recordId: 'leave_${leave.leaveId}_$day\_$slot',
+              recordId: 'leave_${leave.leaveId}_${day}_$slot',
               studentId: student.studentId,
               messId: mess.messId,
               date: currentDate,
@@ -280,12 +309,34 @@ BillModel generateAdvancedBill({
     for (var r in ownerClosures) {
       if (isSlotActiveForStudent(student, plan, mess, r.mealSlot, currentDate)) {
         totalOwnerClosures++;
-        double refundAmt = ownerClosureRate;
+        const dayNames = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday'
+        ];
+        final dayName = dayNames[currentDate.weekday - 1];
+        final isSpecialDay =
+            mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
+        final isSpecialClosure =
+            r.isSpecial || (isSpecialDay && mess.specialMealSlot == r.mealSlot);
+
+        final double refundAmt = isSpecialClosure
+            ? ((mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
+                ? mess.specialMealFlatRate!
+                : (ownerClosureRate * mess.specialMealMultiplier))
+            : ownerClosureRate;
+
         ownerClosureDeduction += refundAmt;
         items.add(
           DeductionItem(
             date: currentDate,
-            mealSlot: '${r.mealSlot} (Mess Closed)',
+            mealSlot: isSpecialClosure
+                ? '${r.mealSlot} (Special Feast Closed)'
+                : '${r.mealSlot} (Mess Closed)',
             type: 'owner_off',
             amount: -refundAmt,
           ),
@@ -302,19 +353,42 @@ BillModel generateAdvancedBill({
       if (clampedSkips > 0) {
         final int? maxAllowedSkips = plan?.deductionPolicy.maxSkipsPerMonth;
         for (int i = 0; i < clampedSkips; i++) {
-          totalValidSkips++;
-          if (maxAllowedSkips != null && maxAllowedSkips > 0 && totalValidSkips > maxAllowedSkips) {
+          final isSpecial = studentSkips[i].isSpecial;
+          final double defaultSpecialRate = (mess.specialMealFlatRate != null &&
+                  mess.specialMealFlatRate! > 0)
+              ? mess.specialMealFlatRate!
+              : (effectiveStudentRebateRate * mess.specialMealMultiplier);
+          final double standardRate =
+              isSpecial ? defaultSpecialRate : effectiveStudentRebateRate;
+          final skipCost = studentSkips[i].cost ??
+              (mess.allowMealSkipping ? standardRate : 0.0);
+
+          if (isSpecial) {
+            specialSkipsCount++;
+            specialSkipsDeduction += skipCost;
+            totalValidSkips += mess.specialMealMultiplier.round().clamp(1, 4);
+          } else {
+            normalSkipsCount++;
+            normalSkipsDeduction += skipCost;
+            totalValidSkips++;
+          }
+
+          if (maxAllowedSkips != null &&
+              maxAllowedSkips > 0 &&
+              totalValidSkips > maxAllowedSkips) {
             // Skips beyond limit are recorded but not refunded financially
             continue;
           }
-          final skipCost = studentSkips[i].cost ?? (mess.allowMealSkipping ? effectiveStudentRebateRate : 0.0);
+
           if (compensationChoice == 'rebate' && skipCost > 0) {
             skipsDeduction += skipCost;
             items.add(
               DeductionItem(
                 date: currentDate,
-                mealSlot: '${studentSkips[i].mealSlot} (Valid Skip)',
-                type: 'self_cancelled',
+                mealSlot: isSpecial
+                    ? '${studentSkips[i].mealSlot} (Special Feast Skip)'
+                    : '${studentSkips[i].mealSlot} (Regular Skip)',
+                type: isSpecial ? 'special_skip' : 'self_cancelled',
                 amount: -skipCost,
               ),
             );
@@ -410,5 +484,9 @@ BillModel generateAdvancedBill({
     planId: plan?.planId,
     planName: plan?.name,
     deductions: items,
+    normalSkipsCount: normalSkipsCount,
+    normalSkipsDeduction: normalSkipsDeduction,
+    specialSkipsCount: specialSkipsCount,
+    specialSkipsDeduction: specialSkipsDeduction,
   );
 }

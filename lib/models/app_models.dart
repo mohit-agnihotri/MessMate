@@ -446,6 +446,15 @@ class MessModel {
   final double rating;
   final int reviewCount;
 
+  // Special Meal Settings:
+  final bool specialMealEnabled;
+  final List<String> specialMealDays; // e.g. ['Sunday']
+  final List<String> specialMealCookedSlots; // e.g. ['noon', 'night']
+  final String specialMealSlot; // e.g. 'noon'
+  final double specialMealMultiplier; // e.g. 2.0 (2x value)
+  final double? specialMealFlatRate; // optional fixed rupee deduction
+  final int specialMealCutoffHours; // early cancellation deadline (e.g. 4 hrs)
+
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
     'skipAlert': true,
     'joinRequest': true,
@@ -494,6 +503,13 @@ class MessModel {
     this.isVerified = false,
     this.rating = 0.0,
     this.reviewCount = 0,
+    this.specialMealEnabled = true,
+    this.specialMealDays = const ['Sunday'],
+    this.specialMealCookedSlots = const ['noon', 'night'],
+    this.specialMealSlot = 'noon',
+    this.specialMealMultiplier = 2.0,
+    this.specialMealFlatRate,
+    this.specialMealCutoffHours = 4,
   });
 
   MessModel copyWith({
@@ -534,6 +550,13 @@ class MessModel {
     bool? isVerified,
     double? rating,
     int? reviewCount,
+    bool? specialMealEnabled,
+    List<String>? specialMealDays,
+    List<String>? specialMealCookedSlots,
+    String? specialMealSlot,
+    double? specialMealMultiplier,
+    Object? specialMealFlatRate = const _Sentinel(),
+    int? specialMealCutoffHours,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -586,6 +609,18 @@ class MessModel {
       isVerified: isVerified ?? this.isVerified,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
+      specialMealEnabled: specialMealEnabled ?? this.specialMealEnabled,
+      specialMealDays: specialMealDays ?? this.specialMealDays,
+      specialMealCookedSlots:
+          specialMealCookedSlots ?? this.specialMealCookedSlots,
+      specialMealSlot: specialMealSlot ?? this.specialMealSlot,
+      specialMealMultiplier:
+          specialMealMultiplier ?? this.specialMealMultiplier,
+      specialMealFlatRate: specialMealFlatRate is _Sentinel
+          ? this.specialMealFlatRate
+          : specialMealFlatRate as double?,
+      specialMealCutoffHours:
+          specialMealCutoffHours ?? this.specialMealCutoffHours,
     );
   }
 
@@ -628,6 +663,13 @@ class MessModel {
       isVerified: isVerified,
       rating: rating,
       reviewCount: reviewCount,
+      specialMealEnabled: specialMealEnabled,
+      specialMealDays: specialMealDays,
+      specialMealCookedSlots: specialMealCookedSlots,
+      specialMealSlot: specialMealSlot,
+      specialMealMultiplier: specialMealMultiplier,
+      specialMealFlatRate: specialMealFlatRate,
+      specialMealCutoffHours: specialMealCutoffHours,
     );
   }
 
@@ -792,6 +834,17 @@ class MessModel {
       isVerified: map['isVerified'] ?? false,
       rating: (map['rating'] ?? 0.0).toDouble(),
       reviewCount: (map['reviewCount'] ?? 0) as int,
+      specialMealEnabled: map['specialMealEnabled'] ?? true,
+      specialMealDays: List<String>.from(map['specialMealDays'] ?? ['Sunday']),
+      specialMealCookedSlots: List<String>.from(
+          map['specialMealCookedSlots'] ?? ['noon', 'night']),
+      specialMealSlot: map['specialMealSlot'] ?? 'noon',
+      specialMealMultiplier:
+          (map['specialMealMultiplier'] != null) ? (map['specialMealMultiplier'] as num).toDouble() : 2.0,
+      specialMealFlatRate: map['specialMealFlatRate'] != null
+          ? (map['specialMealFlatRate'] as num).toDouble()
+          : null,
+      specialMealCutoffHours: (map['specialMealCutoffHours'] ?? 4) as int,
     );
   }
 
@@ -838,6 +891,13 @@ class MessModel {
       'isVerified': isVerified,
       'rating': rating,
       'reviewCount': reviewCount,
+      'specialMealEnabled': specialMealEnabled,
+      'specialMealDays': specialMealDays,
+      'specialMealCookedSlots': specialMealCookedSlots,
+      'specialMealSlot': specialMealSlot,
+      'specialMealMultiplier': specialMealMultiplier,
+      if (specialMealFlatRate != null) 'specialMealFlatRate': specialMealFlatRate,
+      'specialMealCutoffHours': specialMealCutoffHours,
     };
   }
 }
@@ -1033,6 +1093,7 @@ class MealRecordModel {
   final String status; // 'present','absent_self','absent_owner','guest','extra_meal'
   final double? cost;
   final DateTime? cancelledAt;
+  final bool isSpecial;
 
   MealRecordModel({
     required this.recordId,
@@ -1043,6 +1104,7 @@ class MealRecordModel {
     required this.status,
     this.cost,
     this.cancelledAt,
+    this.isSpecial = false,
   });
 
   factory MealRecordModel.fromMap(Map<String, dynamic> map) {
@@ -1057,6 +1119,7 @@ class MealRecordModel {
       cancelledAt: map['cancelledAt'] != null
           ? DateTime.tryParse(map['cancelledAt'])
           : null,
+      isSpecial: map['isSpecial'] ?? false,
     );
   }
 
@@ -1069,6 +1132,7 @@ class MealRecordModel {
         'status': status,
         if (cost != null) 'cost': cost,
         'cancelledAt': cancelledAt?.toIso8601String(),
+        if (isSpecial) 'isSpecial': isSpecial,
       };
 }
 
@@ -1095,6 +1159,11 @@ class BillModel {
   final String? planName;
   final List<DeductionItem> deductions;
   final double platformFee;
+  // Transparent Skips Separation:
+  final int normalSkipsCount;
+  final double normalSkipsDeduction;
+  final int specialSkipsCount;
+  final double specialSkipsDeduction;
 
   BillModel({
     required this.billId,
@@ -1119,6 +1188,10 @@ class BillModel {
     this.planName,
     required this.deductions,
     this.platformFee = 0.0,
+    this.normalSkipsCount = 0,
+    this.normalSkipsDeduction = 0.0,
+    this.specialSkipsCount = 0,
+    this.specialSkipsDeduction = 0.0,
   });
 
   factory BillModel.fromMap(Map<String, dynamic> map) {
@@ -1147,6 +1220,10 @@ class BillModel {
           .map((d) => DeductionItem.fromMap(d as Map<String, dynamic>))
           .toList(),
       platformFee: (map['platformFee'] ?? 0.0).toDouble(),
+      normalSkipsCount: (map['normalSkipsCount'] ?? 0) as int,
+      normalSkipsDeduction: (map['normalSkipsDeduction'] ?? 0.0).toDouble(),
+      specialSkipsCount: (map['specialSkipsCount'] ?? 0) as int,
+      specialSkipsDeduction: (map['specialSkipsDeduction'] ?? 0.0).toDouble(),
     );
   }
 
@@ -1173,6 +1250,10 @@ class BillModel {
         if (planName != null) 'planName': planName,
         'deductions': deductions.map((d) => d.toMap()).toList(),
         'platformFee': platformFee,
+        'normalSkipsCount': normalSkipsCount,
+        'normalSkipsDeduction': normalSkipsDeduction,
+        'specialSkipsCount': specialSkipsCount,
+        'specialSkipsDeduction': specialSkipsDeduction,
       };
 }
 
