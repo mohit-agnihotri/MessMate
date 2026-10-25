@@ -1614,6 +1614,7 @@ class _OwnerStudentManagementPageState
                   compensationChoice: localCompensationChoice,
                   extraFees: extraFees,
                   leaves: leaves,
+                  carryForwardResult: carryForward,
                   carryForwardCredit: carryForward.amount,
                   carryForwardItems: carryForward.items,
                 );
@@ -1622,11 +1623,18 @@ class _OwnerStudentManagementPageState
             int skippedMealsCount = bill.validSkipsRewarded;
             int extendDays = bill.daysToExtend;
 
-            DateTime? currentEndDate = student.subscriptionEndDate;
+            final int bYear = data['year'];
+            final int bMonth = data['month'];
+            final DateTime defaultMonthEnd = DateTime(bYear, bMonth + 1, 0);
+            final DateTime baseEndDate = (student.subscriptionEndDate != null &&
+                    student.subscriptionEndDate!.isAfter(DateTime(bYear, bMonth, 1)))
+                ? student.subscriptionEndDate!
+                : defaultMonthEnd;
+
             String extendDateString = '';
-            if (currentEndDate != null && extendDays > 0) {
+            if (extendDays > 0) {
               DateTime newEndDate =
-                  currentEndDate.add(Duration(days: extendDays));
+                  baseEndDate.add(Duration(days: extendDays));
               const abbr = [
                 'Jan',
                 'Feb',
@@ -1644,18 +1652,15 @@ class _OwnerStudentManagementPageState
               String monthStr = (newEndDate.month >= 1 && newEndDate.month <= 12)
                   ? abbr[newEndDate.month - 1]
                   : '';
-              extendDateString = "${newEndDate.day} $monthStr";
+              extendDateString = "${newEndDate.day} $monthStr ${newEndDate.year}";
+            } else if (student.subscriptionEndDate != null) {
+              const abbr = [
+                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+              ];
+              extendDateString =
+                  "${student.subscriptionEndDate!.day} ${abbr[student.subscriptionEndDate!.month - 1]} ${student.subscriptionEndDate!.year}";
             }
-
-            final double postPaymentSkipsAmount =
-                savedBill != null && savedBill.isPaid
-                    ? calculatePostPaymentSkipsAmount(
-                        savedBill: savedBill,
-                        currentRecords: records,
-                        mess: mess,
-                        plan: plan,
-                      )
-                    : 0.0;
 
             return Container(
               padding: const EdgeInsets.all(16),
@@ -1668,7 +1673,7 @@ class _OwnerStudentManagementPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (postPaymentSkipsAmount > 0) ...[
+                  if (bill.currentMonthSkipsCount > 0) ...[
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.symmetric(
@@ -1688,7 +1693,38 @@ class _OwnerStudentManagementPageState
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '💡 ₹${postPaymentSkipsAmount.toInt()} unbilled skips after payment. Will be auto-deducted from next month\'s bill.',
+                              '💡 ${bill.currentMonthSkipsCount} skips in ${_getMonthName(data['month'])} (₹${bill.currentMonthSkipsAmount.toInt()} saved) logged. Will be credited to next month\'s bill.',
+                              style: OwnerTypography.bold(
+                                size: 11.5,
+                                color: const Color(0xFF2B3B2C),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (bill.isPaid && bill.daysToExtend > 0) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF5EC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCCE0C8)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_available_rounded,
+                            size: 16,
+                            color: Color(0xFF3F653E),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '📅 Month extended by ${bill.daysToExtend} days • Active validity till $extendDateString',
                               style: OwnerTypography.bold(
                                 size: 11.5,
                                 color: const Color(0xFF2B3B2C),
@@ -1949,13 +1985,23 @@ class _OwnerStudentManagementPageState
                             guestAddons: bill.guestAddons,
                             extraFeesAddon: bill.extraFeesAddon,
                             finalPayable: bill.finalPayable,
+                            excessCreditGenerated: bill.excessCreditGenerated,
+                            previousDues: bill.previousDues,
                             isPaid: value,
+                            autoSettled: bill.autoSettled,
+                            validSkipsRewarded: bill.validSkipsRewarded,
+                            daysToExtend: extendDays,
+                            planId: bill.planId,
+                            planName: bill.planName,
                             deductions: bill.deductions,
+                            platformFee: bill.platformFee,
                             carryForwardCredit: bill.carryForwardCredit,
                             normalSkipsCount: bill.normalSkipsCount,
                             normalSkipsDeduction: bill.normalSkipsDeduction,
                             specialSkipsCount: bill.specialSkipsCount,
                             specialSkipsDeduction: bill.specialSkipsDeduction,
+                            currentMonthSkipsCount: bill.currentMonthSkipsCount,
+                            currentMonthSkipsAmount: bill.currentMonthSkipsAmount,
                           );
 
                           int? daysToExtend;
@@ -2125,17 +2171,35 @@ class _OwnerStudentManagementPageState
                   '-₹${bill.proratedDiscount.toStringAsFixed(0)}',
                   color: Colors.green,
                 ),
-              if (bill.totalDeductions > 0)
+              if (bill.specialSkipsCount > 0)
+                _buildBillRow(
+                  '✨ Special Feast Skips (${bill.specialSkipsCount} meals)',
+                  '-₹${bill.specialSkipsDeduction.toStringAsFixed(0)}',
+                  color: Colors.green,
+                ),
+              if (bill.normalSkipsCount > 0)
+                _buildBillRow(
+                  'Regular Meal Skips (${bill.normalSkipsCount} meals)',
+                  '-₹${bill.normalSkipsDeduction.toStringAsFixed(0)}',
+                  color: Colors.green,
+                )
+              else if (bill.totalDeductions > 0 && bill.specialSkipsCount == 0)
                 _buildBillRow(
                   'Valid Skipped Meals Refunds',
                   '-₹${bill.totalDeductions.toStringAsFixed(0)}',
                   color: Colors.green,
                 ),
-              if (bill.carryForwardCredit > 0)
+              if (bill.carryForwardCredit > 0 && bill.normalSkipsCount == 0 && bill.specialSkipsCount == 0)
                 _buildBillRow(
                   'Previous Month Skips Credit',
                   '-₹${bill.carryForwardCredit.toStringAsFixed(0)}',
                   color: Colors.green,
+                ),
+              if (bill.currentMonthSkipsCount > 0)
+                _buildBillRow(
+                  'Current Month Skips Logged (${bill.currentMonthSkipsCount})',
+                  '₹${bill.currentMonthSkipsAmount.toStringAsFixed(0)} (Credited Next Month)',
+                  color: const Color(0xFF2B3B2C),
                 ),
               if (bill.extraMealsAddon > 0)
                 _buildBillRow(
@@ -2187,7 +2251,7 @@ class _OwnerStudentManagementPageState
                       )
                     : ListView.separated(
                         itemCount: bill.deductions.length,
-                        separatorBuilder: (_, _) => const Divider(
+                        separatorBuilder: (context, index) => const Divider(
                           height: 16,
                           color: OwnerColors.borderSubtle,
                         ),

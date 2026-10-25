@@ -754,14 +754,25 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       totalDeductions: previewBill.totalDeductions,
       extraMealsAddon: previewBill.extraMealsAddon,
       guestAddons: previewBill.guestAddons,
+      extraFeesAddon: previewBill.extraFeesAddon,
       finalPayable: previewBill.finalPayable,
+      excessCreditGenerated: previewBill.excessCreditGenerated,
+      previousDues: previewBill.previousDues,
       isPaid: isPaid,
+      autoSettled: previewBill.autoSettled,
+      validSkipsRewarded: previewBill.validSkipsRewarded,
+      daysToExtend: extendDays ?? previewBill.daysToExtend,
+      planId: previewBill.planId,
+      planName: previewBill.planName,
       deductions: previewBill.deductions,
+      platformFee: previewBill.platformFee,
       carryForwardCredit: previewBill.carryForwardCredit,
       normalSkipsCount: previewBill.normalSkipsCount,
       normalSkipsDeduction: previewBill.normalSkipsDeduction,
       specialSkipsCount: previewBill.specialSkipsCount,
       specialSkipsDeduction: previewBill.specialSkipsDeduction,
+      currentMonthSkipsCount: previewBill.currentMonthSkipsCount,
+      currentMonthSkipsAmount: previewBill.currentMonthSkipsAmount,
     );
     await _service.saveBill(finalBill);
     if (student.notificationPrefs['billUpdated'] != false) {
@@ -787,20 +798,28 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     if (wasPaid != isPaid && extendDays != null && extendDays > 0) {
       final currentStudent =
           await _service.getStudentById(student.studentId) ?? student;
-      if (currentStudent.subscriptionEndDate != null) {
-        if (!wasPaid && isPaid) {
-          // Toggled ON: Add the extended days once
-          final newEndDate = currentStudent.subscriptionEndDate!
-              .add(Duration(days: extendDays));
-          await _service
-              .updateStudent(currentStudent.copyWith(subscriptionEndDate: newEndDate));
-        } else if (wasPaid && !isPaid) {
-          // Toggled OFF: Subtract the days back once
-          final newEndDate = currentStudent.subscriptionEndDate!
-              .subtract(Duration(days: extendDays));
-          await _service
-              .updateStudent(currentStudent.copyWith(subscriptionEndDate: newEndDate));
-        }
+      final int bYear = previewBill.year;
+      final int bMonth = previewBill.month;
+      final DateTime defaultMonthEnd = DateTime(bYear, bMonth + 1, 0);
+      final DateTime baseEndDate = (currentStudent.subscriptionEndDate != null &&
+              currentStudent.subscriptionEndDate!.isAfter(DateTime(bYear, bMonth, 1)))
+          ? currentStudent.subscriptionEndDate!
+          : defaultMonthEnd;
+
+      if (!wasPaid && isPaid) {
+        // Toggled ON: Add the extended days once from baseEndDate
+        final newEndDate = baseEndDate.add(Duration(days: extendDays));
+        await _service.updateStudent(
+          currentStudent.copyWith(subscriptionEndDate: newEndDate),
+        );
+      } else if (wasPaid && !isPaid) {
+        // Toggled OFF: Subtract the days back once
+        final newEndDate = currentStudent.subscriptionEndDate != null
+            ? currentStudent.subscriptionEndDate!.subtract(Duration(days: extendDays))
+            : defaultMonthEnd;
+        await _service.updateStudent(
+          currentStudent.copyWith(subscriptionEndDate: newEndDate),
+        );
       }
     }
   }
@@ -1958,6 +1977,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           previousDues: previousDues,
           extraFees: extraFees,
           leaves: leaves,
+          carryForwardResult: carryForward,
           carryForwardCredit: carryForward.amount,
           carryForwardItems: carryForward.items,
         );

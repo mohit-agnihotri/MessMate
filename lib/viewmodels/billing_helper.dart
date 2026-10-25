@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import '../models/app_models.dart';
 
 /// Checks if a specific meal slot is part of the student's active plan/choice for a date.
@@ -106,9 +107,18 @@ bool isSlotCoveredByLeave(
   return true;
 }
 
-/// Generates the monthly bill with precise calculations for base fees,
-/// prorated discounts for mid-month joiners, skip rebates, owner closure compensations,
-/// leaves, extra meals, guest meals, extra fees, and hybrid validity extensions.
+String _getMonthAbbr(int month) {
+  const abbr = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  if (month >= 1 && month <= 12) return abbr[month - 1];
+  return '';
+}
+
+/// Generates the advance monthly bill with precise calculations for base fees,
+/// prorated discounts for mid-month joiners, leaves, extra meals, guest meals, extra fees,
+/// and retrospective carry-forward skips compensation from the prior month.
 BillModel generateAdvancedBill({
   required StudentModel student,
   required MessModel mess,
@@ -121,20 +131,15 @@ BillModel generateAdvancedBill({
   List<ExtraFeeModel> extraFees = const [],
   List<LeaveModel> leaves = const [],
   DateTime? priorSubscriptionEndDate,
+  CarryForwardResult? carryForwardResult,
   double carryForwardCredit = 0.0,
   List<DeductionItem> carryForwardItems = const [],
 }) {
-  double skipsDeduction = 0.0;
-  double ownerClosureDeduction = 0.0;
   double extraMealsAddon = 0.0;
   double guestAddons = 0.0;
   double extraFeesAddon = 0.0;
   double proratedDiscount = 0.0;
   List<DeductionItem> items = [];
-  int normalSkipsCount = 0;
-  double normalSkipsDeduction = 0.0;
-  int specialSkipsCount = 0;
-  double specialSkipsDeduction = 0.0;
 
   // Effective base fee and allowed meals from plan or mess defaults
   final double baseFee = plan?.monthlyFee ?? mess.monthlyFee;
@@ -168,7 +173,7 @@ BillModel generateAdvancedBill({
     items.add(
       DeductionItem(
         date: DateTime(year, month, student.joinDate.day),
-        mealSlot: 'Joined Late',
+        mealSlot: 'Joined Late (${student.joinDate.day} ${_getMonthAbbr(month)})',
         type: 'prorated_discount',
         amount: -proratedDiscount,
       ),
@@ -197,12 +202,6 @@ BillModel generateAdvancedBill({
     }
   }
 
-  // 2. Group records by day
-  Map<int, List<MealRecordModel>> dailyRecords = {};
-  for (var r in records) {
-    dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
-  }
-
   // Fallback dynamic per-meal rebate rate
   final double dynamicPerMealRate = (allowedMeals > 0 && totalDays > 0)
       ? (baseFee / (totalDays * allowedMeals))
@@ -212,19 +211,19 @@ BillModel generateAdvancedBill({
       ? 0.0
       : (ownerSetRate > 0 ? ownerSetRate : dynamicPerMealRate);
 
-  // Owner closure per-meal compensation rate:
-  final double ownerClosureRate = ownerSetRate > 0
-      ? ownerSetRate
-      : (dynamicPerMealRate > 0 ? dynamicPerMealRate : 0.0);
+  // 2. Track current month's live activity
+  // Group records by day
+  Map<int, List<MealRecordModel>> dailyRecords = {};
+  for (var r in records) {
+    dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
+  }
 
-  int totalValidSkips = 0;
-  int totalOwnerClosures = 0;
+  int currentMonthSkipsCount = 0;
+  double currentMonthSkipsAmount = 0.0;
 
-  // 3. Evaluate each day in the month
+  // Process days in current month: Add-ons (guest/extra) and current month skips accumulation
   for (int day = 1; day <= totalDays; day++) {
     final currentDate = DateTime(year, month, day);
-
-    // If before join date, skip
     if (student.joinDate.year == year &&
         student.joinDate.month == month &&
         day < student.joinDate.day) {
@@ -232,13 +231,11 @@ BillModel generateAdvancedBill({
     }
 
     var dayRecs = dailyRecords[day] ?? [];
-
-    // Deduplicate slots for this day:
-    // If a slot has both absent_owner and absent_self, owner closure takes precedence.
     Map<String, MealRecordModel> skippedSlotMap = {};
+
     for (var r in dayRecs) {
       if (r.status == 'absent_owner') {
-        skippedSlotMap[r.mealSlot] = r; // owner takes priority
+        skippedSlotMap[r.mealSlot] = r;
       } else if (r.status == 'absent_self') {
         if (!skippedSlotMap.containsKey(r.mealSlot) ||
             skippedSlotMap[r.mealSlot]?.status != 'absent_owner') {
@@ -269,7 +266,7 @@ BillModel generateAdvancedBill({
       }
     }
 
-    // Integrate slot-granular leaves (zero duplicate deductions if already skipped)
+    // Integrate leaves in current month
     for (var leave in leaves) {
       for (var slot in ['morning', 'noon', 'evening', 'night']) {
         if (isSlotCoveredByLeave(leave, currentDate, slot)) {
@@ -288,143 +285,38 @@ BillModel generateAdvancedBill({
       }
     }
 
-    // Separate into owner closures and student skips
-    List<MealRecordModel> ownerClosures = [];
-    List<MealRecordModel> studentSkips = [];
-
-    for (var entry in skippedSlotMap.entries) {
-      if (entry.value.status == 'absent_owner') {
-        ownerClosures.add(entry.value);
-      } else {
-        studentSkips.add(entry.value);
-      }
-    }
-
     const dayNames = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday'
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday'
     ];
     final dayName = dayNames[currentDate.weekday - 1];
     final isSpecialDay =
         mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
 
-    // Owner Closures:
-    // Awarded strictly if the closed slot was part of the student's active meals for today!
-    for (var r in ownerClosures) {
+    // Count and value current month skips for next month's credit
+    for (var entry in skippedSlotMap.entries) {
+      final r = entry.value;
       if (isSlotActiveForStudent(student, plan, mess, r.mealSlot, currentDate)) {
-        totalOwnerClosures++;
-        final isSpecialClosure =
-            isSpecialDay && (r.isSpecial || mess.specialMealSlot == r.mealSlot);
-
+        final isSpecial = isSpecialDay &&
+            (r.isSpecial || mess.specialMealSlot == r.mealSlot);
         final int feastExtendCount = mess.specialMealExtendMeals > 0
             ? mess.specialMealExtendMeals
             : (mess.specialMealMultiplier.round().clamp(1, 4));
+        final double defaultSpecialRate = (mess.specialMealFlatRate != null &&
+                mess.specialMealFlatRate! > 0)
+            ? mess.specialMealFlatRate!
+            : (effectiveStudentRebateRate * feastExtendCount);
+        final double standardRate =
+            isSpecial ? defaultSpecialRate : effectiveStudentRebateRate;
+        final double skipCost = r.cost ?? standardRate;
 
-        final double refundAmt = isSpecialClosure
-            ? ((mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
-                ? mess.specialMealFlatRate!
-                : (ownerClosureRate * feastExtendCount))
-            : ownerClosureRate;
-
-        ownerClosureDeduction += refundAmt;
-        items.add(
-          DeductionItem(
-            date: currentDate,
-            mealSlot: isSpecialClosure
-                ? '${r.mealSlot} (Special Feast Closed)'
-                : '${r.mealSlot} (Mess Closed)',
-            type: 'owner_off',
-            amount: -refundAmt,
-          ),
-        );
-      }
-    }
-
-    // Student Skips:
-    // Clamped so that (ownerClosures + studentSkips) on that day cannot exceed allowedMeals
-    if (allowedMeals > 0) {
-      int remainingAllowance = max(0, allowedMeals - ownerClosures.length);
-      int clampedSkips = min(studentSkips.length, remainingAllowance);
-
-      if (clampedSkips > 0) {
-        final int? maxAllowedSkips = plan?.deductionPolicy.maxSkipsPerMonth;
-        for (int i = 0; i < clampedSkips; i++) {
-          final isSpecial = isSpecialDay && studentSkips[i].isSpecial;
-          final int feastExtendCount = mess.specialMealExtendMeals > 0
-              ? mess.specialMealExtendMeals
-              : (mess.specialMealMultiplier.round().clamp(1, 4));
-          final double defaultSpecialRate = (mess.specialMealFlatRate != null &&
-                  mess.specialMealFlatRate! > 0)
-              ? mess.specialMealFlatRate!
-              : (effectiveStudentRebateRate * feastExtendCount);
-          final double standardRate =
-              isSpecial ? defaultSpecialRate : effectiveStudentRebateRate;
-          final skipCost = studentSkips[i].cost ??
-              (mess.allowMealSkipping ? standardRate : 0.0);
-
-          if (isSpecial) {
-            specialSkipsCount++;
-            specialSkipsDeduction += skipCost;
-            totalValidSkips += feastExtendCount;
-          } else {
-            normalSkipsCount++;
-            normalSkipsDeduction += skipCost;
-            totalValidSkips++;
-          }
-
-          if (maxAllowedSkips != null &&
-              maxAllowedSkips > 0 &&
-              totalValidSkips > maxAllowedSkips) {
-            // Skips beyond limit are recorded but not refunded financially
-            continue;
-          }
-
-          if (compensationChoice == 'rebate' && skipCost > 0) {
-            skipsDeduction += skipCost;
-            items.add(
-              DeductionItem(
-                date: currentDate,
-                mealSlot: isSpecial
-                    ? '${studentSkips[i].mealSlot} (Special Feast Skip)'
-                    : '${studentSkips[i].mealSlot} (Regular Skip)',
-                type: isSpecial ? 'special_skip' : 'self_cancelled',
-                amount: -skipCost,
-              ),
-            );
-          }
-        }
+        currentMonthSkipsCount++;
+        currentMonthSkipsAmount += skipCost;
       }
     }
   }
 
-  // 4. Hybrid Extension handling (compensationChoice == 'extend')
-  int daysToExtend = 0;
-  if (compensationChoice == 'extend' && allowedMeals > 0) {
-    daysToExtend = totalValidSkips ~/ allowedMeals;
-    int remainderSkips = totalValidSkips % allowedMeals;
-
-    // Odd leftover skips receive a cash rebate so student loses zero value
-    if (remainderSkips > 0 && effectiveStudentRebateRate > 0) {
-      double remainderAmt = remainderSkips * effectiveStudentRebateRate;
-      skipsDeduction += remainderAmt;
-      items.add(
-        DeductionItem(
-          date: DateTime(year, month, totalDays),
-          mealSlot:
-              'Odd Skips Rebate ($remainderSkips meal${remainderSkips > 1 ? "s" : ""})',
-          type: 'self_cancelled',
-          amount: -remainderAmt,
-        ),
-      );
-    }
-  }
-
-  // 5. Extra Fees Integration with targetBillingMonth
+  // 3. Extra Fees
   for (var fee in extraFees) {
     if (fee.targetBillingMonth == month && fee.targetBillingYear == year) {
       extraFeesAddon += fee.amount;
@@ -439,25 +331,67 @@ BillModel generateAdvancedBill({
     }
   }
 
-  // 6. Integrate Carry Forward Credit from prior paid months
-  if (carryForwardCredit > 0) {
-    if (carryForwardItems.isNotEmpty) {
-      items.addAll(carryForwardItems);
-    } else {
-      const monthNames = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
+  // 4. Retrospective Skips Compensation (from Prior Month Carry Forward)
+  final int totalPriorValidSkips = carryForwardResult != null
+      ? carryForwardResult.totalValidSkips
+      : (carryForwardCredit > 0 && effectiveStudentRebateRate > 0
+          ? (carryForwardCredit / effectiveStudentRebateRate).round()
+          : 0);
+
+  final double priorCreditAmount =
+      carryForwardResult != null ? carryForwardResult.amount : carryForwardCredit;
+
+  final int normalSkipsCount = carryForwardResult?.normalSkipsCount ??
+      (carryForwardResult == null ? totalPriorValidSkips : 0);
+  final double normalSkipsDeduction = carryForwardResult?.normalSkipsDeduction ??
+      (carryForwardResult == null ? priorCreditAmount : 0.0);
+  final int specialSkipsCount = carryForwardResult?.specialSkipsCount ?? 0;
+  final double specialSkipsDeduction =
+      carryForwardResult?.specialSkipsDeduction ?? 0.0;
+  final List<DeductionItem> priorItems =
+      carryForwardResult?.items ?? carryForwardItems;
+
+  double skipsDeduction = 0.0;
+  int daysToExtend = 0;
+
+  if (compensationChoice == 'extend') {
+    if (allowedMeals > 0 && totalPriorValidSkips > 0) {
+      daysToExtend = totalPriorValidSkips ~/ allowedMeals;
+      int remainderSkips = totalPriorValidSkips % allowedMeals;
+
+      // Odd leftover skips receive a cash rebate so student loses zero value
+      if (remainderSkips > 0 && effectiveStudentRebateRate > 0) {
+        double remainderAmt = remainderSkips * effectiveStudentRebateRate;
+        skipsDeduction = remainderAmt;
+        items.add(
+          DeductionItem(
+            date: DateTime(year, month, 1),
+            mealSlot:
+                'Odd Skips Rebate ($remainderSkips meal${remainderSkips > 1 ? "s" : ""})',
+            type: 'carry_forward',
+            amount: -remainderAmt,
+          ),
+        );
+      }
+    }
+  } else {
+    // compensationChoice == 'rebate'
+    daysToExtend = 0;
+    skipsDeduction = priorCreditAmount;
+
+    if (priorItems.isNotEmpty) {
+      items.addAll(priorItems);
+    } else if (priorCreditAmount > 0) {
       int prevMonth = month - 1;
       if (prevMonth < 1) prevMonth = 12;
-      final prevMonthName = monthNames[prevMonth - 1];
+      final prevMonthName = _getMonthAbbr(prevMonth);
 
       items.add(
         DeductionItem(
           date: DateTime(year, month, 1),
           mealSlot: '$prevMonthName Skips Credit (Carry Forward)',
           type: 'carry_forward',
-          amount: -carryForwardCredit,
+          amount: -priorCreditAmount,
         ),
       );
     }
@@ -468,12 +402,10 @@ BillModel generateAdvancedBill({
     skipsDeduction = baseFee;
   }
 
-  // 7. Calculate Final Payable
+  // 5. Calculate Final Payable
   double calculatedTotal = baseFee -
       proratedDiscount -
-      skipsDeduction -
-      ownerClosureDeduction -
-      carryForwardCredit +
+      skipsDeduction +
       extraMealsAddon +
       guestAddons +
       extraFeesAddon +
@@ -504,7 +436,7 @@ BillModel generateAdvancedBill({
     year: year,
     baseFee: baseFee,
     proratedDiscount: proratedDiscount,
-    totalDeductions: skipsDeduction + ownerClosureDeduction + carryForwardCredit,
+    totalDeductions: skipsDeduction,
     extraMealsAddon: extraMealsAddon,
     guestAddons: guestAddons,
     extraFeesAddon: extraFeesAddon,
@@ -513,7 +445,7 @@ BillModel generateAdvancedBill({
     previousDues: previousDues,
     isPaid: isPaid,
     autoSettled: autoSettled,
-    validSkipsRewarded: totalValidSkips + totalOwnerClosures,
+    validSkipsRewarded: totalPriorValidSkips,
     daysToExtend: daysToExtend,
     planId: plan?.planId,
     planName: plan?.name,
@@ -522,7 +454,9 @@ BillModel generateAdvancedBill({
     normalSkipsDeduction: normalSkipsDeduction,
     specialSkipsCount: specialSkipsCount,
     specialSkipsDeduction: specialSkipsDeduction,
-    carryForwardCredit: carryForwardCredit,
+    carryForwardCredit: skipsDeduction,
+    currentMonthSkipsCount: currentMonthSkipsCount,
+    currentMonthSkipsAmount: currentMonthSkipsAmount,
   );
 }
 
@@ -531,16 +465,30 @@ class CarryForwardResult {
   final double amount;
   final int skipCount;
   final List<DeductionItem> items;
+  final int normalSkipsCount;
+  final double normalSkipsDeduction;
+  final int specialSkipsCount;
+  final double specialSkipsDeduction;
+  final int ownerClosureCount;
+  final double ownerClosureDeduction;
+  final int totalValidSkips;
 
   const CarryForwardResult({
     this.amount = 0.0,
     this.skipCount = 0,
     this.items = const [],
+    this.normalSkipsCount = 0,
+    this.normalSkipsDeduction = 0.0,
+    this.specialSkipsCount = 0,
+    this.specialSkipsDeduction = 0.0,
+    this.ownerClosureCount = 0,
+    this.ownerClosureDeduction = 0.0,
+    this.totalValidSkips = 0,
   });
 }
 
-/// Calculates uncredited skips and owner closures from previous paid months
-/// that were not factored into the previous month's bill when it was paid.
+/// Calculates uncredited skips and owner closures from previous months
+/// that are to be credited retrospectively into the advance bill.
 Future<CarryForwardResult> calculateCarryForwardCredit({
   required String studentId,
   required int currentMonth,
@@ -561,9 +509,8 @@ Future<CarryForwardResult> calculateCarryForwardCredit({
     final BillModel? prevBill =
         await service.getBill(studentId, prevMonth, prevYear);
 
-    // Only carry forward if the previous bill was marked as PAID.
-    // (If it was unpaid, getPreviousUnpaidDues already handles the whole net balance).
-    if (prevBill == null || !prevBill.isPaid) {
+    // If previous bill was already settled with validity extension, skips were consumed for validity
+    if (prevBill != null && prevBill.daysToExtend > 0) {
       return const CarryForwardResult();
     }
 
@@ -571,7 +518,8 @@ Future<CarryForwardResult> calculateCarryForwardCredit({
     final List<MealRecordModel> prevRecords =
         await service.getMealRecords(studentId, prevMonth, prevYear);
 
-    if (prevRecords.isEmpty && prevBill.excessCreditGenerated <= 0) {
+    if (prevRecords.isEmpty &&
+        (prevBill == null || prevBill.excessCreditGenerated <= 0)) {
       return const CarryForwardResult();
     }
 
@@ -593,8 +541,19 @@ Future<CarryForwardResult> calculateCarryForwardCredit({
         ? 0.0
         : (ownerSetRate > 0 ? ownerSetRate : dynamicPerMealRate);
 
-    double actualTotalDeductions = 0.0;
-    int uncreditedCount = 0;
+    final prevMonthName = _getMonthAbbr(prevMonth);
+    const dayNames = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday'
+    ];
+
+    int normalSkipsCount = 0;
+    double normalSkipsDeduction = 0.0;
+    int specialSkipsCount = 0;
+    double specialSkipsDeduction = 0.0;
+    int ownerClosureCount = 0;
+    double ownerClosureDeduction = 0.0;
+    int totalValidSkips = 0;
     List<DeductionItem> carriedItems = [];
 
     // Group previous records by day
@@ -605,68 +564,123 @@ Future<CarryForwardResult> calculateCarryForwardCredit({
 
     for (int day = 1; day <= totalDaysInPrevMonth; day++) {
       var dayRecs = dailyRecords[day] ?? [];
-      for (var r in dayRecs) {
-        if (r.status == 'absent_self' || r.status == 'absent_owner') {
-          uncreditedCount++;
-          final int feastExtendCount = mess.specialMealExtendMeals > 0
-              ? mess.specialMealExtendMeals
-              : (mess.specialMealMultiplier.round().clamp(1, 4));
-          final double defaultSpecialRate =
-              (mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
-                  ? mess.specialMealFlatRate!
-                  : (effectiveRate * feastExtendCount);
-          final double standardRate =
-              r.isSpecial ? defaultSpecialRate : effectiveRate;
-          final double skipCost = r.cost ?? standardRate;
+      final currentDate = DateTime(prevYear, prevMonth, day);
+      final dayName = dayNames[currentDate.weekday - 1];
+      final isSpecialDay =
+          mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
 
-          actualTotalDeductions += skipCost;
+      // Deduplicate slots for this day: absent_owner takes precedence over absent_self
+      Map<String, MealRecordModel> skippedSlotMap = {};
+      for (var r in dayRecs) {
+        if (r.status == 'absent_owner') {
+          skippedSlotMap[r.mealSlot] = r;
+        } else if (r.status == 'absent_self') {
+          if (!skippedSlotMap.containsKey(r.mealSlot) ||
+              skippedSlotMap[r.mealSlot]?.status != 'absent_owner') {
+            skippedSlotMap[r.mealSlot] = r;
+          }
+        }
+      }
+
+      for (var entry in skippedSlotMap.entries) {
+        final r = entry.value;
+        final isSpecial = isSpecialDay &&
+            (r.isSpecial || mess.specialMealSlot == r.mealSlot);
+        final int feastExtendCount = mess.specialMealExtendMeals > 0
+            ? mess.specialMealExtendMeals
+            : (mess.specialMealMultiplier.round().clamp(1, 4));
+        final double defaultSpecialRate =
+            (mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
+                ? mess.specialMealFlatRate!
+                : (effectiveRate * feastExtendCount);
+        final double standardRate =
+            isSpecial ? defaultSpecialRate : effectiveRate;
+        final double skipCost = r.cost ?? standardRate;
+
+        if (r.status == 'absent_owner') {
+          ownerClosureCount++;
+          ownerClosureDeduction += skipCost;
+          totalValidSkips += (isSpecial ? feastExtendCount : 1);
+          carriedItems.add(
+            DeductionItem(
+              date: r.date,
+              mealSlot: isSpecial
+                  ? '$prevMonthName Special Feast Closed (${r.mealSlot})'
+                  : '$prevMonthName Mess Closed (${r.mealSlot})',
+              type: 'carry_forward',
+              amount: -skipCost,
+            ),
+          );
+        } else if (r.status == 'absent_self') {
+          if (isSpecial) {
+            specialSkipsCount++;
+            specialSkipsDeduction += skipCost;
+            totalValidSkips += feastExtendCount;
+            carriedItems.add(
+              DeductionItem(
+                date: r.date,
+                mealSlot: '$prevMonthName Special Feast Skip (${r.mealSlot})',
+                type: 'carry_forward',
+                amount: -skipCost,
+              ),
+            );
+          } else {
+            normalSkipsCount++;
+            normalSkipsDeduction += skipCost;
+            totalValidSkips++;
+            carriedItems.add(
+              DeductionItem(
+                date: r.date,
+                mealSlot: '$prevMonthName Regular Skip (${r.mealSlot})',
+                type: 'carry_forward',
+                amount: -skipCost,
+              ),
+            );
+          }
         }
       }
     }
 
-    // The uncredited amount is whatever post-payment skips happened:
-    double uncreditedAmount =
-        max(0.0, actualTotalDeductions - prevBill.totalDeductions);
+    double totalPrevSkipsAmount =
+        normalSkipsDeduction + specialSkipsDeduction + ownerClosureDeduction;
 
-    if (prevBill.excessCreditGenerated > 0) {
+    // Check if any deductions were already given in prevBill (legacy safety)
+    double alreadyDeductedInPrevBill = 0.0;
+    if (prevBill != null) {
+      for (var d in prevBill.deductions) {
+        if (d.type == 'self_cancelled' ||
+            d.type == 'owner_off' ||
+            d.type == 'special_skip') {
+          alreadyDeductedInPrevBill += d.amount.abs();
+        }
+      }
+    }
+
+    double uncreditedAmount =
+        max(0.0, totalPrevSkipsAmount - alreadyDeductedInPrevBill);
+
+    if (prevBill != null && prevBill.excessCreditGenerated > 0) {
       uncreditedAmount += prevBill.excessCreditGenerated;
     }
 
-    if (uncreditedAmount > 0) {
-      const monthNames = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-      ];
-      final prevMonthName = monthNames[prevMonth - 1];
-
-      carriedItems.add(
-        DeductionItem(
-          date: DateTime(currentYear, currentMonth, 1),
-          mealSlot: '$prevMonthName Skips Credit (Carry Forward)',
-          type: 'carry_forward',
-          amount: -uncreditedAmount,
-        ),
-      );
-
+    if (uncreditedAmount > 0 || totalValidSkips > 0) {
       return CarryForwardResult(
         amount: uncreditedAmount,
-        skipCount: uncreditedCount,
+        skipCount: normalSkipsCount + specialSkipsCount + ownerClosureCount,
         items: carriedItems,
+        normalSkipsCount: normalSkipsCount,
+        normalSkipsDeduction: normalSkipsDeduction,
+        specialSkipsCount: specialSkipsCount,
+        specialSkipsDeduction: specialSkipsDeduction,
+        ownerClosureCount: ownerClosureCount,
+        ownerClosureDeduction: ownerClosureDeduction,
+        totalValidSkips: totalValidSkips,
       );
     }
 
     return const CarryForwardResult();
   } catch (e) {
+    debugPrint('[CarryForward] error: $e');
     return const CarryForwardResult();
   }
 }

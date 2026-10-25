@@ -1179,6 +1179,9 @@ class BillModel {
   final int specialSkipsCount;
   final double specialSkipsDeduction;
   final double carryForwardCredit;
+  // Current Month Live Skips Tracking (Accumulated for next month):
+  final int currentMonthSkipsCount;
+  final double currentMonthSkipsAmount;
 
   BillModel({
     required this.billId,
@@ -1208,6 +1211,8 @@ class BillModel {
     this.specialSkipsCount = 0,
     this.specialSkipsDeduction = 0.0,
     this.carryForwardCredit = 0.0,
+    this.currentMonthSkipsCount = 0,
+    this.currentMonthSkipsAmount = 0.0,
   });
 
   factory BillModel.fromMap(Map<String, dynamic> map) {
@@ -1241,6 +1246,8 @@ class BillModel {
       specialSkipsCount: (map['specialSkipsCount'] ?? 0) as int,
       specialSkipsDeduction: (map['specialSkipsDeduction'] ?? 0.0).toDouble(),
       carryForwardCredit: (map['carryForwardCredit'] ?? 0.0).toDouble(),
+      currentMonthSkipsCount: (map['currentMonthSkipsCount'] ?? 0) as int,
+      currentMonthSkipsAmount: (map['currentMonthSkipsAmount'] ?? 0.0).toDouble(),
     );
   }
 
@@ -1272,6 +1279,8 @@ class BillModel {
         'specialSkipsCount': specialSkipsCount,
         'specialSkipsDeduction': specialSkipsDeduction,
         'carryForwardCredit': carryForwardCredit,
+        'currentMonthSkipsCount': currentMonthSkipsCount,
+        'currentMonthSkipsAmount': currentMonthSkipsAmount,
       };
 }
 

@@ -5,12 +5,12 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 const auth = admin.auth();
 
-const PRESERVED_COLLECTIONS = new Set(['global_dishes', 'system_config']);
+const PRESERVED_COLLECTIONS = new Set(['global_dishes', 'dishes', 'system_config']);
 
 const KNOWN_COLLECTIONS = [
   'messes', 'students', 'meal_records', 'bills', 'announcements',
   'feedbacks', 'leaves', 'menus', 'closed_slots', 'weekly_templates',
-  'mess_photos', 'meal_plans', 'extra_fees', 'users', 'preferences', 'dishes', 'support_tickets'
+  'mess_photos', 'meal_plans', 'extra_fees', 'users', 'preferences', 'support_tickets'
 ];
 
 async function deleteAllAuthUsers() {

@@ -47,7 +47,77 @@ class StudentBillPage extends ConsumerWidget {
                         child: _buildMainBillCard(state.bill!, state),
                       ),
                     ),
-                    if (state.postPaymentSkipsAmount > 0)
+                    if (state.bill!.daysToExtend > 0)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF5EC),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFCCE0C8)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.event_available_rounded,
+                                  size: 20,
+                                  color: Color(0xFF3F653E),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '🎉 Subscription Extended: +${state.bill!.daysToExtend} days added for your meal skips!',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF2B3B2C),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (state.bill!.currentMonthSkipsCount > 0)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2EBE0),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFBDD4BA)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18,
+                                  color: Color(0xFF2B3B2C),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '💡 You skipped ${state.bill!.currentMonthSkipsCount} meal${state.bill!.currentMonthSkipsCount > 1 ? "s" : ""} in ${_months[state.selectedMonth.month - 1]} (₹${state.bill!.currentMonthSkipsAmount.toInt()} saved). Since fees are advance, this will be automatically credited to your next bill!',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.4,
+                                      color: const Color(0xFF2B3B2C),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (state.postPaymentSkipsAmount > 0)
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                         sliver: SliverToBoxAdapter(
@@ -492,13 +562,21 @@ class StudentBillPage extends ConsumerWidget {
               isCredit: true,
             ),
           ],
-          if (bill.carryForwardCredit > 0) ...[
+          if (bill.carryForwardCredit > 0 && bill.normalSkipsCount == 0 && bill.specialSkipsCount == 0) ...[
             const SizedBox(height: 12),
             _buildBreakdownRow(
               'Previous Month Skips Credit',
               'Carried forward from last paid cycle',
               '-₹${bill.carryForwardCredit.toInt()}',
               isCredit: true,
+            ),
+          ],
+          if (bill.currentMonthSkipsCount > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Current Month Skips (${bill.currentMonthSkipsCount} meal${bill.currentMonthSkipsCount > 1 ? "s" : ""})',
+              'Logged for next month\'s credit',
+              '₹${bill.currentMonthSkipsAmount.toInt()}',
             ),
           ],
           if (bill.extraMealsAddon > 0) ...[
@@ -759,17 +837,35 @@ class StudentBillPage extends ConsumerWidget {
                         '-₹${bill.proratedDiscount.toInt()}',
                         isCredit: true,
                       ),
-                    if (bill.totalDeductions > 0)
+                    if (bill.specialSkipsCount > 0)
+                      _buildModalRow(
+                        '✨ Special Feast Skips (${bill.specialSkipsCount})',
+                        '-₹${bill.specialSkipsDeduction.toInt()}',
+                        isCredit: true,
+                      ),
+                    if (bill.normalSkipsCount > 0)
+                      _buildModalRow(
+                        'Regular Meal Skips (${bill.normalSkipsCount})',
+                        '-₹${bill.normalSkipsDeduction.toInt()}',
+                        isCredit: true,
+                      )
+                    else if (bill.totalDeductions > 0 && bill.specialSkipsCount == 0)
                       _buildModalRow(
                         'Skipped Meals Credit',
                         '-₹${bill.totalDeductions.toInt()}',
                         isCredit: true,
                       ),
-                    if (bill.carryForwardCredit > 0)
+                    if (bill.carryForwardCredit > 0 && bill.normalSkipsCount == 0 && bill.specialSkipsCount == 0)
                       _buildModalRow(
                         'Previous Month Skips Credit',
                         '-₹${bill.carryForwardCredit.toInt()}',
                         isCredit: true,
+                      ),
+                    if (bill.currentMonthSkipsCount > 0)
+                      _buildModalRow(
+                        'Current Month Skips (${bill.currentMonthSkipsCount})',
+                        '₹${bill.currentMonthSkipsAmount.toInt()} (Next Month Credit)',
+                        isCredit: false,
                       ),
                     if (bill.guestAddons > 0)
                       _buildModalRow(
@@ -795,6 +891,58 @@ class StudentBillPage extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (bill.deductions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Itemized Deductions & Add-ons',
+                  style: StudentTypography.bold(fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: StudentColors.borderSubtle),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: bill.deductions.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 12, color: StudentColors.borderSubtle),
+                    itemBuilder: (context, index) {
+                      final item = bill.deductions[index];
+                      final isDeduction = item.amount < 0;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${item.date.day}/${item.date.month} • ${item.mealSlot}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: StudentColors.textDark,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${isDeduction ? "" : "+"}₹${item.amount.abs().toInt()}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDeduction
+                                  ? StudentColors.sageDark
+                                  : StudentColors.brickRed,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
