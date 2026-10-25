@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../models/app_models.dart';
+import '../../../services/notification_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import 'theme/student_inspired_theme.dart';
 import 'widgets/mess_discovery_details_sheet.dart';
@@ -1608,6 +1609,26 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
         assignedPlanId: planId,
       );
       await appService.updateStudent(newStudent);
+    }
+
+    if (mess.ownerNotificationPrefs['joinRequest'] != false) {
+      try {
+        final applicantName = student?.name ??
+            FirebaseAuth.instance.currentUser?.displayName ??
+            'A student';
+        await NotificationService.sendOwnerNotification(
+          ownerId: mess.ownerId,
+          title: '👋 New Join Request',
+          message: '$applicantName requested to join ${mess.name}',
+          data: {
+            'type': 'join_request',
+            'messId': mess.messId,
+            'studentId': uid,
+          },
+        );
+      } catch (e) {
+        debugPrint('[OneSignal] Error sending join request to owner: $e');
+      }
     }
 
     if (context.mounted) {

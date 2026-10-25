@@ -47,6 +47,42 @@ class StudentBillPage extends ConsumerWidget {
                         child: _buildMainBillCard(state.bill!, state),
                       ),
                     ),
+                    if (state.postPaymentSkipsAmount > 0)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2EBE0),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFBDD4BA)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18,
+                                  color: Color(0xFF2B3B2C),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'You have ₹${state.postPaymentSkipsAmount.toInt()} unbilled skips after paying this bill. This amount will be automatically deducted from your next month\'s bill!',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.4,
+                                      color: const Color(0xFF2B3B2C),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                       sliver: SliverToBoxAdapter(
@@ -65,7 +101,51 @@ class StudentBillPage extends ConsumerWidget {
                         child: _buildDownloadButton(state.bill!),
                       ),
                     ),
-                  ] else
+                  ] else if (state.error != null)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline_rounded,
+                                  size: 48, color: StudentColors.brickRed),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Could not load bill',
+                                style:
+                                    StudentTypography.serifHeading(fontSize: 18),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                state.error!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  color: StudentColors.textSecondary,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: StudentColors.amber,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    ref.read(studentBillProvider.notifier).load(),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
@@ -412,6 +492,15 @@ class StudentBillPage extends ConsumerWidget {
               isCredit: true,
             ),
           ],
+          if (bill.carryForwardCredit > 0) ...[
+            const SizedBox(height: 12),
+            _buildBreakdownRow(
+              'Previous Month Skips Credit',
+              'Carried forward from last paid cycle',
+              '-₹${bill.carryForwardCredit.toInt()}',
+              isCredit: true,
+            ),
+          ],
           if (bill.extraMealsAddon > 0) ...[
             const SizedBox(height: 12),
             _buildBreakdownRow(
@@ -674,6 +763,12 @@ class StudentBillPage extends ConsumerWidget {
                       _buildModalRow(
                         'Skipped Meals Credit',
                         '-₹${bill.totalDeductions.toInt()}',
+                        isCredit: true,
+                      ),
+                    if (bill.carryForwardCredit > 0)
+                      _buildModalRow(
+                        'Previous Month Skips Credit',
+                        '-₹${bill.carryForwardCredit.toInt()}',
                         isCredit: true,
                       ),
                     if (bill.guestAddons > 0)

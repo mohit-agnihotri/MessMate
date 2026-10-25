@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/cloudinary_config.dart';
 import 'app_models.dart';
 import 'app_service.dart';
 import '../viewmodels/cutoff_helper.dart';
@@ -78,23 +82,73 @@ class FirebaseService implements AppService {
     Uint8List bytes,
     String extension,
   ) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
-    final fullPath = '$path/$fileName';
+    // 1. Strict MIME / extension validation for security
+    final cleanExt = extension.toLowerCase().replaceAll('.', '').trim();
+    const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp'};
+    if (!allowedExtensions.contains(cleanExt)) {
+      throw Exception('Unsupported format: .$cleanExt. Only JPG, PNG, and WebP are allowed.');
+    }
 
-    await Supabase.instance.client.storage
-        .from('mess_photos')
-        .uploadBinary(
-          fullPath,
-          bytes,
-          fileOptions: FileOptions(
-            upsert: true,
-            contentType: 'image/$extension',
+    // 2. Strict file size safety guard (Max 5 MB)
+    const maxAllowedBytes = 5 * 1024 * 1024;
+    if (bytes.lengthInBytes > maxAllowedBytes) {
+      throw Exception('Image file is too large (${(bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1)} MB). Max limit is 5MB.');
+    }
+
+    // 3. Upload to Cloudinary with Unsigned Preset & Folder Isolation
+    try {
+      final uri = Uri.parse(CloudinaryConfig.uploadUrl);
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
+        ..fields['folder'] = 'messmate/$path'
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: '${DateTime.now().millisecondsSinceEpoch}.$cleanExt',
           ),
         );
 
-    return Supabase.instance.client.storage
-        .from('mess_photos')
-        .getPublicUrl(fullPath);
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 30));
+      final responseBody = await streamedResponse.stream.bytesToString();
+      final Map<String, dynamic> responseJson = jsonDecode(responseBody);
+
+      if (streamedResponse.statusCode == 200 &&
+          responseJson.containsKey('secure_url')) {
+        final rawUrl = responseJson['secure_url'] as String;
+        // Return Cloudinary auto-optimized CDN URL
+        return CloudinaryConfig.getOptimizedUrl(rawUrl);
+      } else {
+        final errorMsg = responseJson['error']?['message'] ??
+            'Cloudinary upload failed (HTTP ${streamedResponse.statusCode})';
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      debugPrint('[Cloudinary] Primary upload failed: $e, checking fallback...');
+      // Fallback: If Cloudinary network error occurs, attempt Supabase upload if available
+      try {
+        final client = Supabase.instance.client;
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}.$cleanExt';
+        final fullPath = '$path/$fileName';
+
+        await client.storage
+            .from('mess_photos')
+            .uploadBinary(
+              fullPath,
+              bytes,
+              fileOptions: FileOptions(
+                upsert: true,
+                contentType: 'image/$cleanExt',
+              ),
+            );
+
+        return client.storage.from('mess_photos').getPublicUrl(fullPath);
+      } catch (fallbackError) {
+        debugPrint('[Storage] Both Cloudinary and fallback failed: $fallbackError');
+        throw Exception('Image upload failed: $e');
+      }
+    }
   }
 
   // STUDENTS
@@ -420,43 +474,93 @@ class FirebaseService implements AppService {
   Future<List<MealRecordModel>> getMealRecords(
     String studentId,
     int month,
-    int year,
-  ) async {
+    int year, {
+    String? messId,
+  }) async {
     final startIso = DateTime(year, month, 1).toIso8601String().substring(0, 10);
     final endIso = (month == 12)
         ? DateTime(year + 1, 1, 1).toIso8601String().substring(0, 10)
         : DateTime(year, month + 1, 1).toIso8601String().substring(0, 10);
 
-    final snap = await _db
-        .collection('meal_records')
-        .where('studentId', isEqualTo: studentId)
-        .where('date', isGreaterThanOrEqualTo: startIso)
-        .where('date', isLessThan: endIso)
-        .get();
-    final records = snap.docs.map((d) => MealRecordModel.fromMap(d.data())).toList();
+    String resolvedMessId = messId ?? '';
+    if (resolvedMessId.isEmpty) {
+      try {
+        final sDoc = await _db.collection('students').doc(studentId).get();
+        if (sDoc.exists && sDoc.data()?['messId'] != null) {
+          resolvedMessId = sDoc.data()!['messId'] as String;
+        }
+      } catch (_) {}
+    }
+
+    Query query = _db.collection('meal_records').where('studentId', isEqualTo: studentId);
+    if (resolvedMessId.isNotEmpty) {
+      query = query.where('messId', isEqualTo: resolvedMessId);
+    }
+
+    final snap = await query.get();
+    final records = snap.docs
+        .map((d) => MealRecordModel.fromMap(d.data() as Map<String, dynamic>))
+        .where((r) {
+          final dStr = r.date.toIso8601String().substring(0, 10);
+          return dStr.compareTo(startIso) >= 0 && dStr.compareTo(endIso) < 0;
+        })
+        .toList();
 
     // Fetch closed slots for the student's mess
-    final studentSnap = await _db.collection('students').doc(studentId).get();
-    if (studentSnap.exists) {
-      final messId = studentSnap.data()?['messId'] as String?;
-      if (messId != null) {
-        final closedSnap = await _db
-            .collection('messes')
-            .doc(messId)
-            .collection('closed_slots')
-            .where('date', isGreaterThanOrEqualTo: startIso)
-            .where('date', isLessThan: endIso)
-            .get();
+    if (resolvedMessId.isNotEmpty) {
+      final closedSnap = await _db
+          .collection('messes')
+          .doc(resolvedMessId)
+          .collection('closed_slots')
+          .get();
 
-        for (var doc in closedSnap.docs) {
-          final data = doc.data();
+      // Check mess special meal configuration to properly set isSpecial
+      MessModel? mess;
+      try {
+        final messSnap = await _db.collection('messes').doc(resolvedMessId).get();
+        if (messSnap.exists && messSnap.data() != null) {
+          mess = MessModel.fromMap(messSnap.data()!);
+        }
+      } catch (_) {}
+
+      final existingKeys = <String>{};
+      for (var r in records) {
+        final dStr = r.date.toIso8601String().substring(0, 10);
+        existingKeys.add('${dStr}_${r.mealSlot}');
+      }
+
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+      for (var doc in closedSnap.docs) {
+        final data = doc.data();
+        final dateStr = (data['date'] as String?) ?? '';
+        if (dateStr.compareTo(startIso) < 0 || dateStr.compareTo(endIso) >= 0) {
+          continue;
+        }
+        final mealSlot = (data['mealSlot'] as String?) ?? '';
+        final key = '${dateStr}_$mealSlot';
+
+        if (!existingKeys.contains(key)) {
+          existingKeys.add(key);
+
+          final parsedDate = DateTime.tryParse('${dateStr}T00:00:00.000') ?? DateTime.now();
+          final dayName = dayNames[parsedDate.weekday - 1];
+          final bool isSpecialDay = mess != null &&
+              mess.specialMealEnabled &&
+              mess.specialMealDays.contains(dayName);
+          final bool isSpecialSlot = mess != null &&
+              isSpecialDay &&
+              (mess.specialMealSlot == mealSlot);
+          final bool isExplicitSpecial = data['isSpecial'] == true;
+
           records.add(MealRecordModel(
             recordId: doc.id,
             studentId: studentId,
-            messId: messId,
-            date: DateTime.parse(data['date'] + 'T00:00:00.000'),
-            mealSlot: data['mealSlot'],
+            messId: resolvedMessId,
+            date: parsedDate,
+            mealSlot: mealSlot,
             status: 'absent_owner',
+            isSpecial: isExplicitSpecial || isSpecialSlot,
           ));
         }
       }
@@ -502,13 +606,15 @@ class FirebaseService implements AppService {
     return _db
         .collection('meal_records')
         .where('studentId', isEqualTo: studentId)
-        .where('messId', isEqualTo: messId)
-        .where('date', isGreaterThanOrEqualTo: startIso)
-        .where('date', isLessThan: endIso)
         .snapshots()
         .map(
-          (snap) =>
-              snap.docs.map((d) => MealRecordModel.fromMap(d.data())).toList(),
+          (snap) => snap.docs
+              .map((d) => MealRecordModel.fromMap(d.data()))
+              .where((r) {
+                final dStr = r.date.toIso8601String().substring(0, 10);
+                return dStr.compareTo(startIso) >= 0 && dStr.compareTo(endIso) < 0;
+              })
+              .toList(),
         );
   }
 
@@ -584,6 +690,33 @@ class FirebaseService implements AppService {
     return activeLeaves.isNotEmpty ? activeLeaves.first : null;
   }
 
+  @override
+  Future<List<LeaveModel>> getStudentLeaves(
+    String studentId, {
+    String? messId,
+  }) async {
+    String resolvedMessId = messId ?? '';
+    if (resolvedMessId.isEmpty) {
+      try {
+        final sDoc = await _db.collection('students').doc(studentId).get();
+        if (sDoc.exists && sDoc.data()?['messId'] != null) {
+          resolvedMessId = sDoc.data()!['messId'] as String;
+        }
+      } catch (_) {}
+    }
+
+    Query query = _db.collection('leaves').where('studentId', isEqualTo: studentId);
+    if (resolvedMessId.isNotEmpty) {
+      query = query.where('messId', isEqualTo: resolvedMessId);
+    }
+
+    final snap = await query.get();
+
+    final leaves = snap.docs.map((d) => LeaveModel.fromMap(d.data() as Map<String, dynamic>)).toList();
+    leaves.sort((a, b) => b.startDate.compareTo(a.startDate));
+    return leaves;
+  }
+
   // BILLING
   @override
   Future<BillModel?> getBill(String studentId, int month, int year) async {
@@ -597,23 +730,37 @@ class FirebaseService implements AppService {
   Future<double> getPreviousUnpaidDues(
     String studentId,
     int month,
-    int year,
-  ) async {
-    final querySnapshot = await _db
-        .collection('bills')
-        .where('studentId', isEqualTo: studentId)
-        .where('isPaid', isEqualTo: false)
-        .get();
+    int year, {
+    String? messId,
+  }) async {
+    String resolvedMessId = messId ?? '';
+    if (resolvedMessId.isEmpty) {
+      try {
+        final sDoc = await _db.collection('students').doc(studentId).get();
+        if (sDoc.exists && sDoc.data()?['messId'] != null) {
+          resolvedMessId = sDoc.data()!['messId'] as String;
+        }
+      } catch (_) {}
+    }
+
+    Query query = _db.collection('bills').where('studentId', isEqualTo: studentId);
+    if (resolvedMessId.isNotEmpty) {
+      query = query.where('messId', isEqualTo: resolvedMessId);
+    }
+
+    final querySnapshot = await query.get();
 
     double totalDues = 0;
     final currentVal = year * 12 + month;
 
     for (var doc in querySnapshot.docs) {
-      final bill = BillModel.fromMap(doc.data());
-      final billVal = bill.year * 12 + bill.month;
-      // Only include bills from strict previous months
-      if (billVal < currentVal) {
-        totalDues += bill.finalPayable;
+      final bill = BillModel.fromMap(doc.data() as Map<String, dynamic>);
+      if (!bill.isPaid) {
+        final billVal = bill.year * 12 + bill.month;
+        // Only include bills from strict previous months
+        if (billVal < currentVal) {
+          totalDues += bill.finalPayable;
+        }
       }
     }
     return totalDues;

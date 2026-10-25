@@ -1,4 +1,4 @@
-package com.messmate.mess_app
+package com.mezzo.app
 
 import io.flutter.embedding.android.FlutterActivity
 

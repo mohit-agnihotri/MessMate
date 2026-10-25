@@ -11,6 +11,7 @@ import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
 import 'widgets/manage_closed_slots_sheet.dart';
 import 'widgets/mess_qr_standee_sheet.dart';
+import '../../../services/notification_service.dart';
 import 'theme/owner_inspired_theme.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -58,6 +59,11 @@ class OwnerDashboardPage extends ConsumerWidget {
                     // Active / Scheduled Closure Banner
                     SliverToBoxAdapter(
                       child: _buildClosureBanner(context, ref, state),
+                    ),
+
+                    // Active Feast Day Quick-Switch Card
+                    SliverToBoxAdapter(
+                      child: _buildFeastDayManagementCard(context, ref, state),
                     ),
 
                     // Hero Card (Dark Walnut + Wavy Hills + Diner Count + CTA)
@@ -362,13 +368,38 @@ class OwnerDashboardPage extends ConsumerWidget {
     WidgetRef ref,
     OwnerDashboardState state,
   ) {
-    final slot = state.currentSlot == 'closed' ? 'night' : state.currentSlot;
+    final now = DateTime.now();
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = days[now.weekday - 1];
+    final isFeastDay = state.mess?.specialMealEnabled == true &&
+        (state.mess?.specialMealDays.contains(dayName) ?? false);
+    final isSingleMealFeast =
+        isFeastDay && (state.mess?.specialMealCookedSlots.length ?? 0) <= 1;
+
+    String slot;
+    if (isSingleMealFeast && (state.mess?.specialMealSlot.isNotEmpty ?? false)) {
+      slot = state.mess!.specialMealSlot;
+    } else {
+      slot = state.currentSlot == 'closed' ? 'night' : state.currentSlot;
+    }
+
     final slotName = slot[0].toUpperCase() + slot.substring(1);
     final timings = state.mess?.mealTimings[slot];
     final startStr = timings?['start'] ?? '';
     final endStr = timings?['end'] ?? '';
-    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr-$endStr' : '19:30-22:00';
+    final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty)
+        ? '$startStr-$endStr'
+        : '19:30-22:00';
 
+    final isSpecialFeastSlot = isFeastDay && state.mess?.specialMealSlot == slot;
     final menu = state.currentMeal;
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
@@ -437,7 +468,9 @@ class OwnerDashboardPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${slot.toUpperCase()} SERVICE · $timeRange',
+                        isSpecialFeastSlot
+                            ? '${slot.toUpperCase()} FEAST SERVICE · $timeRange'
+                            : '${slot.toUpperCase()} SERVICE · $timeRange',
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
@@ -590,10 +623,52 @@ class OwnerDashboardPage extends ConsumerWidget {
     final timings = state.mess?.mealTimings ?? {};
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
 
+    final now = DateTime.now();
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final dayName = dayNames[now.weekday - 1];
+    final isFeastDay = state.mess?.specialMealEnabled == true &&
+        (state.mess?.specialMealDays.contains(dayName) ?? false);
+    final feastSlot = state.mess?.specialMealSlot ?? '';
+    final cookedSlots = state.mess?.specialMealCookedSlots ?? [];
+
     final isMorningClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'morning');
     final isNoonClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'noon');
     final isEveningClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'evening');
     final isNightClosed = state.closedSlots.any((c) => c['date'] == todayStr && c['mealSlot'] == 'night');
+
+    final isMorningFeast = isFeastDay && feastSlot == 'morning';
+    final isMorningCooked = !isFeastDay || cookedSlots.isEmpty || cookedSlots.contains('morning');
+    final String morningLabel = isMorningClosed
+        ? 'Morning ❌'
+        : (isMorningFeast
+            ? 'Morning ★'
+            : (!isMorningCooked ? 'Morning Off' : 'Morning'));
+
+    final isNoonFeast = isFeastDay && feastSlot == 'noon';
+    final isNoonCooked = !isFeastDay || cookedSlots.isEmpty || cookedSlots.contains('noon');
+    final String noonLabel = isNoonClosed
+        ? 'Noon ❌'
+        : (isNoonFeast
+            ? 'Noon ★'
+            : (!isNoonCooked ? 'Noon Off' : 'Noon'));
+
+    final isEveningFeast = isFeastDay && feastSlot == 'evening';
+    final isEveningCooked = !isFeastDay || cookedSlots.isEmpty || cookedSlots.contains('evening');
+    final String eveningLabel = isEveningClosed
+        ? 'Evening ❌'
+        : (isEveningFeast
+            ? 'Evening ★'
+            : (!isEveningCooked
+                ? 'Evening Off'
+                : ((timings['evening']?['enabled'] == 'true') ? 'Evening' : 'Evening off')));
+
+    final isNightFeast = isFeastDay && feastSlot == 'night';
+    final isNightCooked = !isFeastDay || cookedSlots.isEmpty || cookedSlots.contains('night');
+    final String nightLabel = isNightClosed
+        ? 'Night ❌'
+        : (isNightFeast
+            ? 'Night ★'
+            : (!isNightCooked ? 'Night Off' : 'Night'));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -646,11 +721,12 @@ class OwnerDashboardPage extends ConsumerWidget {
           Row(
             children: [
               _buildStepItem(
-                label: isMorningClosed ? 'Morning ❌' : 'Morning',
-                enabled: timings['morning']?['enabled'] == 'true',
+                label: morningLabel,
+                enabled: timings['morning']?['enabled'] == 'true' && isMorningCooked,
                 isCurrent: current == 'morning',
-                color: isMorningClosed ? const Color(0xFFEF4444) : OwnerColors.amber,
-                isClosed: isMorningClosed,
+                color: isMorningClosed ? const Color(0xFFEF4444) : (isMorningFeast ? OwnerColors.amber : OwnerColors.sage),
+                isClosed: isMorningClosed || !isMorningCooked,
+                isGlow: isMorningFeast && !isMorningClosed,
                 onTap: isMorningClosed
                     ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
                     : () => Navigator.push(
@@ -662,11 +738,12 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: isNoonClosed ? 'Noon ❌' : 'Noon',
-                enabled: timings['noon']?['enabled'] == 'true',
+                label: noonLabel,
+                enabled: timings['noon']?['enabled'] == 'true' && isNoonCooked,
                 isCurrent: current == 'noon',
-                color: isNoonClosed ? const Color(0xFFEF4444) : OwnerColors.sage,
-                isClosed: isNoonClosed,
+                color: isNoonClosed ? const Color(0xFFEF4444) : (isNoonFeast ? OwnerColors.amber : OwnerColors.sage),
+                isClosed: isNoonClosed || !isNoonCooked,
+                isGlow: isNoonFeast && !isNoonClosed,
                 onTap: isNoonClosed
                     ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
                     : () => Navigator.push(
@@ -678,13 +755,12 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: isEveningClosed
-                    ? 'Evening ❌'
-                    : ((timings['evening']?['enabled'] == 'true') ? 'Evening' : 'Evening off'),
-                enabled: timings['evening']?['enabled'] == 'true',
+                label: eveningLabel,
+                enabled: timings['evening']?['enabled'] == 'true' && isEveningCooked,
                 isCurrent: current == 'evening',
-                color: isEveningClosed ? const Color(0xFFEF4444) : OwnerColors.sage,
-                isClosed: isEveningClosed,
+                color: isEveningClosed ? const Color(0xFFEF4444) : (isEveningFeast ? OwnerColors.amber : OwnerColors.sage),
+                isClosed: isEveningClosed || !isEveningCooked,
+                isGlow: isEveningFeast && !isEveningClosed,
                 onTap: isEveningClosed
                     ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
                     : () => Navigator.push(
@@ -696,12 +772,12 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
               _buildStepLine(),
               _buildStepItem(
-                label: isNightClosed ? 'Night ❌' : 'Night',
-                enabled: timings['night']?['enabled'] == 'true',
+                label: nightLabel,
+                enabled: timings['night']?['enabled'] == 'true' && isNightCooked,
                 isCurrent: current == 'night' || current == 'closed',
-                color: isNightClosed ? const Color(0xFFEF4444) : OwnerColors.amber,
-                isClosed: isNightClosed,
-                isGlow: !isNightClosed,
+                color: isNightClosed ? const Color(0xFFEF4444) : (isNightFeast ? OwnerColors.amber : OwnerColors.sage),
+                isClosed: isNightClosed || !isNightCooked,
+                isGlow: isNightFeast && !isNightClosed,
                 onTap: isNightClosed
                     ? () => state.mess != null ? showManageClosedSlotsSheet(context, mess: state.mess!) : null
                     : () => Navigator.push(
@@ -1209,6 +1285,329 @@ class OwnerDashboardPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  // ── Active Feast Day Quick-Switch Card ──
+  Widget _buildFeastDayManagementCard(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    final mess = state.mess;
+    if (mess == null || !mess.specialMealEnabled) {
+      return const SizedBox.shrink();
+    }
+
+    final now = DateTime.now();
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = days[now.weekday - 1];
+
+    // Only show on configured feast days
+    if (!mess.specialMealDays.contains(dayName)) {
+      return const SizedBox.shrink();
+    }
+
+    final activeSlot = mess.specialMealSlot.isNotEmpty ? mess.specialMealSlot : 'night';
+    final activeSlotName = activeSlot == 'noon' ? 'Lunch · Noon' : 'Dinner · Night';
+    final targetSlot = activeSlot == 'night' ? 'noon' : 'night';
+    final isSingleMealSchedule = mess.specialMealCookedSlots.length <= 1;
+
+    final refundText = (mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
+        ? '₹${mess.specialMealFlatRate!.toInt()}'
+        : '2x regular';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF231A14),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: OwnerColors.amber.withValues(alpha: 0.35), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Internal radial ambient glow
+            Positioned(
+              top: -30,
+              right: -30,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: OwnerColors.amber.withValues(alpha: 0.16),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Overline tag & Skip Rule pill
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 13, color: OwnerColors.amber),
+                          const SizedBox(width: 6),
+                          Text(
+                            'TODAY IS ${dayName.toUpperCase()} FEAST DAY',
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                              color: OwnerColors.amber,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: OwnerColors.amber.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: OwnerColors.amber.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          '$refundText Skip Rule',
+                          style: GoogleFonts.inter(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFDE8CD),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Active slot description
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          activeSlot == 'noon' ? Icons.wb_sunny_rounded : Icons.bedtime_rounded,
+                          size: 20,
+                          color: OwnerColors.amber,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Special Feast Slot: $activeSlotName ★',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isSingleMealSchedule
+                                  ? '1-Meal Schedule: Other meal is Kitchen Off'
+                                  : 'Feast cooked at $activeSlot · other meals regular',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Actions: Switch Feast Slot & Post Menu
+                  Row(
+                    children: [
+                      // Quick Switch Slot Button
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _handleSwitchFeastSlot(context, ref, mess, targetSlot, dayName),
+                          icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                          label: Text(
+                            'Switch to ${targetSlot == 'noon' ? 'Lunch' : 'Dinner'}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: OwnerColors.amber,
+                            side: BorderSide(color: OwnerColors.amber.withValues(alpha: 0.6)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Post Feast Menu Button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          PostTodayMealSheet.show(
+                            context,
+                            mess: mess,
+                            initialSlot: activeSlot,
+                          );
+                        },
+                        icon: const Icon(Icons.restaurant_menu_rounded, size: 15),
+                        label: Text(
+                          'Post Menu',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: OwnerColors.amber,
+                          foregroundColor: OwnerColors.textDark,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSwitchFeastSlot(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel mess,
+    String targetSlot,
+    String dayName,
+  ) async {
+    final timings = mess.mealTimings[targetSlot];
+    final startStr = timings?['start'] ?? (targetSlot == 'noon' ? '12:00' : '19:30');
+    final parts = startStr.split(':');
+    final h = int.tryParse(parts[0]) ?? (targetSlot == 'noon' ? 12 : 19);
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+    final now = DateTime.now();
+    final targetMealTime = DateTime(now.year, now.month, now.day, h, m);
+    final targetCutoff = targetMealTime.subtract(Duration(hours: mess.cutoffHours));
+    final isCutoffPassed = now.isAfter(targetCutoff);
+
+    if (isCutoffPassed) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: OwnerColors.cardPure,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Cutoff Time Passed',
+                style: OwnerTypography.serifHeading(fontSize: 18),
+              ),
+            ],
+          ),
+          content: Text(
+            'The skip cutoff time for ${targetSlot.toUpperCase()} ($startStr - ${mess.cutoffHours}h) has already passed. Students will not be able to skip. Are you sure you want to switch today\'s feast to ${targetSlot.toUpperCase()}?',
+            style: GoogleFonts.inter(fontSize: 13, color: OwnerColors.textMuted, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: GoogleFonts.inter(color: OwnerColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: OwnerColors.amber,
+                foregroundColor: OwnerColors.textDark,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Switch Anyway',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    final isSingleMealSchedule = mess.specialMealCookedSlots.length <= 1;
+    final updatedCookedSlots = isSingleMealSchedule
+        ? [targetSlot]
+        : (mess.specialMealCookedSlots.contains(targetSlot)
+            ? mess.specialMealCookedSlots
+            : [...mess.specialMealCookedSlots, targetSlot]);
+
+    final updatedMess = mess.copyWith(
+      specialMealSlot: targetSlot,
+      specialMealCookedSlots: updatedCookedSlots,
+    );
+
+    await ref.read(ownerSettingsProvider.notifier).save(updatedMess);
+    await ref.read(ownerDashboardProvider.notifier).reload();
+
+    final targetLabel = targetSlot == 'noon' ? 'Lunch (Noon)' : 'Dinner (Night)';
+    try {
+      await NotificationService.sendMessNotification(
+        messId: mess.messId,
+        title: '✨ $dayName Feast Schedule Update',
+        message: 'Today\'s special feast will be served at $targetLabel! ${isSingleMealSchedule ? 'Kitchen will be off for other meals.' : ''}',
+        targetPref: 'announcements',
+        data: {'type': 'feast_shift', 'slot': targetSlot},
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] Error sending feast switch push: $e');
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Switched feast to $targetLabel and notified students! 🚀'),
+          backgroundColor: const Color(0xFF2B2019),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   void _showAnnouncementDialog(BuildContext context, WidgetRef ref) {

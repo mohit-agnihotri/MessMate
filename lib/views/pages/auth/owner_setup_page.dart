@@ -88,7 +88,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
   String _specialMealSlot = 'noon';
   final int _specialMealCutoffHours = 4;
   final _specialFlatRateCtrl = TextEditingController(text: '80');
-  String _deductionMode = 'multiplier'; // 'multiplier', '1x', 'custom'
+  final _specialExtendMealsCtrl = TextEditingController(text: '1');
 
   // STEP 3: Mess Profile
   final _messNameCtrl = TextEditingController();
@@ -181,6 +181,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
     _ownerNameCtrl.dispose();
     _phoneCtrl.dispose();
     _capacityCtrl.dispose();
+    _specialFlatRateCtrl.dispose();
+    _specialExtendMealsCtrl.dispose();
     for (final p in _planConfigs) {
       (p['feeCtrl'] as TextEditingController?)?.dispose();
       (p['skipCtrl'] as TextEditingController?)?.dispose();
@@ -910,11 +912,10 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           double.tryParse((firstPlan['skipCtrl'] as TextEditingController).text) ??
               40.0;
 
-      final double? effectiveSpecialFlatRate = _deductionMode == 'custom'
-          ? (double.tryParse(_specialFlatRateCtrl.text.trim()) ?? 80.0)
-          : null;
-      final double effectiveSpecialMultiplier =
-          _deductionMode == '1x' ? 1.0 : 2.0;
+      final double effectiveSpecialFlatRate =
+          double.tryParse(_specialFlatRateCtrl.text.trim()) ?? 80.0;
+      final int effectiveSpecialExtendMeals =
+          int.tryParse(_specialExtendMealsCtrl.text.trim()) ?? 1;
 
       final newMess = MessModel(
         messId: messId,
@@ -939,9 +940,10 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         specialMealDays: _specialMealDays,
         specialMealCookedSlots: _specialMealCookedSlots,
         specialMealSlot: _specialMealSlot,
-        specialMealMultiplier: effectiveSpecialMultiplier,
+        specialMealMultiplier: effectiveSpecialExtendMeals.toDouble(),
         specialMealFlatRate: effectiveSpecialFlatRate,
         specialMealCutoffHours: _specialMealCutoffHours,
+        specialMealExtendMeals: effectiveSpecialExtendMeals,
       );
 
       await appService.createMess(newMess);
@@ -2007,9 +2009,21 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
   // ============================================================
   // STEP 2: Special Feast Rules
-  // Matches exact visual design system (warm cream, pills, cards)
+  // ============================================================
+  // STEP 2: SPECIAL FEAST RULES (Screenshot 2 Inspired UI)
   // ============================================================
   Widget _buildStep2Special() {
+    const allDays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const allSlots = ['morning', 'noon', 'evening', 'night'];
+
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -2020,7 +2034,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFCE3BF),
+              color: const Color(0xFFFDECD8),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -2028,7 +2042,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF8F4700),
+                color: const Color(0xFFBA6311),
               ),
             ),
           ),
@@ -2037,7 +2051,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
           // Headline
           Text(
-            isHindi ? 'स्पेशल मील रूल्स' : 'Special feast rules',
+            isHindi ? 'स्पेशल दावत नियम' : 'Special feast rules',
             style: GoogleFonts.newsreader(
               fontSize: 28,
               fontWeight: FontWeight.w700,
@@ -2045,14 +2059,14 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
             ),
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           Text(
             isHindi
-                ? 'विशेष दावत (जैसे संडे स्पेशल) के दिन, समय और 2x स्किप डिडक्शन सेट करें।'
-                : 'Configure special feast days, cooked meals, and skip deduction value.',
+                ? 'दावत के दिन, पकाए जाने वाले भोजन और स्किप रिफंड।'
+                : 'Feast days, cooked meals and the skip refund.',
             style: GoogleFonts.inter(
-              fontSize: 13,
+              fontSize: 12.5,
               color: const Color(0xFF7A7971),
             ),
           ),
@@ -2070,16 +2084,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 child: InkWell(
                   onTap: () => setState(() => _specialMealEnabled = true),
                   borderRadius: BorderRadius.circular(24),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
                     height: 48,
                     decoration: BoxDecoration(
                       color: _specialMealEnabled
-                          ? const Color(0xFFE2E8DE)
-                          : const Color(0xFFFAF8F3),
+                          ? const Color(0xFFE1EADE)
+                          : const Color(0xFFFAF7F2),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: _specialMealEnabled
-                            ? const Color(0xFF4E654F)
+                            ? const Color(0xFF4A684C)
                             : const Color(0x142D231C),
                         width: _specialMealEnabled ? 1.5 : 1,
                       ),
@@ -2087,8 +2102,12 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     child: Center(
                       child: Text(
                         _specialMealEnabled
-                            ? (isHindi ? '✓ हाँ, स्पेशल मील बनती है' : '✓ Yes, we make special')
-                            : (isHindi ? 'हाँ, स्पेशल मील बनती है' : 'Yes, we make special'),
+                            ? (isHindi
+                                ? '✓ हाँ, स्पेशल दावत'
+                                : '✓ Yes, we make special')
+                            : (isHindi
+                                ? 'हाँ, स्पेशल दावत'
+                                : 'Yes, we make special'),
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: _specialMealEnabled
@@ -2108,16 +2127,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                 child: InkWell(
                   onTap: () => setState(() => _specialMealEnabled = false),
                   borderRadius: BorderRadius.circular(24),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
                     height: 48,
                     decoration: BoxDecoration(
                       color: !_specialMealEnabled
-                          ? const Color(0xFFE2E8DE)
-                          : const Color(0xFFFAF8F3),
+                          ? const Color(0xFFE1EADE)
+                          : const Color(0xFFFAF7F2),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: !_specialMealEnabled
-                            ? const Color(0xFF4E654F)
+                            ? const Color(0xFF4A684C)
                             : const Color(0x142D231C),
                         width: !_specialMealEnabled ? 1.5 : 1,
                       ),
@@ -2125,8 +2145,8 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     child: Center(
                       child: Text(
                         !_specialMealEnabled
-                            ? (isHindi ? '✓ रोज़ाना सामान्य' : '✓ Same everyday')
-                            : (isHindi ? 'रोज़ाना सामान्य' : 'Same everyday'),
+                            ? (isHindi ? '✓ रोज़ाना सामान्य' : '✓ Same every day')
+                            : (isHindi ? 'रोज़ाना सामान्य' : 'Same every day'),
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: !_specialMealEnabled
@@ -2147,36 +2167,17 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
           if (_specialMealEnabled) ...[
             const SizedBox(height: 24),
 
-            // 2. WHICH DAYS ARE SPECIAL?
+            // 2. WHICH DAYS ARE FEAST DAYS? *
             _buildFieldLabel(isHindi
                 ? 'किन दिनों में स्पेशल दावत बनती है? *'
-                : 'WHICH DAYS ARE SPECIAL FEAST DAYS? *'),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                'Monday',
-                'Tuesday',
-                'Wednesday',
-                'Thursday',
-                'Friday',
-                'Saturday',
-                'Sunday'
-              ].map((day) {
+                : 'WHICH DAYS ARE FEAST DAYS? *'),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: allDays.map((day) {
                 final isSelected = _specialMealDays.contains(day);
-                final shortName = isHindi
-                    ? (day == 'Sunday'
-                        ? 'रविवार'
-                        : day == 'Wednesday'
-                            ? 'बुधवार'
-                            : day == 'Saturday'
-                                ? 'शनिवार'
-                                : day == 'Friday'
-                                    ? 'शुक्रवार'
-                                    : day.substring(0, 3))
-                    : day.substring(0, 3);
-                return InkWell(
+                final shortName = day.substring(0, 3);
+                return GestureDetector(
                   onTap: () {
                     setState(() {
                       if (isSelected) {
@@ -2188,31 +2189,43 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                       }
                     });
                   },
-                  borderRadius: BorderRadius.circular(20),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: isSelected
-                          ? const Color(0xFFE2E8DE)
-                          : const Color(0xFFFAF8F3),
-                      borderRadius: BorderRadius.circular(20),
+                          ? const Color(0xFF2B2019)
+                          : const Color(0xFFFAF7F2),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF4E654F)
-                            : const Color(0x142D231C),
-                        width: isSelected ? 1.5 : 1,
+                            ? const Color(0xFF2B2019)
+                            : const Color(0x1A2D231C),
+                        width: 1.2,
                       ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
-                    child: Text(
-                      isSelected ? '✓ $shortName' : shortName,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected
-                            ? const Color(0xFF2B3B2C)
-                            : const Color(0xFF55504A),
+                    child: Center(
+                      child: Text(
+                        shortName,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF231A14),
+                        ),
                       ),
                     ),
                   ),
@@ -2220,335 +2233,231 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
               }).toList(),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 26),
 
-            // 3. MEALS COOKED ON SPECIAL DAYS & SPECIAL SLOT
+            // 3. COOKED SPECIAL MEALS
             _buildFieldLabel(isHindi
-                ? 'स्पेशल दिन पर क्या-क्या बनेगा और कौन सा स्पेशल है?'
-                : 'SPECIAL DAY COOKED MEALS & FEAST SLOT'),
-            const SizedBox(height: 6),
+                ? 'पकाए जाने वाले स्पेशल भोजन'
+                : 'COOKED SPECIAL MEALS'),
+            const SizedBox(height: 4),
             Text(
               isHindi
-                  ? 'जो खाना बनता है उसे टिक करें और स्पेशल दावत वाले स्लॉट को चुनें।'
-                  : 'Check which meals are prepared, and select the designated Special Feast slot.',
-              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF7A7971)),
+                  ? 'पहले चुनें क्या पकता है, फिर मुख्य दावत स्लॉट चुनें।'
+                  : 'Check what is prepared, then pick the feast slot.',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: const Color(0xFF7A7971),
+              ),
             ),
             const SizedBox(height: 12),
 
             // Slots list (morning, noon, evening, night)
-            ...['morning', 'noon', 'evening', 'night'].map((slot) {
+            ...allSlots.map((slot) {
               final isCooked = _specialMealCookedSlots.contains(slot);
               final isDesignatedSpecial = _specialMealSlot == slot;
               final slotTitle = slot == 'morning'
-                  ? (isHindi ? 'सुबह नाश्ता (Breakfast)' : 'Morning Breakfast')
+                  ? 'Morning · Breakfast'
                   : slot == 'noon'
-                      ? (isHindi ? 'दोपहर खाना (Lunch)' : 'Noon Lunch')
+                      ? 'Noon · Lunch'
                       : slot == 'evening'
-                          ? (isHindi ? 'शाम नाश्ता (Snacks)' : 'Evening Snacks')
-                          : (isHindi ? 'रात का खाना (Dinner)' : 'Night Dinner');
+                          ? 'Evening · Snacks'
+                          : 'Night · Dinner';
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDesignatedSpecial
-                      ? const Color(0xFFFFF7ED)
-                      : const Color(0xFFFAF8F3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDesignatedSpecial
-                        ? const Color(0xFFF09E38)
-                        : (isCooked
-                            ? const Color(0xFF4E654F).withValues(alpha: 0.3)
-                            : const Color(0x142D231C)),
-                    width: isDesignatedSpecial ? 1.6 : 1,
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (!isCooked) {
+                      _specialMealCookedSlots.add(slot);
+                    }
+                    _specialMealSlot = slot;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    // Checkbox cooked
-                    Checkbox(
-                      value: isCooked,
-                      activeColor: const Color(0xFF4E654F),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4)),
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            if (!_specialMealCookedSlots.contains(slot)) {
+                  decoration: BoxDecoration(
+                    color: isDesignatedSpecial
+                        ? const Color(0xFFFFF9EE)
+                        : const Color(0xFFFAF7F2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDesignatedSpecial
+                          ? const Color(0xFFE9963F)
+                          : const Color(0x142D231C),
+                      width: isDesignatedSpecial ? 1.6 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Checkbox
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (isCooked) {
+                              if (_specialMealCookedSlots.length > 1) {
+                                _specialMealCookedSlots.remove(slot);
+                                if (_specialMealSlot == slot) {
+                                  _specialMealSlot =
+                                      _specialMealCookedSlots.first;
+                                }
+                              }
+                            } else {
                               _specialMealCookedSlots.add(slot);
                             }
-                          } else {
-                            if (_specialMealCookedSlots.length > 1) {
-                              _specialMealCookedSlots.remove(slot);
-                              if (_specialMealSlot == slot) {
-                                _specialMealSlot = _specialMealCookedSlots.first;
-                              }
-                            }
-                          }
-                        });
-                      },
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            slotTitle,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: isCooked
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: isCooked
-                                  ? const Color(0xFF231A14)
-                                  : const Color(0xFF9E9B95),
-                            ),
-                          ),
-                          if (isCooked && isDesignatedSpecial)
-                            Text(
-                              isHindi
-                                  ? '✨ स्पेशल दावत (2x वैल्यू)'
-                                  : '✨ Designated Special Feast',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFC26E00),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    if (isCooked)
-                      InkWell(
-                        onTap: () => setState(() => _specialMealSlot = slot),
-                        borderRadius: BorderRadius.circular(16),
+                          });
+                        },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                          width: 22,
+                          height: 22,
                           decoration: BoxDecoration(
-                            color: isDesignatedSpecial
-                                ? const Color(0xFFF09E38)
-                                : const Color(0xFFE2E8DE),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            isDesignatedSpecial
-                                ? (isHindi ? '★ स्पेशल' : '★ Special')
-                                : (isHindi ? 'मेक स्पेशल' : 'Set Special'),
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isDesignatedSpecial
-                                  ? const Color(0xFF231A14)
-                                  : const Color(0xFF4E654F),
+                            color: isCooked
+                                ? const Color(0xFF4A684C)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isCooked
+                                  ? const Color(0xFF4A684C)
+                                  : const Color(0xFF9E9B95),
+                              width: 1.5,
                             ),
+                          ),
+                          child: isCooked
+                              ? const Center(
+                                  child: Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Meal Slot Title
+                      Expanded(
+                        child: Text(
+                          slotTitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: isDesignatedSpecial
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: const Color(0xFF231A14),
                           ),
                         ),
                       ),
-                  ],
+
+                      // Right side badge or text
+                      if (isDesignatedSpecial)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2B2019),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 13,
+                                color: Color(0xFFF4B34C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Feast slot',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFF4B34C),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Text(
+                          'Not cooked special',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: const Color(0xFF8C8881),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               );
             }),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // 4. SKIP DEDUCTION & VALIDITY REBATE RULE
+            // 4. SKIP REBATE OR VALIDITY EXTENSION
             _buildFieldLabel(isHindi
-                ? 'स्पेशल मील स्किप डिडक्शन / वैलिडिटी लाभ'
-                : 'SPECIAL MEAL SKIP REBATE / VALIDITY EXTENSION'),
-            const SizedBox(height: 6),
-            Text(
-              isHindi
-                  ? 'जब कोई छात्र स्पेशल मील स्किप करे, तो कितना लाभ मिलेगा?'
-                  : 'How much should be deducted or extended when a student skips a special meal?',
-              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF7A7971)),
-            ),
-            const SizedBox(height: 10),
+                ? 'स्पेशल मील छूट और वैधता नियम'
+                : 'SKIP REBATE OR VALIDITY EXTENSION'),
+            const SizedBox(height: 12),
 
-            // Mode 1: 2x Multiplier (Recommended)
-            InkWell(
-              onTap: () => setState(() => _deductionMode = 'multiplier'),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _deductionMode == 'multiplier'
-                      ? const Color(0xFFE2E8DE)
-                      : const Color(0xFFFAF8F3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _deductionMode == 'multiplier'
-                        ? const Color(0xFF4E654F)
-                        : const Color(0x142D231C),
-                    width: _deductionMode == 'multiplier' ? 1.6 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _deductionMode == 'multiplier'
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: _deductionMode == 'multiplier'
-                          ? const Color(0xFF4E654F)
-                          : const Color(0xFF7A7971),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isHindi
-                                ? '2x रेगुलर वैल्यू (2 मील्स के बराबर) [सुझाव]'
-                                : '2x Regular Value (Double Meal Rate) [Recommended]',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF231A14),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            isHindi
-                                ? '1 स्पेशल मील स्किप = 2 सामान्य मील का रिफंड (₹80) या 1 पूरा दिन मेस आगे बढ़ेगी।'
-                                : '1 special meal skip = 2 regular meals refund (₹80) or 1 full day validity extension.',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: const Color(0xFF7A7971),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            // Card 1: Fixed Rupee Rate
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF7F2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0x142D231C),
+                  width: 1.2,
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-
-            // Mode 2: 1x (Same as regular)
-            InkWell(
-              onTap: () => setState(() => _deductionMode = '1x'),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _deductionMode == '1x'
-                      ? const Color(0xFFE2E8DE)
-                      : const Color(0xFFFAF8F3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _deductionMode == '1x'
-                        ? const Color(0xFF4E654F)
-                        : const Color(0x142D231C),
-                    width: _deductionMode == '1x' ? 1.6 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _deductionMode == '1x'
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: _deductionMode == '1x'
-                          ? const Color(0xFF4E654F)
-                          : const Color(0xFF7A7971),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        isHindi
-                            ? 'सामान्य मील के बराबर (1x - सिर्फ 1 मील रिफंड)'
-                            : 'Same as Normal Meal (1x - single meal rebate)',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF231A14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2EBE0),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Mode 3: Custom Rupee Rate
-            InkWell(
-              onTap: () => setState(() => _deductionMode = 'custom'),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _deductionMode == 'custom'
-                      ? const Color(0xFFE2E8DE)
-                      : const Color(0xFFFAF8F3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _deductionMode == 'custom'
-                        ? const Color(0xFF4E654F)
-                        : const Color(0x142D231C),
-                    width: _deductionMode == 'custom' ? 1.6 : 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _deductionMode == 'custom'
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_off_rounded,
-                          color: _deductionMode == 'custom'
-                              ? const Color(0xFF4E654F)
-                              : const Color(0xFF7A7971),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          isHindi
-                              ? 'कस्टम फिक्स रेट (Custom Rupee Amount)'
-                              : 'Custom Fixed Rupee Rate',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF231A14),
+                        child: const Center(
+                          child: Icon(
+                            Icons.currency_rupee_rounded,
+                            size: 18,
+                            color: Color(0xFF4A684C),
                           ),
                         ),
-                      ],
-                    ),
-                    if (_deductionMode == 'custom') ...[
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 32),
-                        child: Row(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '₹ ',
+                              isHindi
+                                  ? 'स्पेशल मील छूट रिफंड राशि'
+                                  : 'Special Meal Skip Refund',
                               style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
                                 color: const Color(0xFF231A14),
                               ),
                             ),
-                            SizedBox(
-                              width: 120,
-                              child: _buildInputBox(
-                                controller: _specialFlatRateCtrl,
-                                hint: '80',
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 2),
                             Text(
-                              isHindi ? '/ मील' : '/ special meal',
+                              isHindi
+                                  ? 'छात्र द्वारा फीस कटवाने पर बिल से कितने रुपये माइनस होंगे'
+                                  : 'Amount deducted from bill if student opts for rebate',
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: 11.5,
                                 color: const Color(0xFF7A7971),
                               ),
                             ),
@@ -2556,39 +2465,264 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        width: 130,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFD6CEC5),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          children: [
+                            Text(
+                              '₹ ',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF231A14),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _specialFlatRateCtrl,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                onChanged: (_) => setState(() {}),
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF231A14),
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        isHindi ? '/ प्रति स्पेशल मील' : '/ special meal',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF4A684C),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
-            // Smart Flexibility Note Card (Matching the Ready to launch card from screenshot!)
+            // Card 2: Meals to extend if skipped (Right below rate!)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF7F2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0x142D231C),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.update_rounded,
+                            size: 18,
+                            color: Color(0xFFE9963F),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isHindi
+                                  ? 'अगर कोई न आए तो कितनी मील आगे बढ़ेगी'
+                                  : 'Meals Extended If Skipped',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF231A14),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isHindi
+                                  ? 'वैधता बढ़ाते समय इसे कितनी सामान्य मील माना जाएगा'
+                                  : 'Counts as how many regular meals towards validity extension',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: const Color(0xFF7A7971),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      // Quick preset chips
+                      ...[1, 2, 3].map((count) {
+                        final isSelected =
+                            _specialExtendMealsCtrl.text.trim() ==
+                                count.toString();
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() =>
+                                _specialExtendMealsCtrl.text =
+                                    count.toString()),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF2B2019)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF2B2019)
+                                      : const Color(0xFFD6CEC5),
+                                ),
+                              ),
+                              child: Text(
+                                '$count ${isHindi ? "मील" : "meal${count > 1 ? "s" : ""}"}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF231A14),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      // Direct custom input
+                      Container(
+                        width: 56,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFD6CEC5),
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _specialExtendMealsCtrl,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          onChanged: (_) => setState(() {}),
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF231A14),
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding:
+                                EdgeInsets.symmetric(vertical: 11),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    isHindi
+                        ? '💡 छात्र को या तो तय किए गए रुपये रिफंड होंगे या तय की गई मील आगे बढ़ेगी (दोनों में से कोई एक)।'
+                        : '💡 Student will either receive the cash refund or the meal extension (either one).',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: const Color(0xFF8C8881),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Live Flexibility Note (Screenshot 2)
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF0E7),
+                color: const Color(0xFFE2EBE0),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD4DFD1)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(
                     Icons.auto_awesome_rounded,
+                    size: 16,
                     color: Color(0xFF3F653E),
-                    size: 20,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      isHindi
-                          ? 'फ्लेक्सिबल कंट्रोल: किसी संडे अगर दोपहर की जगह रात को स्पेशल बनाना हो, तो आप रोज़ाना मेनू पोस्ट करते समय 1-टैप में स्लॉट बदल सकते हैं!'
-                          : 'Live Flexibility: If on any Sunday you decide to cook special at dinner instead of lunch, you can switch it in 1 tap while posting the menu!',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        height: 1.45,
-                        color: const Color(0xFF2B3B2C),
+                    child: RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          height: 1.4,
+                          color: const Color(0xFF2B3B2C),
+                        ),
+                        children: const [
+                          TextSpan(
+                            text: 'Live flexibility. ',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          TextSpan(
+                            text:
+                                'Cooked special at lunch on a Sunday instead of dinner? Switch the slot in one tap while posting the menu.',
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -2599,26 +2733,26 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
 
           const SizedBox(height: 24),
 
-          // Next Button
+          // Next Button (Orange pill)
           SizedBox(
             width: double.infinity,
-            height: 54,
+            height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF09E38),
-                foregroundColor: const Color(0xFF231A14),
+                backgroundColor: const Color(0xFFF58410),
+                foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(26),
                 ),
               ),
               onPressed: _nextPage,
               child: Text(
                 isHindi ? 'आगे: मेस प्रोफाइल →' : 'Next: mess profile →',
                 style: GoogleFonts.inter(
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF231A14),
+                  color: Colors.white,
                 ),
               ),
             ),

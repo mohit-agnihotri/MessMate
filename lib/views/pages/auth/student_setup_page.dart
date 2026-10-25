@@ -9,6 +9,7 @@ import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../student/student_discovery_page.dart';
 import '../student/student_pending_approval_page.dart';
+import '../../../services/notification_service.dart';
 import 'login_page.dart';
 import 'role_selection_page.dart';
 
@@ -376,6 +377,24 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
       );
 
       await appService.updateStudent(student);
+
+      if (_foundMess != null &&
+          _foundMess!.ownerNotificationPrefs['joinRequest'] != false) {
+        try {
+          await NotificationService.sendOwnerNotification(
+            ownerId: _foundMess!.ownerId,
+            title: '👋 New Join Request',
+            message: '$name requested to join ${_foundMess!.name}. Room: $room',
+            data: {
+              'type': 'join_request',
+              'messId': _foundMess!.messId,
+              'studentId': user.uid,
+            },
+          );
+        } catch (e) {
+          debugPrint('[OneSignal] Error notifying owner of join request: $e');
+        }
+      }
 
       setState(() {
         _requestSent = true;

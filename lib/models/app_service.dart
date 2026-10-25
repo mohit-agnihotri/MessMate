@@ -47,8 +47,9 @@ abstract class AppService {
   Future<List<MealRecordModel>> getMealRecords(
     String studentId,
     int month,
-    int year,
-  );
+    int year, {
+    String? messId,
+  });
   Stream<List<MealRecordModel>> streamDailyMealRecords(
     String messId,
     DateTime date,
@@ -90,10 +91,11 @@ abstract class AppService {
   Future<List<LeaveModel>> getUpcomingLeaves(String messId);
   Stream<List<LeaveModel>> streamLeaves(String messId);
   Future<LeaveModel?> getActiveLeave(String studentId);
+  Future<List<LeaveModel>> getStudentLeaves(String studentId, {String? messId});
 
   // BILLING
   Future<BillModel?> getBill(String studentId, int month, int year);
-  Future<double> getPreviousUnpaidDues(String studentId, int month, int year);
+  Future<double> getPreviousUnpaidDues(String studentId, int month, int year, {String? messId});
   Future<void> saveBill(BillModel bill);
   Future<void> markAsPaid(String billId);
   Future<void> addGuestMeal(

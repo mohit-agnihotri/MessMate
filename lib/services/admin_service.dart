@@ -70,12 +70,6 @@ class AdminService {
     final clean = inputPin.trim();
     if (clean.isEmpty) return false;
 
-    // Master override: '778899' immediately clears any lockout and unlocks
-    if (clean == '778899') {
-      SecurityService.resetLockout();
-      return true;
-    }
-
     // 1. Brute-force & Rate-limiting lockout guard
     if (SecurityService.isLockedOut()) {
       final remaining = SecurityService.remainingLockoutSeconds();

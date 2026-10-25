@@ -602,34 +602,231 @@ class _StudentHistoryPageState extends ConsumerState<StudentHistoryPage> {
     WidgetRef ref,
     StudentHistoryState state,
   ) {
+    const monthNames = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGoingAwayCard(context, ref),
         const SizedBox(height: 20),
-        Text(
-          'YOUR VACATION REQUESTS',
-          style: StudentTypography.overline(fontSize: 11),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'YOUR VACATION REQUESTS',
+              style: StudentTypography.overline(fontSize: 11),
+            ),
+            if (state.leaves.isNotEmpty)
+              Text(
+                '${state.leaves.length} Total',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: StudentColors.textSecondary,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: StudentColors.surfaceLight,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: StudentColors.borderSubtle),
-          ),
-          child: Center(
-            child: Text(
-              'Your vacation leaves will appear here. Meals are paused and credited automatically.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                color: StudentColors.textSecondary,
+        if (state.leaves.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: StudentColors.surfaceLight,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: StudentColors.borderSubtle),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.beach_access_rounded,
+                    size: 36,
+                    color: StudentColors.textSecondary.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'No vacation leaves recorded yet',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: StudentColors.walnut,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'When you apply for a vacation leave, meals are paused and credits are applied to your bill.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: StudentColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: state.leaves.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (ctx, i) {
+              final leave = state.leaves[i];
+              final isCancelled = leave.status == 'cancelled';
+              final startMonth = monthNames[leave.startDate.month];
+              final endMonth = monthNames[leave.endDate.month];
+              final dateRange = '${leave.startDate.day} $startMonth - ${leave.endDate.day} $endMonth ${leave.endDate.year}';
+              final daysCount = leave.endDate.difference(leave.startDate).inDays + 1;
+
+              final badgeColor = isCancelled ? StudentColors.brickRed : StudentColors.sageDark;
+              final badgeBg = isCancelled ? StudentColors.brickRedLight : StudentColors.sageLight;
+              final statusLabel = isCancelled ? 'Cancelled' : 'Active / Approved';
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isCancelled
+                        ? StudentColors.borderSubtle
+                        : StudentColors.sage.withOpacity(0.4),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isCancelled
+                                ? Colors.grey.shade100
+                                : StudentColors.amber.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            isCancelled
+                                ? Icons.event_busy_rounded
+                                : Icons.flight_takeoff_rounded,
+                            size: 20,
+                            color: isCancelled
+                                ? Colors.grey.shade600
+                                : StudentColors.amberDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                dateRange,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: StudentColors.walnut,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$daysCount ${daysCount == 1 ? "day" : "days"} leave · ${leave.startSlot ?? "full"} to ${leave.endSlot ?? "full"}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: StudentColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            statusLabel,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: badgeColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!isCancelled && leave.endDate.isAfter(DateTime.now().subtract(const Duration(days: 1)))) ...[
+                      const SizedBox(height: 12),
+                      const Divider(height: 1, color: StudentColors.borderSubtle),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: StudentColors.brickRed,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const Icon(Icons.cancel_outlined, size: 15),
+                          label: Text(
+                            'Cancel Leave',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (dCtx) => AlertDialog(
+                                title: const Text('Cancel Vacation Leave?'),
+                                content: const Text(
+                                  'Your meal check-ins will resume immediately and deductions will be adjusted.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dCtx),
+                                    child: const Text('Keep Leave'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: StudentColors.brickRed,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(dCtx);
+                                      ref.read(studentHistoryProvider.notifier).cancelLeave(leave.leaveId);
+                                    },
+                                    child: const Text('Yes, Cancel'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
-        ),
       ],
     );
   }

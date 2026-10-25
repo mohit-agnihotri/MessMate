@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../models/app_models.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
 import '../theme/student_inspired_theme.dart';
+import '../../common/full_screen_image_gallery.dart';
 import 'rate_mess_sheet.dart';
 
 class MessDiscoveryItem {
@@ -936,29 +937,112 @@ class _MessDiscoveryDetailsSheetState
   ) {
     return Column(
       children: [
-        SizedBox(
-          height: 180,
-          child: PageView.builder(
-            itemCount: photos.length,
-            onPageChanged: (i) => setState(() => _carouselPage = i),
-            itemBuilder: (context, i) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.network(
-                  photos[i],
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: StudentColors.surfaceWarm,
-                    child: const Icon(
-                      Icons.image_not_supported_rounded,
-                      color: StudentColors.walnutMuted,
-                      size: 40,
+        Stack(
+          children: [
+            SizedBox(
+              height: 200,
+              child: PageView.builder(
+                itemCount: photos.length,
+                onPageChanged: (i) => setState(() => _carouselPage = i),
+                itemBuilder: (context, i) {
+                  return GestureDetector(
+                    onTap: () {
+                      FullScreenImageGallery.open(
+                        context,
+                        imageUrls: photos,
+                        initialIndex: i,
+                        title: item.mess.name,
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            photos[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: StudentColors.surfaceWarm,
+                              child: const Icon(
+                                Icons.image_not_supported_rounded,
+                                color: StudentColors.walnutMuted,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                          // Subtle bottom vignette for better contrast
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: 50,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.35),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Floating badge indicating tap to expand full view
+            Positioned(
+              bottom: 10,
+              right: 12,
+              child: GestureDetector(
+                onTap: () {
+                  FullScreenImageGallery.open(
+                    context,
+                    imageUrls: photos,
+                    initialIndex: _carouselPage.clamp(0, photos.length - 1),
+                    title: item.mess.name,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1,
                     ),
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.fullscreen_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Full View',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         ),
         if (photos.length > 1) ...[
           const SizedBox(height: 8),

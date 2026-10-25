@@ -9,6 +9,8 @@
     <application
         android:label="Mess"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:enableOnBackInvokedCallback="false"
         android:icon="@mipmap/launcher_icon">
         <activity
@@ -40,14 +42,14 @@
             android:value="2" />
 
         <!-- Google Maps API Key
-             IMPORTANT: Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with your real key.
+             IMPORTANT: Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with your real key in production.
              Restrict this key in Google Cloud Console:
                - Application restrictions -> Android apps
                - Add your package name + SHA-1 fingerprint
              Also set daily quota limits in: APIs & Services -> google_maps_flutter (Maps SDK for Android) -> Quotas -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE"/>
+            android:value="${MAPS_API_KEY}"/>
     </application>
 
     <!-- Required to query activities that can process text -->

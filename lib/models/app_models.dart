@@ -454,9 +454,11 @@ class MessModel {
   final double specialMealMultiplier; // e.g. 2.0 (2x value)
   final double? specialMealFlatRate; // optional fixed rupee deduction
   final int specialMealCutoffHours; // early cancellation deadline (e.g. 4 hrs)
+  final int specialMealExtendMeals; // how many meals validity is extended on skip (e.g. 1 or 2)
 
   static const Map<String, bool> _defaultOwnerNotifPrefs = {
-    'skipAlert': true,
+    'skipAlert': false,
+    'postPaymentSkipAlert': false,
     'joinRequest': true,
   };
 
@@ -510,6 +512,7 @@ class MessModel {
     this.specialMealMultiplier = 2.0,
     this.specialMealFlatRate,
     this.specialMealCutoffHours = 4,
+    this.specialMealExtendMeals = 1,
   });
 
   MessModel copyWith({
@@ -557,6 +560,7 @@ class MessModel {
     double? specialMealMultiplier,
     Object? specialMealFlatRate = const _Sentinel(),
     int? specialMealCutoffHours,
+    int? specialMealExtendMeals,
   }) {
     return MessModel(
       messId: messId ?? this.messId,
@@ -621,6 +625,8 @@ class MessModel {
           : specialMealFlatRate as double?,
       specialMealCutoffHours:
           specialMealCutoffHours ?? this.specialMealCutoffHours,
+      specialMealExtendMeals:
+          specialMealExtendMeals ?? this.specialMealExtendMeals,
     );
   }
 
@@ -670,6 +676,7 @@ class MessModel {
       specialMealMultiplier: specialMealMultiplier,
       specialMealFlatRate: specialMealFlatRate,
       specialMealCutoffHours: specialMealCutoffHours,
+      specialMealExtendMeals: specialMealExtendMeals,
     );
   }
 
@@ -749,7 +756,9 @@ class MessModel {
     final rawOwnerPrefs =
         map['ownerNotificationPrefs'] as Map?;
     final ownerPrefs = <String, bool>{
-      'skipAlert': rawOwnerPrefs?['skipAlert'] as bool? ?? true,
+      'skipAlert': rawOwnerPrefs?['skipAlert'] as bool? ?? false,
+      'postPaymentSkipAlert':
+          rawOwnerPrefs?['postPaymentSkipAlert'] as bool? ?? false,
       'joinRequest': rawOwnerPrefs?['joinRequest'] as bool? ?? true,
     };
     DateTime? closedUntil;
@@ -845,6 +854,10 @@ class MessModel {
           ? (map['specialMealFlatRate'] as num).toDouble()
           : null,
       specialMealCutoffHours: (map['specialMealCutoffHours'] ?? 4) as int,
+      specialMealExtendMeals: (map['specialMealExtendMeals'] ??
+          (map['specialMealMultiplier'] != null
+              ? (map['specialMealMultiplier'] as num).round()
+              : 1)) as int,
     );
   }
 
@@ -898,6 +911,7 @@ class MessModel {
       'specialMealMultiplier': specialMealMultiplier,
       if (specialMealFlatRate != null) 'specialMealFlatRate': specialMealFlatRate,
       'specialMealCutoffHours': specialMealCutoffHours,
+      'specialMealExtendMeals': specialMealExtendMeals,
     };
   }
 }
@@ -1164,6 +1178,7 @@ class BillModel {
   final double normalSkipsDeduction;
   final int specialSkipsCount;
   final double specialSkipsDeduction;
+  final double carryForwardCredit;
 
   BillModel({
     required this.billId,
@@ -1192,6 +1207,7 @@ class BillModel {
     this.normalSkipsDeduction = 0.0,
     this.specialSkipsCount = 0,
     this.specialSkipsDeduction = 0.0,
+    this.carryForwardCredit = 0.0,
   });
 
   factory BillModel.fromMap(Map<String, dynamic> map) {
@@ -1224,6 +1240,7 @@ class BillModel {
       normalSkipsDeduction: (map['normalSkipsDeduction'] ?? 0.0).toDouble(),
       specialSkipsCount: (map['specialSkipsCount'] ?? 0) as int,
       specialSkipsDeduction: (map['specialSkipsDeduction'] ?? 0.0).toDouble(),
+      carryForwardCredit: (map['carryForwardCredit'] ?? 0.0).toDouble(),
     );
   }
 
@@ -1254,6 +1271,7 @@ class BillModel {
         'normalSkipsDeduction': normalSkipsDeduction,
         'specialSkipsCount': specialSkipsCount,
         'specialSkipsDeduction': specialSkipsDeduction,
+        'carryForwardCredit': carryForwardCredit,
       };
 }
 
@@ -1612,7 +1630,8 @@ class AdminGlobalConfigModel {
       'mohitagnihotri.dev@gmail.com',
       'mohit.developer@gmail.com',
     ],
-    this.masterPin = '778899',
+    this.masterPin =
+        '5daad081c23a1a01894770cbe7b1ffa07b8465e02b4fa541eba5927a0c1c13e0',
   });
 
   factory AdminGlobalConfigModel.fromMap(Map<String, dynamic> map) {

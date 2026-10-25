@@ -925,7 +925,12 @@ class StudentProfilePage extends ConsumerWidget {
 
   Future<void> _pickImage(WidgetRef ref) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 75,
+    );
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       final extension = pickedFile.name.split('.').last;

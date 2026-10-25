@@ -291,8 +291,9 @@ class StubService implements AppService {
   Future<List<MealRecordModel>> getMealRecords(
     String studentId,
     int month,
-    int year,
-  ) async => _records;
+    int year, {
+    String? messId,
+  }) async => _records;
   @override
   Stream<List<MealRecordModel>> streamDailyMealRecords(
     String messId,
@@ -337,6 +338,8 @@ class StubService implements AppService {
   Stream<List<LeaveModel>> streamLeaves(String messId) => Stream.value([]);
   @override
   Future<LeaveModel?> getActiveLeave(String studentId) async => null;
+  @override
+  Future<List<LeaveModel>> getStudentLeaves(String studentId, {String? messId}) async => [];
   @override
   Future<BillModel?> getBill(String studentId, int month, int year) async =>
       _bill;
@@ -402,8 +405,9 @@ class StubService implements AppService {
   Future<double> getPreviousUnpaidDues(
     String studentId,
     int month,
-    int year,
-  ) async {
+    int year, {
+    String? messId,
+  }) async {
     return 0.0;
   }
 

@@ -179,16 +179,32 @@ class StudentHomePage extends ConsumerWidget {
                         )
                         .toList();
 
+                    final now = DateTime.now();
+                    const dayNames = [
+                      'Monday',
+                      'Tuesday',
+                      'Wednesday',
+                      'Thursday',
+                      'Friday',
+                      'Saturday',
+                      'Sunday'
+                    ];
+                    final dayName = dayNames[now.weekday - 1];
+                    final isSpecialDay = state.mess?.specialMealEnabled == true &&
+                        (state.mess?.specialMealDays.contains(dayName) ?? false);
+                    final cookedTodaySlots = (isSpecialDay && (state.mess?.specialMealCookedSlots.isNotEmpty ?? false))
+                        ? enabledSlots.where((s) => state.mess!.specialMealCookedSlots.contains(s)).toList()
+                        : enabledSlots;
+
                     final currentIdx = allSlots.indexOf(state.currentSlot);
                     final todayRemaining = state.currentSlot == 'closed'
                         ? <String>[]
-                        : enabledSlots
+                        : cookedTodaySlots
                             .where((s) => allSlots.indexOf(s) > currentIdx)
                             .toList();
 
                     final tomorrowSlots = enabledSlots;
 
-                    final now = DateTime.now();
                     final tomorrowDate = now.add(const Duration(days: 1));
                     final todayIso = now.toIso8601String().substring(0, 10);
                     final tomorrowIso = tomorrowDate.toIso8601String().substring(0, 10);
@@ -308,7 +324,22 @@ class StudentHomePage extends ConsumerWidget {
         menu.isPublished &&
         (menu.menuType == 'special' || menu.menuType == 'regular') &&
         menu.dishes.isNotEmpty;
-    final isSpecial = isExplicitlyPosted && menu.menuType == 'special';
+
+    final now = DateTime.now();
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = dayNames[now.weekday - 1];
+    final isConfiguredFeastDay = state.mess?.specialMealEnabled == true &&
+        (state.mess?.specialMealDays.contains(dayName) ?? false);
+    final isFeastSlot = isConfiguredFeastDay && state.mess?.specialMealSlot == slot;
+    final isSpecial = (isExplicitlyPosted && menu.menuType == 'special' && isConfiguredFeastDay) || isFeastSlot;
     final isRegularToday = isExplicitlyPosted && menu.menuType == 'regular';
 
     final slotDisplayName = slot == 'morning'
@@ -330,7 +361,10 @@ class StudentHomePage extends ConsumerWidget {
 
     String mealTitle;
     if (isSpecial) {
-      mealTitle = '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast"}';
+      final dishName = (menu != null && menu.dishes.isNotEmpty)
+          ? menu.dishes.first.name
+          : '$dayName Special Feast';
+      mealTitle = '✨ $dishName';
     } else if (isRegularToday) {
       mealTitle = 'Today\'s $slotDisplayName Meal';
     } else {
@@ -421,7 +455,7 @@ class StudentHomePage extends ConsumerWidget {
                           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                         ),
                         child: Text(
-                          '${slot.toUpperCase()} MEAL',
+                          isSpecial ? '✨ SPECIAL FEAST · ${slot.toUpperCase()}' : '${slot.toUpperCase()} MEAL',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -483,12 +517,16 @@ class StudentHomePage extends ConsumerWidget {
                         border: Border.all(color: StudentColors.amberPill),
                       ),
                       child: Text(
-                        '✨ ${menu.dishes.isNotEmpty ? menu.dishes.first.name : "Special Feast Today"}',
+                        (menu != null && menu.dishes.isNotEmpty)
+                            ? menu.dishes.map((d) => d.name).join(' • ')
+                            : '✨ $dayName Royal Feast Today · Prepared fresh',
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: StudentColors.amberLight,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -568,7 +606,7 @@ class StudentHomePage extends ConsumerWidget {
                             ),
                           )
                         else if (state.hasSelfSkipped)
-                          _UndoButton(ref: ref)
+                          _UndoButton(ref: ref, slot: slot)
                         else
                           Row(
                             children: [
@@ -2175,26 +2213,74 @@ class _GuestButton extends StatelessWidget {
 }
 
 // ─── Undo Skip Button ─────────────────────────────────────────────────────────
-class _UndoButton extends StatelessWidget {
+class _UndoButton extends StatefulWidget {
   final WidgetRef ref;
-  const _UndoButton({required this.ref});
+  final String slot;
+  const _UndoButton({required this.ref, required this.slot});
+
+  @override
+  State<_UndoButton> createState() => _UndoButtonState();
+}
+
+class _UndoButtonState extends State<_UndoButton> {
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () {
-          final state = ref.read(studentHomeProvider);
-          final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-          final recordId = state.skippedUpcomingMeals['${todayIso}_${state.currentSlot}'];
-          if (recordId != null) {
-            ref.read(studentHomeProvider.notifier).undoSkip(recordId);
-          }
-        },
-        icon: const Icon(Icons.undo_rounded, size: 18, color: StudentColors.amber),
+        onPressed: _isLoading
+            ? null
+            : () async {
+                setState(() => _isLoading = true);
+                try {
+                  final state = widget.ref.read(studentHomeProvider);
+                  final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+                  final uid = FirebaseAuth.instance.currentUser?.uid ?? state.student?.studentId;
+                  final recordId = state.skippedUpcomingMeals['${todayIso}_${widget.slot}'] ??
+                      state.skippedUpcomingMeals['${todayIso}_${state.currentSlot}'] ??
+                      (uid != null ? '${uid}_${widget.slot}_$todayIso' : null);
+
+                  if (recordId == null) {
+                    throw Exception('Could not find skipped meal record.');
+                  }
+
+                  await widget.ref.read(studentHomeProvider.notifier).undoSkip(recordId);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Meal skip cancelled! You can now enjoy your meal.'),
+                        backgroundColor: StudentColors.sageGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Could not undo skip: ${e.toString().replaceAll('Exception: ', '')}'),
+                        backgroundColor: StudentColors.brickRed,
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              },
+        icon: _isLoading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: StudentColors.amber,
+                ),
+              )
+            : const Icon(Icons.undo_rounded, size: 18, color: StudentColors.amber),
         label: Text(
-          'Undo Skip',
+          _isLoading ? 'Cancelling skip...' : 'Undo Skip',
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w700,

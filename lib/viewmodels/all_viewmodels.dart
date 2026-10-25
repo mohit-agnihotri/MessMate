@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -151,6 +152,9 @@ class AuthViewModel extends StateNotifier<AuthState> {
 
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
+    try {
+      await NotificationService.logout();
+    } catch (_) {}
     // Also sign out from Google on native platforms
     if (!kIsWeb) {
       try {
@@ -372,6 +376,12 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
         return;
       }
       state = state.copyWith(mess: mess);
+      NotificationService.setUserRoleAndMess(
+        role: 'owner',
+        messId: mess.messId,
+        userId: mess.ownerId,
+        preferences: mess.ownerNotificationPrefs,
+      );
 
       _recalculateCurrentSlot();
 
@@ -729,8 +739,12 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     bool isPaid, {
     int? extendDays,
   }) async {
+    final billId = '${student.studentId}_${previewBill.month}_${previewBill.year}';
+    final existingBill = await _service.getBill(student.studentId, previewBill.month, previewBill.year);
+    final bool wasPaid = existingBill?.isPaid ?? false;
+
     final finalBill = BillModel(
-      billId: '${student.studentId}_${previewBill.month}_${previewBill.year}',
+      billId: billId,
       studentId: previewBill.studentId,
       messId: previewBill.messId,
       month: previewBill.month,
@@ -743,35 +757,50 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       finalPayable: previewBill.finalPayable,
       isPaid: isPaid,
       deductions: previewBill.deductions,
+      carryForwardCredit: previewBill.carryForwardCredit,
+      normalSkipsCount: previewBill.normalSkipsCount,
+      normalSkipsDeduction: previewBill.normalSkipsDeduction,
+      specialSkipsCount: previewBill.specialSkipsCount,
+      specialSkipsDeduction: previewBill.specialSkipsDeduction,
     );
     await _service.saveBill(finalBill);
-    try {
-      await NotificationService.sendStudentNotification(
-        studentId: student.studentId,
-        title: isPaid ? '💳 Bill Marked Paid' : '📄 Bill Updated',
-        message: isPaid
-            ? 'Payment recorded for ${previewBill.month}. Amount: ₹${previewBill.finalPayable}'
-            : 'Your bill for ${previewBill.month} has been updated. Amount: ₹${previewBill.finalPayable}',
-        data: {
-          'type': 'bill',
-          'billId': finalBill.billId,
-          'studentId': student.studentId,
-        },
-      );
-    } catch (e) {
-      debugPrint('[OneSignal] Error sending student bill push: $e');
+    if (student.notificationPrefs['billUpdated'] != false) {
+      try {
+        await NotificationService.sendStudentNotification(
+          studentId: student.studentId,
+          title: isPaid ? '💳 Bill Marked Paid' : '📄 Bill Updated',
+          message: isPaid
+              ? 'Payment recorded for ${previewBill.month}. Amount: ₹${previewBill.finalPayable}'
+              : 'Your bill for ${previewBill.month} has been updated. Amount: ₹${previewBill.finalPayable}',
+          data: {
+            'type': 'bill',
+            'billId': finalBill.billId,
+            'studentId': student.studentId,
+          },
+        );
+      } catch (e) {
+        debugPrint('[OneSignal] Error sending student bill push: $e');
+      }
     }
 
-    // Handle Extend Validity logic properly 
-    if (extendDays != null && extendDays > 0 && student.subscriptionEndDate != null) {
-      if (isPaid) {
-        // Toggled ON: Add the extended days
-        final newEndDate = student.subscriptionEndDate!.add(Duration(days: extendDays));
-        await _service.updateStudent(student.copyWith(subscriptionEndDate: newEndDate));
-      } else {
-        // Toggled OFF: Subtract the days back to prevent free validity scam
-        final newEndDate = student.subscriptionEndDate!.subtract(Duration(days: extendDays));
-        await _service.updateStudent(student.copyWith(subscriptionEndDate: newEndDate));
+    // Handle Extend Validity logic properly and idempotently
+    if (wasPaid != isPaid && extendDays != null && extendDays > 0) {
+      final currentStudent =
+          await _service.getStudentById(student.studentId) ?? student;
+      if (currentStudent.subscriptionEndDate != null) {
+        if (!wasPaid && isPaid) {
+          // Toggled ON: Add the extended days once
+          final newEndDate = currentStudent.subscriptionEndDate!
+              .add(Duration(days: extendDays));
+          await _service
+              .updateStudent(currentStudent.copyWith(subscriptionEndDate: newEndDate));
+        } else if (wasPaid && !isPaid) {
+          // Toggled OFF: Subtract the days back once
+          final newEndDate = currentStudent.subscriptionEndDate!
+              .subtract(Duration(days: extendDays));
+          await _service
+              .updateStudent(currentStudent.copyWith(subscriptionEndDate: newEndDate));
+        }
       }
     }
   }
@@ -1364,12 +1393,36 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         .toList();
     if (enabledSlots.isEmpty) return;
 
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = dayNames[now.weekday - 1];
+    final isSpecialDay = state.mess!.specialMealEnabled &&
+        state.mess!.specialMealDays.contains(dayName);
+
+    // On configured feast days, if owner specified cooked slots (e.g. 1 meal only), focus on cooked slots
+    final List<String> activeSlots;
+    if (isSpecialDay && state.mess!.specialMealCookedSlots.isNotEmpty) {
+      activeSlots = enabledSlots
+          .where((s) => state.mess!.specialMealCookedSlots.contains(s))
+          .toList();
+    } else {
+      activeSlots = enabledSlots;
+    }
+    if (activeSlots.isEmpty) return;
+
     String currentSlot = '';
     String nextSlot = '';
     List<String> upcomingSlots = [];
 
-    for (int i = 0; i < enabledSlots.length; i++) {
-      String slot = enabledSlots[i];
+    for (int i = 0; i < activeSlots.length; i++) {
+      String slot = activeSlots[i];
       final slotData = timings[slot];
       final endTimeStr = slotData?['end'];
       if (endTimeStr != null) {
@@ -1381,9 +1434,9 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
           if (now.hour < endHour ||
               (now.hour == endHour && now.minute < endMin)) {
             currentSlot = slot;
-            nextSlot = enabledSlots[(i + 1) % enabledSlots.length];
-            if (i + 1 < enabledSlots.length) {
-              upcomingSlots = enabledSlots.sublist(i + 1);
+            nextSlot = activeSlots[(i + 1) % activeSlots.length];
+            if (i + 1 < activeSlots.length) {
+              upcomingSlots = activeSlots.sublist(i + 1);
             }
             break;
           }
@@ -1393,7 +1446,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
 
     if (currentSlot.isEmpty) {
       currentSlot = 'closed';
-      nextSlot = enabledSlots.first;
+      nextSlot = activeSlots.first;
     }
 
     final startStr =
@@ -1447,20 +1500,25 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         'Sunday'
       ];
       final dayName = dayNames[mealDate.weekday - 1];
+      // Strict Feast Rule (Option B): Special rebate strictly restricted to configured Feast Days
       final isSpecialDay = mess?.specialMealEnabled == true &&
           (mess?.specialMealDays.contains(dayName) ?? false);
       final isSpecialSlot = isSpecialDay && mess?.specialMealSlot == mealSlot;
-      final isSpecialPosted = state.todayMenus[mealSlot]?.menuType == 'special' ||
-          (state.todayMenus[mealSlot]?.isFullDayEquivalent ?? false);
-      final isSpecial = isSpecialPosted || isSpecialSlot;
+      final isSpecialPosted = isSpecialDay &&
+          (state.todayMenus[mealSlot]?.menuType == 'special' ||
+              (state.todayMenus[mealSlot]?.isFullDayEquivalent ?? false));
+      final isSpecial = isSpecialDay && (isSpecialSlot || isSpecialPosted);
 
       final double effectiveCost;
       if (isSpecial) {
         if (mess?.specialMealFlatRate != null && mess!.specialMealFlatRate! > 0) {
           effectiveCost = mess.specialMealFlatRate!;
         } else {
-          final multiplier = mess?.specialMealMultiplier ?? 2.0;
-          effectiveCost = currentSkipRate * multiplier;
+          final extendCount = (mess?.specialMealExtendMeals != null &&
+                  mess!.specialMealExtendMeals > 0)
+              ? mess.specialMealExtendMeals
+              : (mess?.specialMealMultiplier.round() ?? 1);
+          effectiveCost = currentSkipRate * extendCount;
         }
       } else {
         effectiveCost = currentSkipRate;
@@ -1479,6 +1537,46 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         cancelledAt: DateTime.now(),
       );
       await _service.skipMeal(record);
+
+      if (mess != null && mess.ownerId.isNotEmpty) {
+        try {
+          final bill =
+              await _service.getBill(uid, mealDate.month, mealDate.year);
+          final isAlreadyPaid = bill?.isPaid ?? false;
+          final studentName = state.student?.name ?? 'A student';
+          final slotUpper = mealSlot.toUpperCase();
+          final dateStr = '${mealDate.day}/${mealDate.month}';
+
+          if (isAlreadyPaid &&
+              mess.ownerNotificationPrefs['postPaymentSkipAlert'] == true) {
+            await NotificationService.sendOwnerNotification(
+              ownerId: mess.ownerId,
+              title: '⏭️ Post-Payment Skip Alert',
+              message:
+                  '$studentName (Paid Member) skipped $slotUpper on $dateStr. Will adjust in next bill.',
+              data: {
+                'type': 'post_payment_skip',
+                'studentId': uid,
+                'messId': mess.messId,
+              },
+            );
+          } else if (!isAlreadyPaid &&
+              mess.ownerNotificationPrefs['skipAlert'] == true) {
+            await NotificationService.sendOwnerNotification(
+              ownerId: mess.ownerId,
+              title: '⏭️ Meal Skip Alert',
+              message: '$studentName skipped $slotUpper on $dateStr.',
+              data: {
+                'type': 'meal_skip',
+                'studentId': uid,
+                'messId': mess.messId,
+              },
+            );
+          }
+        } catch (e) {
+          debugPrint('[OneSignal] Error sending skip push to owner: $e');
+        }
+      }
     } finally {
       _isSkipping = false;
     }
@@ -1489,6 +1587,10 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
     _isUndoing = true;
     try {
       await _service.undoSkipMeal(recordId);
+      state = state.copyWith(hasSelfSkipped: false);
+    } catch (e) {
+      debugPrint('[StudentHomeViewModel] undoSkip error: $e');
+      rethrow;
     } finally {
       _isUndoing = false;
     }
@@ -1602,6 +1704,7 @@ final studentHomeProvider =
 // ─── Student History ──────────────────────────────────────────────────────────
 class StudentHistoryState {
   final List<MealRecordModel> records;
+  final List<LeaveModel> leaves;
   final int selfAbsent;
   final int ownerOff;
   final DateTime selectedMonth;
@@ -1609,6 +1712,7 @@ class StudentHistoryState {
 
   const StudentHistoryState({
     this.records = const [],
+    this.leaves = const [],
     this.selfAbsent = 0,
     this.ownerOff = 0,
     required this.selectedMonth,
@@ -1617,12 +1721,14 @@ class StudentHistoryState {
 
   StudentHistoryState copyWith({
     List<MealRecordModel>? records,
+    List<LeaveModel>? leaves,
     int? selfAbsent,
     int? ownerOff,
     DateTime? selectedMonth,
     bool? isLoading,
   }) => StudentHistoryState(
     records: records ?? this.records,
+    leaves: leaves ?? this.leaves,
     selfAbsent: selfAbsent ?? this.selfAbsent,
     ownerOff: ownerOff ?? this.ownerOff,
     selectedMonth: selectedMonth ?? this.selectedMonth,
@@ -1641,19 +1747,26 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
-    final records = await _service.getMealRecords(
-      studentId,
-      state.selectedMonth.month,
-      state.selectedMonth.year,
-    );
-    final self = records.where((r) => r.status == 'absent_self').length;
-    final ownerOff = records.where((r) => r.status == 'absent_owner').length;
-    state = state.copyWith(
-      records: records,
-      selfAbsent: self,
-      ownerOff: ownerOff,
-      isLoading: false,
-    );
+    try {
+      final records = await _service.getMealRecords(
+        studentId,
+        state.selectedMonth.month,
+        state.selectedMonth.year,
+      );
+      final leaves = await _service.getStudentLeaves(studentId);
+      final self = records.where((r) => r.status == 'absent_self').length;
+      final ownerOff = records.where((r) => r.status == 'absent_owner').length;
+      state = state.copyWith(
+        records: records,
+        leaves: leaves,
+        selfAbsent: self,
+        ownerOff: ownerOff,
+        isLoading: false,
+      );
+    } catch (e) {
+      debugPrint('[StudentHistoryViewModel] error loading history: $e');
+      state = state.copyWith(isLoading: false);
+    }
   }
 
   void changeMonth(DateTime month) {
@@ -1669,8 +1782,9 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
   }) async {
     final student = await _service.getStudentById(studentId);
     if (student == null) return;
+    final uniqueId = FirebaseFirestore.instance.collection('leaves').doc().id;
     final leave = LeaveModel(
-      leaveId: DateTime.now().millisecondsSinceEpoch.toString(),
+      leaveId: uniqueId,
       studentId: studentId,
       messId: student.messId,
       startDate: start,
@@ -1680,6 +1794,7 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
       endSlot: endSlot,
     );
     await _service.applyLeave(leave);
+    await load();
   }
 
   Future<void> cancelLeave(String leaveId) async {
@@ -1706,6 +1821,7 @@ class StudentBillState {
   final bool isLoading;
   final bool isPreview;
   final String? error;
+  final double postPaymentSkipsAmount;
 
   const StudentBillState({
     this.bill,
@@ -1713,6 +1829,7 @@ class StudentBillState {
     this.isLoading = true,
     this.isPreview = false,
     this.error,
+    this.postPaymentSkipsAmount = 0.0,
   });
 
   StudentBillState copyWith({
@@ -1721,12 +1838,15 @@ class StudentBillState {
     bool? isLoading,
     bool? isPreview,
     String? error,
+    double? postPaymentSkipsAmount,
   }) => StudentBillState(
     bill: bill ?? this.bill,
     selectedMonth: selectedMonth ?? this.selectedMonth,
     isLoading: isLoading ?? this.isLoading,
     isPreview: isPreview ?? this.isPreview,
     error: error,
+    postPaymentSkipsAmount:
+        postPaymentSkipsAmount ?? this.postPaymentSkipsAmount,
   );
 }
 
@@ -1749,7 +1869,42 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
       );
 
       if (bill != null) {
-        state = state.copyWith(bill: bill, isPreview: false, isLoading: false);
+        double postPaymentSkips = 0.0;
+        if (bill.isPaid) {
+          try {
+            final student = await _service.getStudentById(studentId);
+            if (student != null) {
+              final mess = await _service.getMessById(student.messId);
+              if (mess != null) {
+                MealPlanModel? plan;
+                if (student.assignedPlanId != null &&
+                    student.assignedPlanId!.isNotEmpty) {
+                  plan = await _service.getMealPlanById(
+                      student.messId, student.assignedPlanId!);
+                }
+                final currentRecords = await _service.getMealRecords(
+                  studentId,
+                  state.selectedMonth.month,
+                  state.selectedMonth.year,
+                );
+                postPaymentSkips = calculatePostPaymentSkipsAmount(
+                  savedBill: bill,
+                  currentRecords: currentRecords,
+                  mess: mess,
+                  plan: plan,
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('[StudentBill] postPaymentSkips error: $e');
+          }
+        }
+        state = state.copyWith(
+          bill: bill,
+          isPreview: false,
+          isLoading: false,
+          postPaymentSkipsAmount: postPaymentSkips,
+        );
       } else {
         // Calculate preview
         final student = await _service.getStudentById(studentId);
@@ -1781,6 +1936,18 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           plan = await _service.getMealPlanById(student.messId, student.assignedPlanId!);
         }
 
+        final extraFees = await _service.getExtraFees(student.messId, studentId);
+        final leaves = await _service.getStudentLeaves(studentId);
+
+        final carryForward = await calculateCarryForwardCredit(
+          studentId: studentId,
+          currentMonth: state.selectedMonth.month,
+          currentYear: state.selectedMonth.year,
+          service: _service,
+          mess: mess,
+          plan: plan,
+        );
+
         final previewBill = generateAdvancedBill(
           student: student,
           mess: mess,
@@ -1789,6 +1956,10 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           year: state.selectedMonth.year,
           records: records,
           previousDues: previousDues,
+          extraFees: extraFees,
+          leaves: leaves,
+          carryForwardCredit: carryForward.amount,
+          carryForwardItems: carryForward.items,
         );
 
         state = state.copyWith(
@@ -1876,6 +2047,7 @@ class OwnerSettingsViewModel extends StateNotifier<OwnerSettingsState> {
 
     final topicMap = {
       'skipAlert': 'owner_${mess.ownerId}_skip',
+      'postPaymentSkipAlert': 'owner_${mess.ownerId}_post_skip',
       'joinRequest': 'owner_${mess.ownerId}_join',
     };
     final topic = topicMap[key];

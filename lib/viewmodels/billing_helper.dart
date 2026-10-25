@@ -121,6 +121,8 @@ BillModel generateAdvancedBill({
   List<ExtraFeeModel> extraFees = const [],
   List<LeaveModel> leaves = const [],
   DateTime? priorSubscriptionEndDate,
+  double carryForwardCredit = 0.0,
+  List<DeductionItem> carryForwardItems = const [],
 }) {
   double skipsDeduction = 0.0;
   double ownerClosureDeduction = 0.0;
@@ -140,9 +142,22 @@ BillModel generateAdvancedBill({
       ? plan.mealsIncludedPerDay
       : mess.mealsIncludedPerDay;
 
-  // Calculate total days in the specified month
+  // Priority: If owner configured a per-meal rate, compute daily rate cleanly from it
+  // (e.g. 2 meals/day * ₹45 = ₹90/day) with zero month-length dividing fractions
+  final double ownerSetRate = (plan?.deductionPolicy.policyType == 'flat_fixed_rate' &&
+          (plan?.deductionPolicy.flatRate ?? 0) > 0)
+      ? plan!.deductionPolicy.flatRate!
+      : (mess.perMealRate > 0 ? mess.perMealRate : 0.0);
+
+  final double ownerDailyRate = ownerSetRate > 0 && allowedMeals > 0
+      ? (ownerSetRate * allowedMeals)
+      : 0.0;
+
+  // Calculate total days in the specified month (fallback if no owner rate set)
   final totalDays = DateTime(year, month + 1, 0).day;
-  final double dailyRate = totalDays > 0 ? (baseFee / totalDays) : 0.0;
+  final double dailyRate = ownerDailyRate > 0
+      ? ownerDailyRate
+      : (totalDays > 0 ? (baseFee / totalDays) : 0.0);
 
   // 1. Calculate prorated discount if joined mid-month
   if (student.joinDate.year == year &&
@@ -188,35 +203,16 @@ BillModel generateAdvancedBill({
     dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
   }
 
-  // Dynamic per-meal rebate rate
+  // Fallback dynamic per-meal rebate rate
   final double dynamicPerMealRate = (allowedMeals > 0 && totalDays > 0)
       ? (baseFee / (totalDays * allowedMeals))
       : 0.0;
 
-  // Determine policy
-  final String policyType = !mess.allowMealSkipping
-      ? 'none'
-      : (plan?.deductionPolicy.policyType ?? 'dynamic_prorated');
-
-  final double effectiveStudentRebateRate;
-  if (policyType == 'none') {
-    effectiveStudentRebateRate = 0.0;
-  } else if (policyType == 'flat_fixed_rate') {
-    effectiveStudentRebateRate =
-        plan?.deductionPolicy.flatRate ?? mess.perMealRate;
-  } else {
-    effectiveStudentRebateRate = dynamicPerMealRate;
-  }
+  final double effectiveStudentRebateRate = !mess.allowMealSkipping
+      ? 0.0
+      : (ownerSetRate > 0 ? ownerSetRate : dynamicPerMealRate);
 
   // Owner closure per-meal compensation rate:
-  // Owner closures are compensated regardless of student skip limits.
-  // Prioritize the owner-configured rate (from plan flatRate or mess.perMealRate).
-  // If no flat rate was configured, fall back to the dynamic prorated rate.
-  final double ownerSetRate = (plan?.deductionPolicy.policyType == 'flat_fixed_rate' &&
-          (plan?.deductionPolicy.flatRate ?? 0) > 0)
-      ? plan!.deductionPolicy.flatRate!
-      : (mess.perMealRate > 0 ? mess.perMealRate : 0.0);
-
   final double ownerClosureRate = ownerSetRate > 0
       ? ownerSetRate
       : (dynamicPerMealRate > 0 ? dynamicPerMealRate : 0.0);
@@ -304,30 +300,35 @@ BillModel generateAdvancedBill({
       }
     }
 
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = dayNames[currentDate.weekday - 1];
+    final isSpecialDay =
+        mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
+
     // Owner Closures:
     // Awarded strictly if the closed slot was part of the student's active meals for today!
     for (var r in ownerClosures) {
       if (isSlotActiveForStudent(student, plan, mess, r.mealSlot, currentDate)) {
         totalOwnerClosures++;
-        const dayNames = [
-          'Monday',
-          'Tuesday',
-          'Wednesday',
-          'Thursday',
-          'Friday',
-          'Saturday',
-          'Sunday'
-        ];
-        final dayName = dayNames[currentDate.weekday - 1];
-        final isSpecialDay =
-            mess.specialMealEnabled && mess.specialMealDays.contains(dayName);
         final isSpecialClosure =
-            r.isSpecial || (isSpecialDay && mess.specialMealSlot == r.mealSlot);
+            isSpecialDay && (r.isSpecial || mess.specialMealSlot == r.mealSlot);
+
+        final int feastExtendCount = mess.specialMealExtendMeals > 0
+            ? mess.specialMealExtendMeals
+            : (mess.specialMealMultiplier.round().clamp(1, 4));
 
         final double refundAmt = isSpecialClosure
             ? ((mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
                 ? mess.specialMealFlatRate!
-                : (ownerClosureRate * mess.specialMealMultiplier))
+                : (ownerClosureRate * feastExtendCount))
             : ownerClosureRate;
 
         ownerClosureDeduction += refundAmt;
@@ -353,11 +354,14 @@ BillModel generateAdvancedBill({
       if (clampedSkips > 0) {
         final int? maxAllowedSkips = plan?.deductionPolicy.maxSkipsPerMonth;
         for (int i = 0; i < clampedSkips; i++) {
-          final isSpecial = studentSkips[i].isSpecial;
+          final isSpecial = isSpecialDay && studentSkips[i].isSpecial;
+          final int feastExtendCount = mess.specialMealExtendMeals > 0
+              ? mess.specialMealExtendMeals
+              : (mess.specialMealMultiplier.round().clamp(1, 4));
           final double defaultSpecialRate = (mess.specialMealFlatRate != null &&
                   mess.specialMealFlatRate! > 0)
               ? mess.specialMealFlatRate!
-              : (effectiveStudentRebateRate * mess.specialMealMultiplier);
+              : (effectiveStudentRebateRate * feastExtendCount);
           final double standardRate =
               isSpecial ? defaultSpecialRate : effectiveStudentRebateRate;
           final skipCost = studentSkips[i].cost ??
@@ -366,7 +370,7 @@ BillModel generateAdvancedBill({
           if (isSpecial) {
             specialSkipsCount++;
             specialSkipsDeduction += skipCost;
-            totalValidSkips += mess.specialMealMultiplier.round().clamp(1, 4);
+            totalValidSkips += feastExtendCount;
           } else {
             normalSkipsCount++;
             normalSkipsDeduction += skipCost;
@@ -435,11 +439,41 @@ BillModel generateAdvancedBill({
     }
   }
 
-  // 6. Calculate Final Payable
+  // 6. Integrate Carry Forward Credit from prior paid months
+  if (carryForwardCredit > 0) {
+    if (carryForwardItems.isNotEmpty) {
+      items.addAll(carryForwardItems);
+    } else {
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      int prevMonth = month - 1;
+      if (prevMonth < 1) prevMonth = 12;
+      final prevMonthName = monthNames[prevMonth - 1];
+
+      items.add(
+        DeductionItem(
+          date: DateTime(year, month, 1),
+          mealSlot: '$prevMonthName Skips Credit (Carry Forward)',
+          type: 'carry_forward',
+          amount: -carryForwardCredit,
+        ),
+      );
+    }
+  }
+
+  // Financial Sanity Guard: Skips deduction cannot exceed monthly baseFee
+  if (skipsDeduction > baseFee) {
+    skipsDeduction = baseFee;
+  }
+
+  // 7. Calculate Final Payable
   double calculatedTotal = baseFee -
       proratedDiscount -
       skipsDeduction -
-      ownerClosureDeduction +
+      ownerClosureDeduction -
+      carryForwardCredit +
       extraMealsAddon +
       guestAddons +
       extraFeesAddon +
@@ -470,7 +504,7 @@ BillModel generateAdvancedBill({
     year: year,
     baseFee: baseFee,
     proratedDiscount: proratedDiscount,
-    totalDeductions: skipsDeduction + ownerClosureDeduction,
+    totalDeductions: skipsDeduction + ownerClosureDeduction + carryForwardCredit,
     extraMealsAddon: extraMealsAddon,
     guestAddons: guestAddons,
     extraFeesAddon: extraFeesAddon,
@@ -488,5 +522,195 @@ BillModel generateAdvancedBill({
     normalSkipsDeduction: normalSkipsDeduction,
     specialSkipsCount: specialSkipsCount,
     specialSkipsDeduction: specialSkipsDeduction,
+    carryForwardCredit: carryForwardCredit,
   );
+}
+
+/// Result container for carry forward skips from previous paid months
+class CarryForwardResult {
+  final double amount;
+  final int skipCount;
+  final List<DeductionItem> items;
+
+  const CarryForwardResult({
+    this.amount = 0.0,
+    this.skipCount = 0,
+    this.items = const [],
+  });
+}
+
+/// Calculates uncredited skips and owner closures from previous paid months
+/// that were not factored into the previous month's bill when it was paid.
+Future<CarryForwardResult> calculateCarryForwardCredit({
+  required String studentId,
+  required int currentMonth,
+  required int currentYear,
+  required dynamic service,
+  required MessModel mess,
+  MealPlanModel? plan,
+}) async {
+  try {
+    int prevMonth = currentMonth - 1;
+    int prevYear = currentYear;
+    if (prevMonth < 1) {
+      prevMonth = 12;
+      prevYear = currentYear - 1;
+    }
+
+    // 1. Get the previous month's bill
+    final BillModel? prevBill =
+        await service.getBill(studentId, prevMonth, prevYear);
+
+    // Only carry forward if the previous bill was marked as PAID.
+    // (If it was unpaid, getPreviousUnpaidDues already handles the whole net balance).
+    if (prevBill == null || !prevBill.isPaid) {
+      return const CarryForwardResult();
+    }
+
+    // 2. Fetch the actual meal records of that previous month
+    final List<MealRecordModel> prevRecords =
+        await service.getMealRecords(studentId, prevMonth, prevYear);
+
+    if (prevRecords.isEmpty && prevBill.excessCreditGenerated <= 0) {
+      return const CarryForwardResult();
+    }
+
+    // 3. Calculate full deductions for all skips in that month
+    final double baseFee = plan?.monthlyFee ?? mess.monthlyFee;
+    final int allowedMeals =
+        plan != null ? plan.mealsIncludedPerDay : mess.mealsIncludedPerDay;
+    final double ownerSetRate =
+        (plan?.deductionPolicy.policyType == 'flat_fixed_rate' &&
+                (plan?.deductionPolicy.flatRate ?? 0) > 0)
+            ? plan!.deductionPolicy.flatRate!
+            : (mess.perMealRate > 0 ? mess.perMealRate : 0.0);
+    final totalDaysInPrevMonth = DateTime(prevYear, prevMonth + 1, 0).day;
+    final double dynamicPerMealRate =
+        (allowedMeals > 0 && totalDaysInPrevMonth > 0)
+            ? (baseFee / (totalDaysInPrevMonth * allowedMeals))
+            : 0.0;
+    final double effectiveRate = !mess.allowMealSkipping
+        ? 0.0
+        : (ownerSetRate > 0 ? ownerSetRate : dynamicPerMealRate);
+
+    double actualTotalDeductions = 0.0;
+    int uncreditedCount = 0;
+    List<DeductionItem> carriedItems = [];
+
+    // Group previous records by day
+    Map<int, List<MealRecordModel>> dailyRecords = {};
+    for (var r in prevRecords) {
+      dailyRecords.putIfAbsent(r.date.day, () => []).add(r);
+    }
+
+    for (int day = 1; day <= totalDaysInPrevMonth; day++) {
+      var dayRecs = dailyRecords[day] ?? [];
+      for (var r in dayRecs) {
+        if (r.status == 'absent_self' || r.status == 'absent_owner') {
+          uncreditedCount++;
+          final int feastExtendCount = mess.specialMealExtendMeals > 0
+              ? mess.specialMealExtendMeals
+              : (mess.specialMealMultiplier.round().clamp(1, 4));
+          final double defaultSpecialRate =
+              (mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
+                  ? mess.specialMealFlatRate!
+                  : (effectiveRate * feastExtendCount);
+          final double standardRate =
+              r.isSpecial ? defaultSpecialRate : effectiveRate;
+          final double skipCost = r.cost ?? standardRate;
+
+          actualTotalDeductions += skipCost;
+        }
+      }
+    }
+
+    // The uncredited amount is whatever post-payment skips happened:
+    double uncreditedAmount =
+        max(0.0, actualTotalDeductions - prevBill.totalDeductions);
+
+    if (prevBill.excessCreditGenerated > 0) {
+      uncreditedAmount += prevBill.excessCreditGenerated;
+    }
+
+    if (uncreditedAmount > 0) {
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      final prevMonthName = monthNames[prevMonth - 1];
+
+      carriedItems.add(
+        DeductionItem(
+          date: DateTime(currentYear, currentMonth, 1),
+          mealSlot: '$prevMonthName Skips Credit (Carry Forward)',
+          type: 'carry_forward',
+          amount: -uncreditedAmount,
+        ),
+      );
+
+      return CarryForwardResult(
+        amount: uncreditedAmount,
+        skipCount: uncreditedCount,
+        items: carriedItems,
+      );
+    }
+
+    return const CarryForwardResult();
+  } catch (e) {
+    return const CarryForwardResult();
+  }
+}
+
+/// Checks if a currently PAID bill has accrued new skips after being marked as paid.
+double calculatePostPaymentSkipsAmount({
+  required BillModel savedBill,
+  required List<MealRecordModel> currentRecords,
+  required MessModel mess,
+  MealPlanModel? plan,
+}) {
+  if (!savedBill.isPaid) return 0.0;
+
+  final double ownerSetRate =
+      (plan?.deductionPolicy.policyType == 'flat_fixed_rate' &&
+              (plan?.deductionPolicy.flatRate ?? 0) > 0)
+          ? plan!.deductionPolicy.flatRate!
+          : (mess.perMealRate > 0 ? mess.perMealRate : 0.0);
+  final totalDays = DateTime(savedBill.year, savedBill.month + 1, 0).day;
+  final int allowedMeals =
+      plan != null ? plan.mealsIncludedPerDay : mess.mealsIncludedPerDay;
+  final double dynamicPerMealRate = (allowedMeals > 0 && totalDays > 0)
+      ? (savedBill.baseFee / (totalDays * allowedMeals))
+      : 0.0;
+  final double effectiveRate = !mess.allowMealSkipping
+      ? 0.0
+      : (ownerSetRate > 0 ? ownerSetRate : dynamicPerMealRate);
+
+  double actualTotal = 0.0;
+  for (var r in currentRecords) {
+    if (r.status == 'absent_self' || r.status == 'absent_owner') {
+      final int feastExtendCount = mess.specialMealExtendMeals > 0
+          ? mess.specialMealExtendMeals
+          : (mess.specialMealMultiplier.round().clamp(1, 4));
+      final double defaultSpecialRate =
+          (mess.specialMealFlatRate != null && mess.specialMealFlatRate! > 0)
+              ? mess.specialMealFlatRate!
+              : (effectiveRate * feastExtendCount);
+      final double standardRate =
+          r.isSpecial ? defaultSpecialRate : effectiveRate;
+      final double skipCost = r.cost ?? standardRate;
+      actualTotal += skipCost;
+    }
+  }
+
+  return max(0.0, actualTotal - savedBill.totalDeductions);
 }

@@ -11,11 +11,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // True server-side admin check via Custom Claims & Cryptographically verified email
+    // V-12 Fix: Require cryptographically verified email for Admin access
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
-        (request.auth.token.email != null && (
+        (request.auth.token.email_verified == true && request.auth.token.email != null && (
           request.auth.token.email == 'mohitagnihotri.dev@gmail.com' ||
           request.auth.token.email == 'mohit.developer@gmail.com' ||
           request.auth.token.email == 'admin@messmate.app' ||
@@ -42,16 +42,35 @@ service cloud.firestore {
     // ─── Messes ───────────────────────────────────────────────────────
     match /messes/{messId} {
       allow read: if true;
-      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.ownerId || isAdmin());
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == request.resource.data.ownerId && 
+         (!request.resource.data.keys().hasAny(['subscriptionStatus', 'isVerified', 'isFrozen']) || 
+          request.resource.data.subscriptionStatus == 'trial_active')) || 
+        isAdmin()
+      );
+      // V-07 & V-08 Fix: Mess owners cannot self-grant Lifetime VIP, cannot self-verify, cannot change rating/reviewCount directly
       allow update: if isAuthenticated() && (
-        request.auth.uid == resource.data.ownerId ||
         isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount'])
+        (request.auth.uid == resource.data.ownerId && 
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+           'subscriptionStatus', 'trialStartDate', 'trialExpiresAt', 'isFrozen', 
+           'isVerified', 'rating', 'reviewCount', 'ownerId', 'messId'
+         ])) ||
+        // Allow enrolled students to update aggregate rating & reviewCount when submitting a review
+        (
+          get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount']) &&
+          request.resource.data.rating is number &&
+          request.resource.data.rating >= 0 &&
+          request.resource.data.rating <= 5 &&
+          request.resource.data.reviewCount is number &&
+          request.resource.data.reviewCount >= 0
+        )
       );
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
 
       match /meal_plans/{planId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
         allow write: if isMessOwner(messId) || isAdmin();
       }
 
@@ -61,7 +80,7 @@ service cloud.firestore {
       }
 
       match /dishes/{dishId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
         allow write: if isMessOwner(messId) || isAdmin();
       }
 
@@ -76,51 +95,73 @@ service cloud.firestore {
       }
 
       match /feedbacks/{feedbackId} {
-        allow read: if isAuthenticated();
+        allow read: if isAuthenticated() && (
+          request.auth.uid == resource.data.studentId || 
+          isMessOwner(messId) || 
+          isAdmin()
+        );
         allow create: if isAuthenticated()
           && request.auth.uid == request.resource.data.studentId
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5;
-        allow update, delete: if isMessOwner(messId) || isAdmin();
+        // V-16 Fix: Owners cannot delete negative feedbacks to whitewash ratings
+        allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
+        allow delete: if isAdmin();
       }
 
       match /dish_ratings/{ratingId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId;
-        allow update, delete: if isAuthenticated() && (
-          request.auth.uid == resource.data.studentId ||
-          isMessOwner(messId) ||
-          isAdmin()
-        );
+        allow create: if isAuthenticated() 
+          && request.auth.uid == request.resource.data.studentId
+          && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId;
+        allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
+        allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
       }
 
       match /reviews/{reviewId} {
         allow read: if true;
-        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId;
-        allow update, delete: if isAuthenticated() && (
-          request.auth.uid == resource.data.studentId ||
-          isMessOwner(messId) ||
-          isAdmin()
-        );
+        allow create: if isAuthenticated() 
+          && request.auth.uid == request.resource.data.studentId
+          && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId;
+        allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
+        allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
       }
     }
 
     // ─── Students ─────────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid;
-      allow update: if isAuthenticated() && (
+      // V-06 Fix: Student can only read their own profile; Owner can only read students of their mess
+      allow read: if isAuthenticated() && (
         request.auth.uid == studentId ||
         (resource != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
       );
-      allow delete: if isAuthenticated() && (request.auth.uid == studentId || isAdmin());
+      // When applying, initial status must be pending
+      allow create: if isAuthenticated() && request.auth.uid == studentId && request.resource.data.studentId == request.auth.uid && request.resource.data.status == 'pending';
+      // V-04 Fix: Students cannot self-approve status to 'active' or modify subscriptionEndDate
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource != null && isMessOwner(resource.data.messId)) ||
+        (
+          request.auth.uid == studentId &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriptionEndDate']) &&
+          (
+            // Normal profile & preference updates (status, messId, assignedPlanId untouched)
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'messId', 'assignedPlanId']) ||
+            // Leaving mess
+            (request.resource.data.status == 'left' && request.resource.data.messId == '') ||
+            // Requesting to join or switch mess (strictly pending, zero chance of self-approval to active)
+            (request.resource.data.status == 'pending' && (resource.data.status in ['pending', 'left'] || resource.data.messId == '' || resource.data.messId == null))
+          )
+        )
+      );
+      allow delete: if isAdmin();
     }
 
     // ─── Menus ────────────────────────────────────────────────────────
     match /menus/{menuId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated() && (isMessOwner(request.resource.data.messId) || isAdmin());
       allow update: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin()) && request.resource.data.messId == resource.data.messId;
       allow delete: if isAuthenticated() && (isMessOwner(resource.data.messId) || isAdmin());
@@ -136,17 +177,32 @@ service cloud.firestore {
 
     // ─── Meal Records ─────────────────────────────────────────────────
     match /meal_records/{recordId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.auth.uid == request.resource.data.studentId &&
-        get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
-      allow update: if isAuthenticated() && resource != null && (
+      // V-06 Fix: Only the student and their mess owner can read meal records
+      allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.studentId ||
-        isMessOwner(resource.data.messId) ||
+        (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
-      ) && request.resource.data.studentId == resource.data.studentId;
+      );
+      // V-03 Fix: Cost must be bounded (<= 500) and status must be valid
+      allow create: if isAuthenticated() && (
+        (
+          request.auth.uid == request.resource.data.studentId &&
+          get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId &&
+          (!('cost' in request.resource.data) || (request.resource.data.cost is number && request.resource.data.cost >= 0 && request.resource.data.cost <= 500)) &&
+          request.resource.data.status in ['absent_self', 'present', 'guest', 'absent_owner']
+        ) ||
+        isMessOwner(request.resource.data.messId) ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && resource != null && (
+        ((request.auth.uid == resource.data.studentId && resource.data.status != 'guest' && request.resource.data.status in ['absent_self', 'present']) ||
+         isMessOwner(resource.data.messId) ||
+         isAdmin())
+      ) && request.resource.data.studentId == resource.data.studentId &&
+         (!('cost' in request.resource.data) || (request.resource.data.cost is number && request.resource.data.cost >= 0 && request.resource.data.cost <= 500));
+      // V-05 Fix: Student CANNOT delete guest meal records (anti eat-and-delete fraud)
       allow delete: if isAuthenticated() && resource != null && (
-        request.auth.uid == resource.data.studentId ||
+        (request.auth.uid == resource.data.studentId && resource.data.status != 'guest') ||
         isMessOwner(resource.data.messId) ||
         isAdmin()
       );
@@ -154,10 +210,20 @@ service cloud.firestore {
 
     // ─── Leaves ───────────────────────────────────────────────────────
     match /leaves/{leaveId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.auth.uid == request.resource.data.studentId &&
-        get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId;
+      // V-06 Fix: Scoped strictly to student and their mess owner
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.studentId ||
+        (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        (
+          request.auth.uid == request.resource.data.studentId &&
+          get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == request.resource.data.messId
+        ) ||
+        isMessOwner(request.resource.data.messId) ||
+        isAdmin()
+      );
       allow update: if isAuthenticated() && resource != null && (
         request.auth.uid == resource.data.studentId ||
         isMessOwner(resource.data.messId) ||
@@ -167,10 +233,13 @@ service cloud.firestore {
     }
 
     // ─── Bills ────────────────────────────────────────────────────────
-    // All authenticated users can read bills (student reads own, owner reads mess diner bills).
-    // Only Mess Owner or Admin can create/update bills!
     match /bills/{billId} {
-      allow read: if isAuthenticated();
+      // V-06 Fix: Financial isolation - Student only reads own bill, Owner only reads mess bills
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.studentId ||
+        (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
+        isAdmin()
+      );
       allow create, update: if isAuthenticated() && (
         (request.resource.data.messId != null && isMessOwner(request.resource.data.messId)) ||
         (resource != null && resource.data.messId != null && isMessOwner(resource.data.messId)) ||
@@ -180,7 +249,6 @@ service cloud.firestore {
     }
 
     // ─── System Configuration & Admin Vault ───────────────────────────
-    // Admin vault contains master PIN, dynamic emails, developer UPI remittance. Strictly restricted to Admin.
     match /system_config/admin_vault {
       allow read, write: if isAdmin();
     }

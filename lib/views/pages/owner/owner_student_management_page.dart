@@ -50,6 +50,7 @@ class _OwnerStudentManagementPageState
   int _selectedFilterIndex = 0; // 0: All, 1: Active, 2: Pending, 3: Inactive / Dues
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final Map<String, Future<Map<String, dynamic>>> _billingDataCache = {};
 
   @override
   void initState() {
@@ -1050,6 +1051,7 @@ class _OwnerStudentManagementPageState
             student.studentId,
             selectedMonthDate.month,
             selectedMonthDate.year,
+            messId: student.messId,
           ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -1488,6 +1490,7 @@ class _OwnerStudentManagementPageState
         student.studentId,
         now.month,
         now.year,
+        messId: student.messId,
       );
     } catch (e) {
       debugPrint('[BillingData] getMealRecords error: $e');
@@ -1499,9 +1502,41 @@ class _OwnerStudentManagementPageState
         student.studentId,
         now.month,
         now.year,
+        messId: student.messId,
       );
     } catch (e) {
       debugPrint('[BillingData] getPreviousUnpaidDues error: $e');
+    }
+
+    List<ExtraFeeModel> extraFees = [];
+    try {
+      extraFees = await service.getExtraFees(student.messId, student.studentId);
+    } catch (e) {
+      debugPrint('[BillingData] getExtraFees error: $e');
+    }
+
+    List<LeaveModel> leaves = [];
+    try {
+      leaves = await service.getStudentLeaves(
+        student.studentId,
+        messId: student.messId,
+      );
+    } catch (e) {
+      debugPrint('[BillingData] getStudentLeaves error: $e');
+    }
+
+    CarryForwardResult carryForward = const CarryForwardResult();
+    try {
+      carryForward = await calculateCarryForwardCredit(
+        studentId: student.studentId,
+        currentMonth: now.month,
+        currentYear: now.year,
+        service: service,
+        mess: mess,
+        plan: plan,
+      );
+    } catch (e) {
+      debugPrint('[BillingData] calculateCarryForwardCredit error: $e');
     }
 
     return {
@@ -1510,6 +1545,9 @@ class _OwnerStudentManagementPageState
       'plan': plan,
       'records': records,
       'previousDues': previousDues,
+      'extraFees': extraFees,
+      'leaves': leaves,
+      'carryForward': carryForward,
       'month': now.month,
       'year': now.year,
     };
@@ -1523,9 +1561,14 @@ class _OwnerStudentManagementPageState
   ) {
     String localCompensationChoice = 'rebate';
     bool? localIsPaidOverride;
+    final cacheKey =
+        '${student.studentId}_${selectedMonthDate.year}_${selectedMonthDate.month}';
 
     return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchBillingData(ref, student, selectedMonthDate),
+      future: _billingDataCache.putIfAbsent(
+        cacheKey,
+        () => _fetchBillingData(ref, student, selectedMonthDate),
+      ),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -1549,6 +1592,13 @@ class _OwnerStudentManagementPageState
         final MessModel mess = data['mess'];
         final MealPlanModel? plan = data['plan'];
         final List<MealRecordModel> records = data['records'];
+        final List<ExtraFeeModel> extraFees =
+            (data['extraFees'] as List<ExtraFeeModel>?) ?? const [];
+        final List<LeaveModel> leaves =
+            (data['leaves'] as List<LeaveModel>?) ?? const [];
+        final CarryForwardResult carryForward =
+            data['carryForward'] as CarryForwardResult? ??
+                const CarryForwardResult();
 
         return StatefulBuilder(
           builder: (context, setLocalState) {
@@ -1562,6 +1612,10 @@ class _OwnerStudentManagementPageState
                   records: records,
                   previousDues: data['previousDues'],
                   compensationChoice: localCompensationChoice,
+                  extraFees: extraFees,
+                  leaves: leaves,
+                  carryForwardCredit: carryForward.amount,
+                  carryForwardItems: carryForward.items,
                 );
 
             bool localIsPaid = localIsPaidOverride ?? bill.isPaid;
@@ -1593,6 +1647,16 @@ class _OwnerStudentManagementPageState
               extendDateString = "${newEndDate.day} $monthStr";
             }
 
+            final double postPaymentSkipsAmount =
+                savedBill != null && savedBill.isPaid
+                    ? calculatePostPaymentSkipsAmount(
+                        savedBill: savedBill,
+                        currentRecords: records,
+                        mess: mess,
+                        plan: plan,
+                      )
+                    : 0.0;
+
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1604,6 +1668,68 @@ class _OwnerStudentManagementPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (postPaymentSkipsAmount > 0) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2EBE0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBDD4BA)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            size: 16,
+                            color: Color(0xFF2B3B2C),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '💡 ₹${postPaymentSkipsAmount.toInt()} unbilled skips after payment. Will be auto-deducted from next month\'s bill.',
+                              style: OwnerTypography.bold(
+                                size: 11.5,
+                                color: const Color(0xFF2B3B2C),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (bill.carryForwardCredit > 0) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF5EC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCCE0C8)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 16,
+                            color: Color(0xFF3F653E),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Includes ₹${bill.carryForwardCredit.toInt()} credit carried forward from previous month\'s skips.',
+                              style: OwnerTypography.bold(
+                                size: 11.5,
+                                color: const Color(0xFF2B3B2C),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (!bill.isPaid) ...[
                     Row(
                       children: [
@@ -1664,9 +1790,11 @@ class _OwnerStudentManagementPageState
                                   style: OwnerTypography.bold(size: 13),
                                 ),
                                 Text(
-                                  skippedMealsCount > 0
-                                      ? 'Deduct ₹${(skippedMealsCount * ((plan?.monthlyFee ?? mess.monthlyFee) / (DateTime(data['year'] as int, (data['month'] as int) + 1, 0).day * (plan?.mealsIncludedPerDay ?? mess.mealsIncludedPerDay)))).toStringAsFixed(0)} from bill'
-                                      : 'No deduction (0 skips)',
+                                  bill.totalDeductions > 0
+                                      ? 'Deduct ₹${bill.totalDeductions.toStringAsFixed(0)} from bill'
+                                      : (skippedMealsCount > 0
+                                          ? 'Deduct ₹0 from bill'
+                                          : 'No deduction (0 skips)'),
                                   style: OwnerTypography.regular(
                                     size: 11,
                                     color: OwnerColors.textSecondary,
@@ -1819,14 +1947,19 @@ class _OwnerStudentManagementPageState
                             totalDeductions: bill.totalDeductions,
                             extraMealsAddon: bill.extraMealsAddon,
                             guestAddons: bill.guestAddons,
+                            extraFeesAddon: bill.extraFeesAddon,
                             finalPayable: bill.finalPayable,
                             isPaid: value,
                             deductions: bill.deductions,
+                            carryForwardCredit: bill.carryForwardCredit,
+                            normalSkipsCount: bill.normalSkipsCount,
+                            normalSkipsDeduction: bill.normalSkipsDeduction,
+                            specialSkipsCount: bill.specialSkipsCount,
+                            specialSkipsDeduction: bill.specialSkipsDeduction,
                           );
 
                           int? daysToExtend;
-                          if (localCompensationChoice == 'extend' &&
-                              value == true) {
+                          if (localCompensationChoice == 'extend') {
                             daysToExtend = extendDays;
                           }
 
@@ -1838,6 +1971,7 @@ class _OwnerStudentManagementPageState
                                 value,
                                 extendDays: daysToExtend,
                               );
+                          _billingDataCache.remove(cacheKey);
 
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -1995,6 +2129,12 @@ class _OwnerStudentManagementPageState
                 _buildBillRow(
                   'Valid Skipped Meals Refunds',
                   '-₹${bill.totalDeductions.toStringAsFixed(0)}',
+                  color: Colors.green,
+                ),
+              if (bill.carryForwardCredit > 0)
+                _buildBillRow(
+                  'Previous Month Skips Credit',
+                  '-₹${bill.carryForwardCredit.toStringAsFixed(0)}',
                   color: Colors.green,
                 ),
               if (bill.extraMealsAddon > 0)

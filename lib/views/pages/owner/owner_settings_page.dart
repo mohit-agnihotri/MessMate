@@ -10,7 +10,9 @@ import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/login_page.dart';
 import '../common/user_feedback_sheet.dart';
+import '../common/full_screen_image_gallery.dart';
 import 'owner_about_mess_page.dart';
+import 'owner_feast_policy_page.dart';
 import 'owner_plan_builder_page.dart';
 import 'theme/owner_inspired_theme.dart';
 import 'widgets/owner_drawer.dart';
@@ -708,36 +710,67 @@ class OwnerSettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _buildToggle(
-            'Skip Alert (near cutoff)',
-            mess?.ownerNotificationPrefs['skipAlert'] ?? true,
+            'Student Meal Skip Alerts',
+            mess?.ownerNotificationPrefs['skipAlert'] ?? false,
             (val) => ref
                 .read(ownerSettingsProvider.notifier)
                 .toggleOwnerNotification('skipAlert', val),
+            subtitle: 'Get notified when any student skips an upcoming meal',
           ),
           _buildToggle(
-            'New Join Request Alert',
+            'Post-Payment Skip Alerts',
+            mess?.ownerNotificationPrefs['postPaymentSkipAlert'] ?? false,
+            (val) => ref
+                .read(ownerSettingsProvider.notifier)
+                .toggleOwnerNotification('postPaymentSkipAlert', val),
+            subtitle:
+                'Alert when an advance-paid student skips (adjusts in next bill)',
+          ),
+          _buildToggle(
+            'New Join Request Alerts',
             mess?.ownerNotificationPrefs['joinRequest'] ?? true,
             (val) => ref
                 .read(ownerSettingsProvider.notifier)
                 .toggleOwnerNotification('joinRequest', val),
+            subtitle: 'Get notified when a new student applies to join your mess',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildToggle(String title, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildToggle(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    String? subtitle,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              title,
-              style: OwnerTypography.regular(
-                size: 13,
-                color: OwnerColors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: OwnerTypography.bold(
+                    size: 13,
+                    color: OwnerColors.textPrimary,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: OwnerTypography.regular(
+                      size: 11,
+                      color: OwnerColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           CupertinoSwitch(
@@ -750,7 +783,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
-  // ─── Skip Policy Card ─────────────────────────────────────────────────────
+  // ─── Skip Policy Card (Screenshot 4) ───────────────────────────────────────
   Widget _buildSkipPolicyCard(
     BuildContext context,
     WidgetRef ref,
@@ -758,29 +791,29 @@ class OwnerSettingsPage extends ConsumerWidget {
   ) {
     if (mess == null) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: OwnerColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OwnerColors.borderSubtle),
-        boxShadow: OwnerShadows.card,
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x142D231C)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Meal Skipping Policy',
-            style: OwnerTypography.editorialSerif(
-              size: 16,
-              weight: FontWeight.w700,
-              color: OwnerColors.walnutDark,
+          Expanded(
+            child: Text(
+              'Allow students to skip meals',
+              style: GoogleFonts.inter(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF231A14),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          _buildToggle(
-            'Allow Students to Skip Meals',
-            mess.allowMealSkipping,
-            (val) => ref
+          CupertinoSwitch(
+            value: mess.allowMealSkipping,
+            activeTrackColor: const Color(0xFF4A684C),
+            onChanged: (val) => ref
                 .read(ownerSettingsProvider.notifier)
                 .save(mess.copyWith(allowMealSkipping: val)),
           ),
@@ -789,7 +822,7 @@ class OwnerSettingsPage extends ConsumerWidget {
     );
   }
 
-  // ─── Special Meal Settings Card ──────────────────────────────────────────
+  // ─── Special Meal Settings Card (Screenshot 4) ─────────────────────────────
   Widget _buildSpecialMealCard(
     BuildContext context,
     WidgetRef ref,
@@ -798,247 +831,167 @@ class OwnerSettingsPage extends ConsumerWidget {
     if (mess == null) return const SizedBox.shrink();
     final notifier = ref.read(ownerSettingsProvider.notifier);
 
+    final String dayDisplay = mess.specialMealDays.isNotEmpty
+        ? (mess.specialMealDays.length > 1
+            ? mess.specialMealDays.map((d) => d.substring(0, 3)).join(', ')
+            : mess.specialMealDays.first.substring(0, 3))
+        : 'Sun';
+
+    final String slotTitle = mess.specialMealSlot == 'morning'
+        ? 'Morning breakfast'
+        : mess.specialMealSlot == 'noon'
+            ? 'Noon lunch'
+            : mess.specialMealSlot == 'evening'
+                ? 'Evening snacks'
+                : 'Night dinner';
+
+    final int extendMealsCount = mess.specialMealExtendMeals > 0
+        ? mess.specialMealExtendMeals
+        : (mess.specialMealMultiplier > 0 ? mess.specialMealMultiplier.round() : 1);
+    final double baseRate = mess.perMealRate > 0 ? mess.perMealRate : 40.0;
+    final String refundText = mess.specialMealFlatRate != null &&
+            mess.specialMealFlatRate! > 0
+        ? '₹${mess.specialMealFlatRate!.toInt()}'
+        : '₹${(baseRate * extendMealsCount).toInt()}';
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: OwnerColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OwnerColors.borderSubtle),
-        boxShadow: OwnerShadows.card,
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x142D231C)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('✨', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Special Feast Policy (2x Rebate)',
-                  style: OwnerTypography.editorialSerif(
-                    size: 16,
-                    weight: FontWeight.w700,
-                    color: OwnerColors.walnutDark,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 14,
+                    color: Color(0xFF4A684C),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'SPECIAL FEAST POLICY',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: const Color(0xFF4A684C),
+                    ),
+                  ),
+                ],
+              ),
+              CupertinoSwitch(
+                value: mess.specialMealEnabled,
+                activeTrackColor: const Color(0xFF4A684C),
+                onChanged: (val) =>
+                    notifier.save(mess.copyWith(specialMealEnabled: val)),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Text(
-            'Configure your feast days (e.g. Sunday), cooked meal slots, and skip deduction multiplier.',
-            style: OwnerTypography.regular(
-              size: 12,
-              color: OwnerColors.textSecondary,
+            'Feast days, cooked slots and refund.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: const Color(0xFF7A7971),
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildToggle(
-            'Enable Special Meals',
-            mess.specialMealEnabled,
-            (val) => notifier.save(mess.copyWith(specialMealEnabled: val)),
           ),
           if (mess.specialMealEnabled) ...[
-            const Divider(height: 24, color: OwnerColors.borderSubtle),
-            Text(
-              'SPECIAL FEAST DAYS',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: OwnerColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                'Monday',
-                'Tuesday',
-                'Wednesday',
-                'Thursday',
-                'Friday',
-                'Saturday',
-                'Sunday',
-              ].map((day) {
-                final isSelected = mess.specialMealDays.contains(day);
-                final shortName = day.substring(0, 3);
-                return InkWell(
-                  onTap: () {
-                    final updatedDays = List<String>.from(mess.specialMealDays);
-                    if (isSelected) {
-                      if (updatedDays.length > 1) {
-                        updatedDays.remove(day);
-                        notifier.save(mess.copyWith(specialMealDays: updatedDays));
-                      }
-                    } else {
-                      updatedDays.add(day);
-                      notifier.save(mess.copyWith(specialMealDays: updatedDays));
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isSelected ? OwnerColors.sageGreen.withValues(alpha: 0.15) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? OwnerColors.sageGreen : OwnerColors.borderSubtle,
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Text(
-                      isSelected ? '✓ $shortName' : shortName,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? OwnerColors.walnutDark : OwnerColors.textSecondary,
-                      ),
-                    ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2B2019),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'DESIGNATED SPECIAL SLOT',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: OwnerColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: ['morning', 'noon', 'night'].map((slot) {
-                final isSelected = mess.specialMealSlot == slot;
-                final label = slot == 'morning'
-                    ? 'Breakfast'
-                    : slot == 'noon'
-                        ? 'Lunch'
-                        : 'Dinner';
-                return Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    child: InkWell(
-                      onTap: () => notifier.save(mess.copyWith(specialMealSlot: slot)),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFFDF8EE) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? OwnerColors.amberGlow : OwnerColors.borderSubtle,
-                            width: isSelected ? 1.6 : 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            isSelected ? '★ $label' : label,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? OwnerColors.walnutDark : OwnerColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'SKIP DEDUCTION VALUE',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: OwnerColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => notifier.save(
-                      mess.copyWith(
-                        specialMealMultiplier: 2.0,
-                        specialMealFlatRate: null,
-                      ),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null
-                            ? const Color(0xFFFDF8EE)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null
-                              ? OwnerColors.amberGlow
-                              : OwnerColors.borderSubtle,
-                          width: mess.specialMealMultiplier == 2.0 && mess.specialMealFlatRate == null ? 1.6 : 1,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '2x Value (Double)',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: OwnerColors.walnutDark,
-                          ),
-                        ),
-                      ),
+                  child: Text(
+                    dayDisplay,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => notifier.save(
-                      mess.copyWith(
-                        specialMealMultiplier: 1.0,
-                        specialMealFlatRate: null,
-                      ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE6C8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '$slotTitle ★',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF8B531B),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null
-                            ? const Color(0xFFFDF8EE)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null
-                              ? OwnerColors.amberGlow
-                              : OwnerColors.borderSubtle,
-                          width: mess.specialMealMultiplier == 1.0 && mess.specialMealFlatRate == null ? 1.6 : 1,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '1x (Normal Rate)',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: OwnerColors.walnutDark,
-                          ),
-                        ),
-                      ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2EBE0),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '$refundText / special skip',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2B3B2C),
                     ),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => OwnerFeastPolicyPage.navigate(context, mess),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE2EBE0),
+                  foregroundColor: const Color(0xFF2B3B2C),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Edit feast rules',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2B3B2C),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: Color(0xFF2B3B2C),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ],
@@ -1101,23 +1054,33 @@ class OwnerSettingsPage extends ConsumerWidget {
                         padding: const EdgeInsets.only(right: 10),
                         child: Stack(
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.network(
-                                url,
-                                width: 96,
-                                height: 96,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => Container(
+                            GestureDetector(
+                              onTap: () {
+                                FullScreenImageGallery.open(
+                                  context,
+                                  imageUrls: photos,
+                                  initialIndex: idx,
+                                  title: '${mess.name} - Gallery',
+                                );
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  url,
                                   width: 96,
                                   height: 96,
-                                  decoration: BoxDecoration(
-                                    color: OwnerColors.surfaceWarm,
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(
-                                    Icons.broken_image_rounded,
-                                    color: OwnerColors.walnutMuted,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    width: 96,
+                                    height: 96,
+                                    decoration: BoxDecoration(
+                                      color: OwnerColors.surfaceWarm,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Icon(
+                                      Icons.broken_image_rounded,
+                                      color: OwnerColors.walnutMuted,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1159,7 +1122,9 @@ class OwnerSettingsPage extends ConsumerWidget {
                           final picker = ImagePicker();
                           final file = await picker.pickImage(
                             source: ImageSource.gallery,
-                            imageQuality: 80,
+                            maxWidth: 1200,
+                            maxHeight: 1200,
+                            imageQuality: 75,
                           );
                           if (file == null) return;
                           final bytes = await file.readAsBytes();
@@ -1613,6 +1578,9 @@ class OwnerSettingsPage extends ConsumerWidget {
                       final picker = ImagePicker();
                       final file = await picker.pickImage(
                         source: ImageSource.gallery,
+                        maxWidth: 1024,
+                        maxHeight: 1024,
+                        imageQuality: 80,
                       );
                       if (file != null) {
                         final bytes = await file.readAsBytes();

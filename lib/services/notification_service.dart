@@ -292,6 +292,29 @@ class NotificationService {
     return _dispatchRestNotification(payload);
   }
 
+  /// Sends a push notification to a specific mess owner by external ID (ownerId).
+  static Future<bool> sendOwnerNotification({
+    required String ownerId,
+    required String title,
+    required String message,
+    Map<String, dynamic>? data,
+  }) async {
+    if (ownerId.isEmpty) return false;
+
+    final payload = {
+      'app_id': _appId,
+      'headings': {'en': title},
+      'contents': {'en': message},
+      'include_aliases': {
+        'external_id': [ownerId],
+      },
+      'target_channel': 'push',
+      if (data != null) 'data': data,
+    };
+
+    return _dispatchRestNotification(payload);
+  }
+
   /// Sends a push notification to all users across the platform.
   static Future<bool> sendBroadcastNotification({
     required String title,

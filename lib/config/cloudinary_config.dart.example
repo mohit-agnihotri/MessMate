@@ -1,0 +1,45 @@
+/// Cloudinary configuration template holding Cloud Name, Unsigned Upload Preset,
+/// and image transformation utilities.
+///
+/// Copy this file to `cloudinary_config.dart` and insert your credentials,
+/// or pass credentials securely at compile-time using:
+/// `--dart-define=CLOUDINARY_CLOUD_NAME=your_cloud_name`
+/// `--dart-define=CLOUDINARY_UPLOAD_PRESET=your_unsigned_preset`
+class CloudinaryConfig {
+  CloudinaryConfig._();
+
+  /// Default fallback cloud name placeholder.
+  static const String _defaultCloudName = 'YOUR_CLOUDINARY_CLOUD_NAME';
+
+  /// Default unsigned upload preset placeholder.
+  static const String _defaultUploadPreset = 'YOUR_UNSIGNED_PRESET';
+
+  /// Cloud Name resolved from compile-time environment or fallback.
+  static String get cloudName {
+    const envCloud = String.fromEnvironment('CLOUDINARY_CLOUD_NAME');
+    if (envCloud.isNotEmpty) return envCloud;
+    return _defaultCloudName;
+  }
+
+  /// Unsigned Upload Preset resolved from compile-time environment or fallback.
+  static String get uploadPreset {
+    const envPreset = String.fromEnvironment('CLOUDINARY_UPLOAD_PRESET');
+    if (envPreset.isNotEmpty) return envPreset;
+    return _defaultUploadPreset;
+  }
+
+  /// Cloudinary direct image upload API endpoint.
+  static String get uploadUrl =>
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+
+  /// Transforms a raw Cloudinary URL to automatically deliver optimal format (WebP/AVIF),
+  /// dynamic compression (q_auto), and responsive width scaling (c_limit).
+  static String getOptimizedUrl(String rawUrl, {int width = 800}) {
+    if (!rawUrl.contains('res.cloudinary.com') || !rawUrl.contains('/upload/')) {
+      return rawUrl;
+    }
+    // Inject transformations: auto format, auto quality, max width boundary
+    final transformation = 'f_auto,q_auto,w_$width,c_limit';
+    return rawUrl.replaceFirst('/upload/', '/upload/$transformation/');
+  }
+}
