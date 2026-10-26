@@ -404,7 +404,7 @@ class _OwnerStudentManagementPageState
           ),
           const SizedBox(height: 4),
           Text(
-            'Students use this code in MessMate to request admission.',
+            'Students use this code in Mezzo to request admission.',
             style: OwnerTypography.regular(
               size: 12,
               color: Colors.white.withValues(alpha: 0.7),

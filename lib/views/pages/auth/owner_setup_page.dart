@@ -952,7 +952,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         try {
           await NotificationService.sendStudentNotification(
             studentId: effectiveOwnerId,
-            title: '🎉 Welcome to MessMate!',
+            title: '🎉 Welcome to Mezzo!',
             message:
                 'Aapka 180 Days (6 Months) Free VIP Partner Access shuru ho gaya hai!',
           );

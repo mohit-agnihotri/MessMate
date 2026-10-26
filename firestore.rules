@@ -94,6 +94,10 @@ service cloud.firestore {
         allow write: if isMessOwner(messId) || isAdmin();
       }
 
+      match /expenses/{expenseId} {
+        allow read, write: if isMessOwner(messId) || isAdmin();
+      }
+
       match /feedbacks/{feedbackId} {
         allow read: if isAuthenticated() && (
           request.auth.uid == resource.data.studentId || 

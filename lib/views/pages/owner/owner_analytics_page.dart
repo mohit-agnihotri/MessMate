@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
+import 'owner_expense_ledger_page.dart';
 import 'theme/owner_inspired_theme.dart';
 import 'widgets/owner_drawer.dart';
 
@@ -58,6 +60,8 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   children: [
+                    _buildLedgerSnapshotCard(context, ref),
+                    const SizedBox(height: 16),
                     _buildSegmentedTabToggle(
                       reviewsCount: reviewsCount,
                       foodCount: foodCount,
@@ -73,6 +77,168 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ─── P&L Khaata Snapshot Card ─────────────────────────────────────────────
+  Widget _buildLedgerSnapshotCard(BuildContext context, WidgetRef ref) {
+    final ledgerState = ref.watch(ownerExpenseLedgerProvider);
+    final isProfitable = ledgerState.netCashProfit >= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: OwnerColors.walnutDark,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: OwnerColors.amber,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 16,
+                      color: OwnerColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'KHAATA & PROFIT-LOSS',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: const Color(0xFFC7BCB3),
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const OwnerExpenseLedgerPage()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      Text(
+                        'View Ledger',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.amber,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: OwnerColors.amber,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Collected Fees',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFFC7BCB3),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${ledgerState.totalCollectedFees.toInt()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF81C784),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Kharcha',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFFC7BCB3),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${ledgerState.totalExpenses.toInt()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFFF8A80),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Net Profit',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFFC7BCB3),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${isProfitable ? '+' : ''}₹${ledgerState.netCashProfit.toInt()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: OwnerColors.amber,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

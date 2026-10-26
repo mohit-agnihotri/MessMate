@@ -15,6 +15,7 @@ import 'student_setup_page.dart';
 import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
 import '../student/student_pending_approval_page.dart';
+import '../../widgets/mezzo_logo.dart';
 import 'widgets/mess_account_chooser_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -298,41 +299,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     SizedBox(height: screenHeight * 0.09),
 
-                    // Logo: Rounded Amber Square with Cutlery (5-tap admin stealth gate)
+                    // Logo: Concept 05 Mezzo Logo (5-tap admin stealth gate)
                     GestureDetector(
                       onTap: _onLogoTap,
                       behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF09E38),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFF09E38)
-                                  .withValues(alpha: 0.45),
-                              blurRadius: 24,
-                              spreadRadius: 2,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.restaurant_rounded,
-                            color: Color(0xFF1E1510),
-                            size: 32,
-                          ),
-                        ),
+                      child: const MezzoLogo(
+                        size: 64,
+                        showSquircle: true,
+                        showShadow: true,
+                        backgroundColor: Color(0xFF281C14),
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
-                    // Serif Headline: "Welcome to MessMate"
+                    // Serif Headline: "Welcome to Mezzo"
                     Text(
-                      isHindi ? 'MessMate में\nआपका स्वागत है' : 'Welcome to\nMessMate',
+                      isHindi ? 'Mezzo में\nआपका स्वागत है' : 'Welcome to\nMezzo',
                       style: GoogleFonts.newsreader(
                         fontSize: 40,
                         fontWeight: FontWeight.w700,
@@ -499,7 +482,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     const SizedBox(height: 24),
 
-                    // Link: New to MessMate? Choose role
+                    // Link: New to Mezzo? Choose role
                     Center(
                       child: TextButton(
                         onPressed: () {
@@ -523,8 +506,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             children: [
                               TextSpan(
                                 text: isHindi
-                                    ? 'MessMate में नए हैं? '
-                                    : 'New to MessMate? ',
+                                    ? 'Mezzo में नए हैं? '
+                                    : 'New to Mezzo? ',
                               ),
                               TextSpan(
                                 text: isHindi ? 'रोल चुनें' : 'Choose role',

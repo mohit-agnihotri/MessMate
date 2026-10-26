@@ -12,6 +12,7 @@ import 'login_page.dart';
 import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
 import '../student/student_pending_approval_page.dart';
+import '../../widgets/mezzo_logo.dart';
 
 /// Complete High-Aesthetic Onboarding Experience:
 /// Stage 0: 3-Slide Vibrant Editorial Feature Showcase Carousel
@@ -168,32 +169,15 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                 )
               : Row(
                   children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF09E38),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFF09E38)
-                                .withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.restaurant_rounded,
-                          color: Color(0xFF1E1510),
-                          size: 20,
-                        ),
-                      ),
+                    const MezzoLogo(
+                      size: 34,
+                      showSquircle: true,
+                      showShadow: false,
+                      backgroundColor: Color(0xFF281C14),
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'MessMate',
+                      'Mezzo',
                       style: GoogleFonts.newsreader(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -561,7 +545,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    isHindi ? 'MessMate में स्वागत है' : 'Welcome to MessMate',
+                    isHindi ? 'Mezzo में स्वागत है' : 'Welcome to Mezzo',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,

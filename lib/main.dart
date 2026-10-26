@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,16 +35,16 @@ void main() async {
   }
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  runApp(const ProviderScope(child: MessMateApp()));
+  runApp(const ProviderScope(child: MezzoApp()));
 }
 
-class MessMateApp extends StatelessWidget {
-  const MessMateApp({super.key});
+class MezzoApp extends StatelessWidget {
+  const MezzoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mess',
+      title: 'Mezzo',
       navigatorKey: NotificationService.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -56,3 +55,5 @@ class MessMateApp extends StatelessWidget {
     );
   }
 }
+
+typedef MessMateApp = MezzoApp;

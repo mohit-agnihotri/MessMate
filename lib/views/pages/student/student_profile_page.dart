@@ -706,6 +706,18 @@ class StudentProfilePage extends ConsumerWidget {
               StudentColors.brickRed,
             ),
           ),
+          const SizedBox(height: 10),
+
+          // Delete Account Button (Google Play & DPDP Act Compliant)
+          InkWell(
+            onTap: () => _confirmDeleteAccount(context, ref, state),
+            borderRadius: BorderRadius.circular(12),
+            child: _buildActionLink(
+              Icons.delete_forever_rounded,
+              isHindi ? 'खाता स्थायी रूप से हटाएं (Delete Account)' : 'Delete Account Forever',
+              const Color(0xFFDC2626),
+            ),
+          ),
         ],
       ),
     );
@@ -1307,6 +1319,130 @@ class StudentProfilePage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _confirmDeleteAccount(
+    BuildContext context,
+    WidgetRef ref,
+    StudentProfileState state,
+  ) {
+    final isHindi = ref.read(localizationProvider) == 'hi';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: StudentColors.surfaceLight,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isHindi ? 'खाता स्थायी रूप से हटाएं?' : 'Delete Account Forever?',
+                      style: StudentTypography.serifHeading(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isHindi
+                        ? 'क्या आप वाकई अपना Mezzo अकाउंट हमेशा के लिए हटाना चाहते हैं? आपकी प्रोफ़ाइल, उपस्थिति इतिहास और भोजन प्राथमिकताएं हमेशा के लिए मिटा दी जाएंगी। यह प्रक्रिया वापस नहीं ली जा सकती।'
+                        : 'Are you sure you want to delete your Mezzo account? All your personal profile data, meal preferences, and attendance history will be permanently erased. This action cannot be undone.',
+                    style: StudentTypography.body(fontSize: 13.5, color: StudentColors.textDark),
+                  ),
+                  if (isDeleting) ...[
+                    const SizedBox(height: 20),
+                    const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFDC2626)),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                if (!isDeleting) ...[
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(
+                      isHindi ? 'रद्द करें' : 'Cancel',
+                      style: StudentTypography.bold(fontSize: 13, color: StudentColors.textMuted),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    onPressed: () async {
+                      setDialogState(() => isDeleting = true);
+                      try {
+                        final studentId = state.student?.studentId ??
+                            await ref.read(appServiceProvider).getCurrentUserId();
+                        if (studentId != null && studentId.isNotEmpty) {
+                          await ref.read(appServiceProvider).deleteStudentAccount(studentId);
+                        }
+                        await ref.read(authProvider.notifier).signOut();
+
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isHindi
+                                    ? 'आपका अकाउंट सफलतापूर्वक हटा दिया गया है।'
+                                    : 'Your account has been deleted successfully.',
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginPage()),
+                            (route) => false,
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isDeleting = false);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isHindi
+                                    ? 'अकाउंट हटाने में त्रुटि: सुरक्षा के लिए कृपया दोबारा लॉगिन करके प्रयास करें।'
+                                    : 'Deletion failed: For security, please sign in again before deleting.',
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text(
+                      isHindi ? 'हां, हटाएं' : 'Delete Forever',
+                      style: StudentTypography.bold(fontSize: 13, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

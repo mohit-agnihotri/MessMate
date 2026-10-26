@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Executive Dark Luxury Design System & Theme Tokens for MessMate Admin Mission Control.
+/// Executive Dark Luxury Design System & Theme Tokens for Mezzo Admin Mission Control.
 /// Meticulously crafted to match the Inspired Admin UI (Obsidian & Amber Gold aesthetic).
 class AdminCyberTheme {
   AdminCyberTheme._();

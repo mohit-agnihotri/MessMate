@@ -156,4 +156,16 @@ abstract class AppService {
   Future<void> addDishToMess(String messId, DishModel dish);
   Future<void> removeDishFromMess(String messId, String dishId);
   Future<void> updateMessDish(String messId, DishModel dish);
+
+  // EXPENSE LEDGER (KHAATA / DAILY RATION EXPENSES)
+  Future<void> createExpense(ExpenseModel expense);
+  Future<void> updateExpense(ExpenseModel expense);
+  Future<void> deleteExpense(String messId, String expenseId);
+  Stream<List<ExpenseModel>> streamMonthlyExpenses(String messId, int month, int year);
+  Future<List<ExpenseModel>> getMonthlyExpenses(String messId, int month, int year);
+  Future<Map<String, double>> getMonthlyFinancialOverview(String messId, int month, int year);
+
+  // ACCOUNT DELETION (DPDP & Play Store Compliance)
+  Future<void> deleteStudentAccount(String studentId);
+  Future<void> deleteOwnerAccount(String ownerId, String messId);
 }

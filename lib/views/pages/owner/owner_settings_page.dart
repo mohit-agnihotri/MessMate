@@ -1495,6 +1495,13 @@ class OwnerSettingsPage extends ConsumerWidget {
               }
             },
           ),
+          const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
+          _buildActionTile(
+            Icons.delete_forever_rounded,
+            isHi ? 'खाता एवं मेस हटाएं (Delete Account)' : 'Delete Account & Mess',
+            const Color(0xFFDC2626),
+            () => _showDeleteOwnerAccountDialog(context, ref, mess),
+          ),
         ],
       ),
     );
@@ -1910,6 +1917,134 @@ class OwnerSettingsPage extends ConsumerWidget {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteOwnerAccountDialog(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel? mess,
+  ) {
+    final isHi = ref.read(localizationProvider) == 'hi';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: OwnerColors.surfaceLight,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isHi ? 'मेस एवं खाता हटाएं?' : 'Delete Account & Mess?',
+                      style: GoogleFonts.newsreader(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isHi
+                        ? 'क्या आप वाकई अपना Mezzo खाता और "${mess?.name ?? 'मेस'}" को हमेशा के लिए हटाना चाहते हैं? आपका मेन्यू, बिलिंग, छात्र सूचियां और सारा डेटा हमेशा के लिए नष्ट हो जाएगा। यह प्रक्रिया पूर्ववत नहीं की जा सकती।'
+                        : 'Are you sure you want to permanently delete your Mezzo owner account and "${mess?.name ?? 'Mess'}"? All menu schedules, student rosters, billing records, and mess settings will be permanently erased. This action cannot be undone.',
+                    style: GoogleFonts.inter(fontSize: 13.5, color: OwnerColors.textPrimary),
+                  ),
+                  if (isDeleting) ...[
+                    const SizedBox(height: 20),
+                    const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFDC2626)),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                if (!isDeleting) ...[
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(
+                      isHi ? 'रद्द करें' : 'Cancel',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OwnerColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    onPressed: () async {
+                      setDialogState(() => isDeleting = true);
+                      try {
+                        final ownerId = await ref.read(appServiceProvider).getCurrentUserId();
+                        final messId = mess?.messId ?? '';
+                        if (ownerId != null && ownerId.isNotEmpty) {
+                          await ref.read(appServiceProvider).deleteOwnerAccount(ownerId, messId);
+                        }
+                        await ref.read(authProvider.notifier).signOut();
+
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isHi
+                                    ? 'आपका मेस एवं खाता सफलतापूर्वक हटा दिया गया है।'
+                                    : 'Your account and mess have been deleted successfully.',
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginPage()),
+                            (route) => false,
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isDeleting = false);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isHi
+                                    ? 'खाता हटाने में त्रुटि: सुरक्षा के लिए कृपया दोबारा लॉगिन करके प्रयास करें।'
+                                    : 'Deletion failed: For security, please sign in again before deleting.',
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text(
+                      isHi ? 'हां, सब हटाएं' : 'Delete Everything',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         );
       },
     );

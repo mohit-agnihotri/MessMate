@@ -22,7 +22,7 @@ class AdminConfig {
 
   /// Developer Direct UPI ID for 0% gateway cut remittances.
   static const String developerUpiId = '7974220107@axl';
-  static const String developerUpiName = 'MessMate Founder & Dev';
+  static const String developerUpiName = 'Mezzo Founder & Dev';
 
   /// Checks if the given email matches known Super Admin email patterns.
   static bool isSuperAdminEmail(String? email, [List<String>? dynamicWhitelist]) {

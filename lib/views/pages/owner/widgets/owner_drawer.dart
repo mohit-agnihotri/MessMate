@@ -12,6 +12,7 @@ import '../owner_absentee_tracker_page.dart';
 import '../owner_main_page.dart';
 import '../owner_plan_builder_page.dart';
 import '../owner_settings_page.dart';
+import '../owner_expense_ledger_page.dart';
 import '../theme/owner_inspired_theme.dart';
 import 'owner_launch_partner_sheet.dart';
 import 'schedule_closure_dialog.dart';
@@ -248,6 +249,18 @@ class OwnerDrawer extends ConsumerWidget {
 
             // SECTION: MONEY
             _buildSectionHeader('MONEY'),
+            _buildDrawerItem(
+              title: 'Daily Ration & Kharcha (खाता)',
+              badge: 'P&L',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const OwnerExpenseLedgerPage()),
+                );
+              },
+            ),
             _buildDrawerItem(
               title: 'Meal plans builder',
               onTap: () {

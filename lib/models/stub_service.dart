@@ -593,4 +593,63 @@ class StubService implements AppService {
   Future<void> removeDishFromMess(String messId, String dishId) async {}
   @override
   Future<void> updateMessDish(String messId, DishModel dish) async {}
+
+  // EXPENSE LEDGER (KHAATA / DAILY RATION EXPENSES)
+  final List<ExpenseModel> _stubExpenses = [];
+
+  @override
+  Future<void> createExpense(ExpenseModel expense) async {
+    _stubExpenses.removeWhere((e) => e.id == expense.id);
+    _stubExpenses.add(expense);
+  }
+
+  @override
+  Future<void> updateExpense(ExpenseModel expense) async {
+    final idx = _stubExpenses.indexWhere((e) => e.id == expense.id);
+    if (idx != -1) {
+      _stubExpenses[idx] = expense;
+    }
+  }
+
+  @override
+  Future<void> deleteExpense(String messId, String expenseId) async {
+    _stubExpenses.removeWhere((e) => e.id == expenseId);
+  }
+
+  @override
+  Stream<List<ExpenseModel>> streamMonthlyExpenses(String messId, int month, int year) {
+    return Stream.value(_filterStubExpenses(messId, month, year));
+  }
+
+  @override
+  Future<List<ExpenseModel>> getMonthlyExpenses(String messId, int month, int year) async {
+    return _filterStubExpenses(messId, month, year);
+  }
+
+  List<ExpenseModel> _filterStubExpenses(String messId, int month, int year) {
+    return _stubExpenses
+        .where((e) => e.messId == messId && e.date.month == month && e.date.year == year)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  @override
+  Future<Map<String, double>> getMonthlyFinancialOverview(String messId, int month, int year) async {
+    return {
+      'collected': 45000.0,
+      'pending': 12500.0,
+      'paidCount': 18.0,
+      'pendingCount': 5.0,
+    };
+  }
+
+  @override
+  Future<void> deleteStudentAccount(String studentId) async {
+    _students.removeWhere((s) => s.studentId == studentId);
+  }
+
+  @override
+  Future<void> deleteOwnerAccount(String ownerId, String messId) async {
+    // Stub implementation
+  }
 }

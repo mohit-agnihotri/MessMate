@@ -295,7 +295,7 @@ class AdminService {
 
       await NotificationService.sendStudentNotification(
         studentId: userId,
-        title: '$categoryBadge from MessMate Dev',
+        title: '$categoryBadge from Mezzo Dev',
         message: reply.trim(),
       );
     } catch (e) {

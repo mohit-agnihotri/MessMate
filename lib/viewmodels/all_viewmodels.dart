@@ -2355,3 +2355,203 @@ final messReviewsProvider = StreamProvider.autoDispose
     .family<List<MessReviewModel>, String>((ref, messId) {
       return ref.watch(appServiceProvider).streamMessReviews(messId);
     });
+
+// ─── Kitchen Kharcha & Expense Ledger (Owner) ─────────────────────────────────
+class OwnerExpenseLedgerState {
+  final List<ExpenseModel> expenses;
+  final DateTime selectedMonth;
+  final String? selectedCategoryFilter;
+  final bool isLoading;
+  final double totalCollectedFees;
+  final int paidStudentsCount;
+  final double totalPendingFees;
+  final int pendingStudentsCount;
+  final int totalActiveStudents;
+
+  const OwnerExpenseLedgerState({
+    this.expenses = const [],
+    required this.selectedMonth,
+    this.selectedCategoryFilter,
+    this.isLoading = false,
+    this.totalCollectedFees = 0.0,
+    this.paidStudentsCount = 0,
+    this.totalPendingFees = 0.0,
+    this.pendingStudentsCount = 0,
+    this.totalActiveStudents = 0,
+  });
+
+  double get totalExpenses =>
+      expenses.fold(0.0, (acc, e) => acc + e.amount);
+
+  double get todayExpenses {
+    final now = DateTime.now();
+    return expenses
+        .where((e) =>
+            e.date.year == now.year &&
+            e.date.month == now.month &&
+            e.date.day == now.day)
+        .fold(0.0, (acc, e) => acc + e.amount);
+  }
+
+  double get netCashProfit => totalCollectedFees - totalExpenses;
+
+  double get projectedProfit =>
+      (totalCollectedFees + totalPendingFees) - totalExpenses;
+
+  double get perStudentCost =>
+      totalActiveStudents > 0 ? (totalExpenses / totalActiveStudents) : 0.0;
+
+  Map<String, double> get categoryBreakdown {
+    final map = <String, double>{};
+    for (final exp in expenses) {
+      map[exp.category] = (map[exp.category] ?? 0.0) + exp.amount;
+    }
+    return map;
+  }
+
+  List<ExpenseModel> get filteredExpenses {
+    if (selectedCategoryFilter == null || selectedCategoryFilter == 'all') {
+      return expenses;
+    }
+    return expenses
+        .where((e) => e.category == selectedCategoryFilter)
+        .toList();
+  }
+
+  OwnerExpenseLedgerState copyWith({
+    List<ExpenseModel>? expenses,
+    DateTime? selectedMonth,
+    String? selectedCategoryFilter,
+    bool clearCategoryFilter = false,
+    bool? isLoading,
+    double? totalCollectedFees,
+    int? paidStudentsCount,
+    double? totalPendingFees,
+    int? pendingStudentsCount,
+    int? totalActiveStudents,
+  }) =>
+      OwnerExpenseLedgerState(
+        expenses: expenses ?? this.expenses,
+        selectedMonth: selectedMonth ?? this.selectedMonth,
+        selectedCategoryFilter: clearCategoryFilter
+            ? null
+            : (selectedCategoryFilter ?? this.selectedCategoryFilter),
+        isLoading: isLoading ?? this.isLoading,
+        totalCollectedFees: totalCollectedFees ?? this.totalCollectedFees,
+        paidStudentsCount: paidStudentsCount ?? this.paidStudentsCount,
+        totalPendingFees: totalPendingFees ?? this.totalPendingFees,
+        pendingStudentsCount: pendingStudentsCount ?? this.pendingStudentsCount,
+        totalActiveStudents: totalActiveStudents ?? this.totalActiveStudents,
+      );
+}
+
+typedef ExpenseLedgerState = OwnerExpenseLedgerState;
+
+class OwnerExpenseLedgerViewModel extends StateNotifier<OwnerExpenseLedgerState> {
+  final AppService _service;
+  final String messId;
+  StreamSubscription<List<ExpenseModel>>? _sub;
+
+  OwnerExpenseLedgerViewModel(this._service, this.messId)
+      : super(OwnerExpenseLedgerState(selectedMonth: DateTime.now())) {
+    if (messId.isNotEmpty) {
+      _listenToExpenses();
+      _loadFinancialOverview();
+    }
+  }
+
+  void _listenToExpenses() {
+    _sub?.cancel();
+    state = state.copyWith(isLoading: true);
+    _sub = _service
+        .streamMonthlyExpenses(
+          messId,
+          state.selectedMonth.month,
+          state.selectedMonth.year,
+        )
+        .listen((expList) {
+      state = state.copyWith(expenses: expList, isLoading: false);
+    }, onError: (_) {
+      state = state.copyWith(isLoading: false);
+    });
+  }
+
+  Future<void> _loadFinancialOverview() async {
+    try {
+      final overview = await _service.getMonthlyFinancialOverview(
+        messId,
+        state.selectedMonth.month,
+        state.selectedMonth.year,
+      );
+      state = state.copyWith(
+        totalCollectedFees: overview['totalCollected'] ?? 0.0,
+        paidStudentsCount: (overview['paidCount'] ?? 0.0).toInt(),
+        totalPendingFees: overview['totalPending'] ?? 0.0,
+        pendingStudentsCount: (overview['pendingCount'] ?? 0.0).toInt(),
+        totalActiveStudents: (overview['activeCount'] ?? 0.0).toInt(),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> changeMonth(DateTime newMonth) async {
+    state = state.copyWith(
+      selectedMonth: newMonth,
+      clearCategoryFilter: true,
+      isLoading: true,
+    );
+    _listenToExpenses();
+    await _loadFinancialOverview();
+  }
+
+  void setCategoryFilter(String category) {
+    if (category == 'all') {
+      state = state.copyWith(clearCategoryFilter: true);
+    } else {
+      state = state.copyWith(selectedCategoryFilter: category);
+    }
+  }
+
+  Future<void> addExpense({
+    required double amount,
+    required String category,
+    required String title,
+    String? notes,
+    required DateTime date,
+    required String paymentMode,
+  }) async {
+    final exp = ExpenseModel(
+      id: '',
+      messId: messId,
+      title: title,
+      amount: amount,
+      category: category,
+      date: date,
+      paymentMode: paymentMode,
+      notes: notes,
+      createdAt: DateTime.now(),
+    );
+    await _service.createExpense(exp);
+  }
+
+  Future<void> updateExpense(ExpenseModel expense) async {
+    await _service.updateExpense(expense);
+  }
+
+  Future<void> deleteExpense(String expenseId) async {
+    await _service.deleteExpense(messId, expenseId);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+}
+
+final ownerExpenseLedgerProvider = StateNotifierProvider.autoDispose<
+    OwnerExpenseLedgerViewModel, OwnerExpenseLedgerState>((ref) {
+  final mess = ref.watch(ownerDashboardProvider).mess;
+  final messId = mess?.messId ?? '';
+  return OwnerExpenseLedgerViewModel(ref.read(appServiceProvider), messId);
+});
+

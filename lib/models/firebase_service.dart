@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/cloudinary_config.dart';
+import '../services/notification_service.dart';
 import 'app_models.dart';
 import 'app_service.dart';
 import '../viewmodels/cutoff_helper.dart';
@@ -1563,5 +1563,142 @@ class FirebaseService implements AppService {
         .collection('dishes')
         .doc(dish.dishId)
         .set(dish.toMap(), SetOptions(merge: true));
+  }
+
+  // ─── EXPENSE LEDGER (KHAATA / DAILY RATION EXPENSES) ─────────────────────
+  @override
+  Future<void> createExpense(ExpenseModel expense) async {
+    await _db
+        .collection('messes')
+        .doc(expense.messId)
+        .collection('expenses')
+        .doc(expense.id)
+        .set(expense.toMap());
+  }
+
+  @override
+  Future<void> updateExpense(ExpenseModel expense) async {
+    await _db
+        .collection('messes')
+        .doc(expense.messId)
+        .collection('expenses')
+        .doc(expense.id)
+        .update(expense.toMap());
+  }
+
+  @override
+  Future<void> deleteExpense(String messId, String expenseId) async {
+    await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('expenses')
+        .doc(expenseId)
+        .delete();
+  }
+
+  @override
+  Stream<List<ExpenseModel>> streamMonthlyExpenses(String messId, int month, int year) {
+    final startOfMonth = DateTime(year, month, 1);
+    final endOfMonth = (month == 12) ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+
+    return _db
+        .collection('messes')
+        .doc(messId)
+        .collection('expenses')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+        .where('date', isLessThan: Timestamp.fromDate(endOfMonth))
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => ExpenseModel.fromMap(doc.data(), doc.id)).toList());
+  }
+
+  @override
+  Future<List<ExpenseModel>> getMonthlyExpenses(String messId, int month, int year) async {
+    final startOfMonth = DateTime(year, month, 1);
+    final endOfMonth = (month == 12) ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+
+    final snap = await _db
+        .collection('messes')
+        .doc(messId)
+        .collection('expenses')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+        .where('date', isLessThan: Timestamp.fromDate(endOfMonth))
+        .orderBy('date', descending: true)
+        .get();
+
+    return snap.docs.map((doc) => ExpenseModel.fromMap(doc.data(), doc.id)).toList();
+  }
+
+  @override
+  Future<Map<String, double>> getMonthlyFinancialOverview(String messId, int month, int year) async {
+    final snap = await _db
+        .collection('bills')
+        .where('messId', isEqualTo: messId)
+        .where('month', isEqualTo: month)
+        .where('year', isEqualTo: year)
+        .get();
+
+    double collected = 0.0;
+    double pending = 0.0;
+    int paidCount = 0;
+    int pendingCount = 0;
+
+    for (var doc in snap.docs) {
+      final data = doc.data();
+      final payable = (data['finalPayable'] as num?)?.toDouble() ?? 0.0;
+      final isPaid = data['isPaid'] == true;
+      if (isPaid) {
+        collected += payable;
+        paidCount++;
+      } else {
+        pending += payable;
+        pendingCount++;
+      }
+    }
+
+    return {
+      'collected': collected,
+      'pending': pending,
+      'paidCount': paidCount.toDouble(),
+      'pendingCount': pendingCount.toDouble(),
+    };
+  }
+
+  @override
+  Future<void> deleteStudentAccount(String studentId) async {
+    try {
+      await _db.collection('students').doc(studentId).delete();
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting student doc: $e');
+    }
+
+    try {
+      await NotificationService.logout();
+    } catch (_) {}
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.uid == studentId) {
+      await user.delete();
+    }
+  }
+
+  @override
+  Future<void> deleteOwnerAccount(String ownerId, String messId) async {
+    if (messId.isNotEmpty) {
+      try {
+        await _db.collection('messes').doc(messId).delete();
+      } catch (e) {
+        debugPrint('[FirebaseService] Error deleting mess doc: $e');
+      }
+    }
+
+    try {
+      await NotificationService.logout();
+    } catch (_) {}
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.uid == ownerId) {
+      await user.delete();
+    }
   }
 }

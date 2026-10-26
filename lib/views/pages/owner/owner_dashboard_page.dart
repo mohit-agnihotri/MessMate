@@ -11,6 +11,8 @@ import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
 import 'widgets/manage_closed_slots_sheet.dart';
 import 'widgets/mess_qr_standee_sheet.dart';
+import 'owner_expense_ledger_page.dart';
+import 'widgets/add_expense_sheet.dart';
 import '../../../services/notification_service.dart';
 import 'theme/owner_inspired_theme.dart';
 
@@ -87,6 +89,14 @@ class OwnerDashboardPage extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       sliver: SliverToBoxAdapter(
                         child: _buildSplitActionCards(context, ref, state),
+                      ),
+                    ),
+
+                    // Kitchen Kharcha & P&L Quick Card (Khaata)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildKitchenKhaataQuickCard(context, ref),
                       ),
                     ),
 
@@ -1844,6 +1854,206 @@ class OwnerDashboardPage extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  // ── Kitchen Kharcha & P&L Quick Card ──
+  Widget _buildKitchenKhaataQuickCard(BuildContext context, WidgetRef ref) {
+    final ledgerState = ref.watch(ownerExpenseLedgerProvider);
+    final todaySpent = ledgerState.todayExpenses;
+    final inHandProfit = ledgerState.netCashProfit;
+    final isProfitable = inHandProfit >= 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: OwnerColors.borderSubtle),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF0E4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.menu_book_rounded,
+                        color: OwnerColors.walnut,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'KITCHEN EXPENSE & P&L',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: OwnerColors.textMuted,
+                            ),
+                          ),
+                          Text(
+                            'Daily Ration & Kharcha (खाता)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: OwnerColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const OwnerExpenseLedgerPage()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Open Khaata',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.walnut,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: OwnerColors.walnut,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: OwnerColors.borderSubtle),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Today\'s Kharcha',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: OwnerColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '₹${todaySpent.toInt()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: OwnerColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: OwnerColors.borderSubtle,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Month\'s Cash Profit',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: OwnerColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${isProfitable ? '+' : ''}₹${inHandProfit.toInt()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: isProfitable
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFFC62828),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: () => AddExpenseSheet.show(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                'Log Today\'s Kharcha (Mandi / Doodh / Ration)',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: OwnerColors.walnut,
+                side: const BorderSide(color: OwnerColors.walnut, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

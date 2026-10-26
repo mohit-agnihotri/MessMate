@@ -1682,3 +1682,88 @@ class AdminGlobalConfigModel {
       };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  EXPENSE LEDGER MODEL (KHAATA / DAILY RATION EXPENSE)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Represents a single kitchen / mess expense entry in the Daily Ration & Expense Ledger.
+class ExpenseModel {
+  final String id;
+  final String messId;
+  final double amount;
+  final String category; // 'vegetables', 'dairy', 'groceries', 'fuel', 'staff', 'maintenance', 'other'
+  final String title;
+  final String? notes;
+  final DateTime date;
+  final String paymentMode; // 'cash', 'upi', 'other'
+  final DateTime createdAt;
+
+  ExpenseModel({
+    required this.id,
+    required this.messId,
+    required this.amount,
+    required this.category,
+    required this.title,
+    this.notes,
+    required this.date,
+    this.paymentMode = 'cash',
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  factory ExpenseModel.fromMap(Map<String, dynamic> map, [String? id]) {
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    return ExpenseModel(
+      id: id ?? map['id'] ?? '',
+      messId: map['messId'] ?? '',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      category: map['category'] ?? 'other',
+      title: map['title'] ?? '',
+      notes: map['notes'],
+      date: parseDate(map['date']),
+      paymentMode: map['paymentMode'] ?? 'cash',
+      createdAt: parseDate(map['createdAt']),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'messId': messId,
+        'amount': amount,
+        'category': category,
+        'title': title,
+        if (notes != null) 'notes': notes,
+        'date': Timestamp.fromDate(date),
+        'paymentMode': paymentMode,
+        'createdAt': Timestamp.fromDate(createdAt),
+      };
+
+  ExpenseModel copyWith({
+    String? id,
+    String? messId,
+    double? amount,
+    String? category,
+    String? title,
+    String? notes,
+    DateTime? date,
+    String? paymentMode,
+    DateTime? createdAt,
+  }) {
+    return ExpenseModel(
+      id: id ?? this.id,
+      messId: messId ?? this.messId,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      title: title ?? this.title,
+      notes: notes ?? this.notes,
+      date: date ?? this.date,
+      paymentMode: paymentMode ?? this.paymentMode,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+

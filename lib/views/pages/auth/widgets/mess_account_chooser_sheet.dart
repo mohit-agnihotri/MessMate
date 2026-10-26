@@ -81,9 +81,9 @@ class MessAccountChooserSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
 
-            // Subtitle: to continue to MessMate
+            // Subtitle: to continue to Mezzo
             Text(
-              'to continue to MessMate',
+              'to continue to Mezzo',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: const Color(0xFF9E9287),
