@@ -34,7 +34,7 @@ admin.app().options.credential.getAccessToken().then(token => {
   });
   const req = https.request({
     hostname: 'firebaserules.googleapis.com',
-    path: '/v1/projects/messmate-a14cb/rulesets',
+    path: '/v1/projects/mezzo-69cab/rulesets',
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ' + token.access_token,
@@ -52,13 +52,13 @@ admin.app().options.credential.getAccessToken().then(token => {
         console.log('Created ruleset:', rulesetName);
         const releasePayload = JSON.stringify({
           release: {
-            name: 'projects/messmate-a14cb/releases/cloud.firestore',
+            name: 'projects/mezzo-69cab/releases/cloud.firestore',
             rulesetName: rulesetName
           }
         });
         const patchReq = https.request({
           hostname: 'firebaserules.googleapis.com',
-          path: '/v1/projects/messmate-a14cb/releases/cloud.firestore',
+          path: '/v1/projects/mezzo-69cab/releases/cloud.firestore',
           method: 'PATCH',
           headers: {
             'Authorization': 'Bearer ' + token.access_token,

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-final baseUrl = 'https://firestore.googleapis.com/v1/projects/messmate-a14cb/databases/(default)/documents';
+final baseUrl = 'https://firestore.googleapis.com/v1/projects/mezzo-69cab/databases/(default)/documents';
 
 Future<void> main() async {
   print('Starting migrations via REST...');
