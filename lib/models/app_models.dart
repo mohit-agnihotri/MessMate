@@ -1614,6 +1614,46 @@ class SupportTicketModel {
         if (adminRepliedAt != null)
           'adminRepliedAt': adminRepliedAt!.toIso8601String(),
       };
+
+  SupportTicketModel copyWith({
+    String? ticketId,
+    String? userId,
+    String? userName,
+    String? userPhone,
+    String? userRole,
+    String? messId,
+    String? messName,
+    String? category,
+    String? message,
+    String? deviceModel,
+    String? osVersion,
+    String? appVersion,
+    String? status,
+    DateTime? createdAt,
+    String? screenshotUrl,
+    String? adminReply,
+    DateTime? adminRepliedAt,
+  }) {
+    return SupportTicketModel(
+      ticketId: ticketId ?? this.ticketId,
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
+      userPhone: userPhone ?? this.userPhone,
+      userRole: userRole ?? this.userRole,
+      messId: messId ?? this.messId,
+      messName: messName ?? this.messName,
+      category: category ?? this.category,
+      message: message ?? this.message,
+      deviceModel: deviceModel ?? this.deviceModel,
+      osVersion: osVersion ?? this.osVersion,
+      appVersion: appVersion ?? this.appVersion,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      screenshotUrl: screenshotUrl ?? this.screenshotUrl,
+      adminReply: adminReply ?? this.adminReply,
+      adminRepliedAt: adminRepliedAt ?? this.adminRepliedAt,
+    );
+  }
 }
 
 /// Global remote config and master control variables for the developer.
