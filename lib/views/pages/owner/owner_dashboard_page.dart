@@ -13,6 +13,7 @@ import 'widgets/manage_closed_slots_sheet.dart';
 import 'widgets/mess_qr_standee_sheet.dart';
 import 'owner_expense_ledger_page.dart';
 import 'widgets/add_expense_sheet.dart';
+import 'widgets/owner_set_location_sheet.dart';
 import '../../../services/notification_service.dart';
 import 'theme/owner_inspired_theme.dart';
 
@@ -67,6 +68,16 @@ class OwnerDashboardPage extends ConsumerWidget {
                     SliverToBoxAdapter(
                       child: _buildFeastDayManagementCard(context, ref, state),
                     ),
+
+                    // Unset Mess Location Reminder Banner
+                    if (state.mess != null &&
+                        (state.mess!.gpsLat == 0.0 || state.mess!.gpsLng == 0.0))
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildUnsetLocationBanner(context, ref, state.mess!),
+                        ),
+                      ),
 
                     // Hero Card (Dark Walnut + Wavy Hills + Diner Count + CTA)
                     SliverPadding(
@@ -267,6 +278,83 @@ class OwnerDashboardPage extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Unset Mess Location Reminder Banner ──
+  Widget _buildUnsetLocationBanner(
+    BuildContext context,
+    WidgetRef ref,
+    MessModel mess,
+  ) {
+    return GestureDetector(
+      onTap: () => OwnerSetLocationSheet.show(context, ref, mess),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+          boxShadow: OwnerColors.softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.add_location_alt_rounded,
+                color: Color(0xFFD97706),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Set Mess Location 📍',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF92400E),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Pin GPS location so nearby students can see your mess distance.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: const Color(0xFFB45309),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD97706),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Pin Now',
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

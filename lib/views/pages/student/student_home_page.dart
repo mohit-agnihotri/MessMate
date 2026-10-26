@@ -317,8 +317,41 @@ class StudentHomePage extends ConsumerWidget {
 
     if (state.currentSlot == 'closed') return _ClosedCard();
 
-    final slot = state.currentSlot;
-    final menu = state.currentMeal;
+    // ── Choice-Aligned Slot Resolution ──
+    // If student has a flexible meal plan, align hero card with student's active choice
+    String slot = state.currentSlot;
+    MenuModel? menu = state.currentMeal;
+    bool isChosenMealActive = false;
+
+    final plan = state.assignedPlan;
+    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+
+    if (plan != null && plan.choiceGroups.isNotEmpty && state.mess != null) {
+      for (final group in plan.choiceGroups) {
+        if (group.availableMeals.contains(state.currentSlot) ||
+            group.availableMeals.contains(state.nextSlot)) {
+          final chosenSlot = state.student?.datePreferences[todayIso]?[group.groupId] ??
+              state.student?.regularMealPreference[group.groupId] ??
+              group.availableMeals.first;
+
+          final timings = state.mess!.mealTimings[chosenSlot];
+          final endStr = timings?['end'] ?? '23:59';
+          final parts = endStr.split(':');
+          final endH = int.tryParse(parts[0]) ?? 23;
+          final endM = int.tryParse(parts.length > 1 ? parts[1] : '59') ?? 59;
+          final now = DateTime.now();
+          final currentMin = now.hour * 60 + now.minute;
+          final endMin = endH * 60 + endM;
+
+          if (currentMin <= endMin) {
+            slot = chosenSlot;
+            menu = state.todayMenus[chosenSlot];
+            isChosenMealActive = true;
+          }
+          break;
+        }
+      }
+    }
 
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
@@ -355,7 +388,9 @@ class StudentHomePage extends ConsumerWidget {
     final endStr = timings?['end'] ?? '';
     final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr - $endStr' : '';
 
-    final cutoff = state.timeLeftToCutoff ?? Duration.zero;
+    final cutoff = isChosenMealActive && state.mess != null
+        ? _cutoffForSlot(state.mess!, slot, true)
+        : (state.timeLeftToCutoff ?? Duration.zero);
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
 
@@ -2421,16 +2456,19 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                       final slotLabel = '${slot[0].toUpperCase()}${slot.substring(1)}';
 
                       return GestureDetector(
-                        onTap: isCutoffPassed
-                            ? null
-                            : () {
-                                ref
-                                    .read(studentHomeProvider.notifier)
-                                    .selectChoiceMeal(
-                                      group.groupId,
-                                      slot,
-                                    );
-                              },
+                        onTap: () {
+                          if (isSelected) return;
+                          if (isCutoffPassed) {
+                            _showCutoffPassedChoiceModal(context, ref, group, slot);
+                          } else {
+                            ref
+                                .read(studentHomeProvider.notifier)
+                                .selectChoiceMeal(
+                                  group.groupId,
+                                  slot,
+                                );
+                          }
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -2482,6 +2520,167 @@ class _ChoiceGroupsSection extends ConsumerWidget {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60);
     return h > 0 ? '${h}hr ${m}m' : '${m}m';
+  }
+
+  void _showCutoffPassedChoiceModal(
+    BuildContext context,
+    WidgetRef ref,
+    ChoiceGroupModel group,
+    String targetSlot,
+  ) {
+    final slotLabel = '${targetSlot[0].toUpperCase()}${targetSlot.substring(1)}';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: StudentColors.canvas,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: StudentColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: StudentColors.amberLight,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: StudentColors.amber.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(
+                        Icons.schedule_rounded,
+                        color: StudentColors.amber,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cutoff Closed for Today',
+                            style: StudentTypography.serifHeading(fontSize: 18),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Today\'s cutoff time for $slotLabel meal has passed.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: StudentColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: StudentColors.borderSubtle),
+                  ),
+                  child: Text(
+                    'You cannot change today\'s meal after cutoff. Would you like to set $slotLabel as your daily preference starting from tomorrow?',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: StudentColors.walnut,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: StudentColors.borderSubtle),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          'Keep Current',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: StudentColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudentColors.sage,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await ref
+                              .read(studentHomeProvider.notifier)
+                              .saveRegularPreference(group.groupId, targetSlot);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('$slotLabel set as your daily choice from tomorrow!'),
+                                backgroundColor: StudentColors.sage,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Set for Tomorrow',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showDefaultPreferenceModal(

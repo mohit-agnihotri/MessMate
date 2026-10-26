@@ -11,6 +11,7 @@ import 'owner_settings_page.dart';
 import 'owner_analytics_page.dart';
 import 'widgets/owner_drawer.dart';
 import 'widgets/post_today_meal_sheet.dart';
+import 'widgets/owner_set_location_sheet.dart';
 import 'theme/owner_inspired_theme.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/owner_setup_page.dart';
@@ -25,11 +26,27 @@ class OwnerMainPage extends ConsumerStatefulWidget {
 }
 
 class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
+  bool _hasCheckedLocationPrompt = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateDialog.checkAndShow(context, ref);
+      _checkLocationPrompt();
+    });
+  }
+
+  void _checkLocationPrompt() {
+    if (_hasCheckedLocationPrompt) return;
+    _hasCheckedLocationPrompt = true;
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      final mess = ref.read(ownerDashboardProvider).mess;
+      if (mess != null && (mess.gpsLat == 0.0 || mess.gpsLng == 0.0)) {
+        OwnerSetLocationSheet.show(context, ref, mess);
+      }
     });
   }
 
@@ -52,6 +69,8 @@ class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
           context,
           MaterialPageRoute(builder: (_) => const OwnerSetupPage()),
         );
+      } else if (!next.isLoading && next.mess != null && !_hasCheckedLocationPrompt) {
+        _checkLocationPrompt();
       }
     });
 
