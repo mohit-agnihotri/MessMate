@@ -110,22 +110,22 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: OwnerColors.amber,
+                      color: const Color(0xFFEAA23E),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.account_balance_wallet_rounded,
-                      size: 16,
+                      size: 15,
                       color: OwnerColors.textDark,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'KHAATA & PROFIT-LOSS',
+                    'KHAATA · THIS MONTH',
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
+                      letterSpacing: 1.1,
                       color: const Color(0xFFC7BCB3),
                     ),
                   ),
@@ -141,22 +141,22 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   child: Row(
                     children: [
                       Text(
-                        'View Ledger',
+                        'Ledger',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: OwnerColors.amber,
+                          color: const Color(0xFFEAA23E),
                         ),
                       ),
                       const SizedBox(width: 2),
                       const Icon(
                         Icons.chevron_right_rounded,
                         size: 16,
-                        color: OwnerColors.amber,
+                        color: Color(0xFFEAA23E),
                       ),
                     ],
                   ),
@@ -172,18 +172,18 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Collected Fees',
+                      'Fees collected',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: const Color(0xFFC7BCB3),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       '₹${ledgerState.totalCollectedFees.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF81C784),
                       ),
                     ),
@@ -195,18 +195,18 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Total Kharcha',
+                      'Kitchen kharcha',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: const Color(0xFFC7BCB3),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       '₹${ledgerState.totalExpenses.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFFFF8A80),
                       ),
                     ),
@@ -218,19 +218,19 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Net Profit',
+                      'Net profit',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: const Color(0xFFC7BCB3),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       '${isProfitable ? '+' : ''}₹${ledgerState.netCashProfit.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: OwnerColors.amber,
+                        color: const Color(0xFFEAA23E),
                       ),
                     ),
                   ],

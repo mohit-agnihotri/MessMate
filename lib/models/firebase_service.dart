@@ -1632,6 +1632,23 @@ class FirebaseService implements AppService {
 
   @override
   Future<Map<String, double>> getMonthlyFinancialOverview(String messId, int month, int year) async {
+    // 1. Get active enrolled students count and mess fee
+    int activeCount = 0;
+    double defaultMonthlyFee = 0.0;
+    try {
+      final messDoc = await _db.collection('messes').doc(messId).get();
+      if (messDoc.exists) {
+        defaultMonthlyFee = (messDoc.data()?['monthlyFee'] as num?)?.toDouble() ?? 0.0;
+      }
+      final studentsSnap = await _db
+          .collection('students')
+          .where('messId', isEqualTo: messId)
+          .where('status', isEqualTo: 'active')
+          .get();
+      activeCount = studentsSnap.docs.length;
+    } catch (_) {}
+
+    // 2. Query monthly bills
     final snap = await _db
         .collection('bills')
         .where('messId', isEqualTo: messId)
@@ -1657,11 +1674,20 @@ class FirebaseService implements AppService {
       }
     }
 
+    // 3. Fallback: if month bills have not been generated yet, calculate projected from active students
+    if (snap.docs.isEmpty && activeCount > 0 && defaultMonthlyFee > 0) {
+      pending = defaultMonthlyFee * activeCount;
+      pendingCount = activeCount;
+    }
+
     return {
       'collected': collected,
+      'totalCollected': collected,
       'pending': pending,
+      'totalPending': pending,
       'paidCount': paidCount.toDouble(),
       'pendingCount': pendingCount.toDouble(),
+      'activeCount': activeCount.toDouble(),
     };
   }
 

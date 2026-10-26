@@ -637,9 +637,12 @@ class StubService implements AppService {
   Future<Map<String, double>> getMonthlyFinancialOverview(String messId, int month, int year) async {
     return {
       'collected': 45000.0,
+      'totalCollected': 45000.0,
       'pending': 12500.0,
+      'totalPending': 12500.0,
       'paidCount': 18.0,
       'pendingCount': 5.0,
+      'activeCount': 23.0,
     };
   }
 

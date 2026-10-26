@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
-import 'theme/owner_inspired_theme.dart';
 import 'widgets/add_expense_sheet.dart';
 
 class OwnerExpenseLedgerPage extends ConsumerStatefulWidget {
@@ -26,38 +25,31 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
   final Map<String, Map<String, dynamic>> _catMeta = {
     'vegetables': {
       'label': 'Sabzi & Mandi',
-      'icon': Icons.eco_rounded,
-      'color': Color(0xFF2E7D32),
+      'dotColor': Color(0xFF4A6B53),
     },
     'dairy': {
       'label': 'Doodh & Dairy',
-      'icon': Icons.local_drink_rounded,
-      'color': Color(0xFF0288D1),
+      'dotColor': Color(0xFF7B9E87),
     },
     'groceries': {
       'label': 'Ration & Kirana',
-      'icon': Icons.shopping_basket_rounded,
-      'color': Color(0xFFE65100),
+      'dotColor': Color(0xFFEAA23E),
     },
     'fuel': {
       'label': 'LPG Gas',
-      'icon': Icons.local_fire_department_rounded,
-      'color': Color(0xFFD32F2F),
+      'dotColor': Color(0xFFBD5D38),
     },
     'staff': {
       'label': 'Cook & Staff',
-      'icon': Icons.badge_rounded,
-      'color': Color(0xFF6A1B9A),
+      'dotColor': Color(0xFF6A1B9A),
     },
     'maintenance': {
       'label': 'Maintenance',
-      'icon': Icons.build_rounded,
-      'color': Color(0xFF455A64),
+      'dotColor': Color(0xFF455A64),
     },
     'other': {
       'label': 'Miscellaneous',
-      'icon': Icons.more_horiz_rounded,
-      'color': Color(0xFF616161),
+      'dotColor': Color(0xFF6E645A),
     },
   };
 
@@ -73,7 +65,7 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     ref.read(ownerExpenseLedgerProvider.notifier).changeMonth(next);
   }
 
-  Future<void> _shareWhatsAppReport(ExpenseLedgerState state) async {
+  Future<void> _shareReport(ExpenseLedgerState state) async {
     final mName = _months[state.selectedMonth.month - 1];
     final year = state.selectedMonth.year;
 
@@ -81,14 +73,14 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     buffer.writeln("📊 *MEZZO KHAATA REPORT • $mName $year*");
     buffer.writeln("━━━━━━━━━━━━━━━━━━━━");
     buffer.writeln("🟢 *Total Fees Collected:* ₹${state.totalCollectedFees.toInt()} (${state.paidStudentsCount} paid)");
-    buffer.writeln("🔴 *Total Kharcha (Expenses):* ₹${state.totalExpenses.toInt()}");
-    buffer.writeln("💰 *Net Cash In-Hand Profit:* ₹${state.netCashProfit.toInt()}");
+    buffer.writeln("🔴 *Total Kharcha (Expenses):* ₹${state.totalExpenses.toInt()} (${state.expenses.length} entries)");
+    buffer.writeln("💰 *Net Cash In-Hand Profit:* ${state.netCashProfit >= 0 ? '+' : ''}₹${state.netCashProfit.toInt()}");
     if (state.totalPendingFees > 0) {
       buffer.writeln("⏳ *Pending Fees:* ₹${state.totalPendingFees.toInt()} (${state.pendingStudentsCount} unpaid)");
-      buffer.writeln("📈 *Projected Final Profit:* ₹${state.projectedProfit.toInt()}");
+      buffer.writeln("📈 *Projected Profit at 100% Collection:* ₹${state.projectedProfit.toInt()}");
     }
     if (state.totalActiveStudents > 0) {
-      buffer.writeln("👥 *Food Cost per Student:* ₹${state.perStudentCost.toInt()}");
+      buffer.writeln("👥 *Cost per Active Student:* ₹${state.perStudentCost.toInt()}");
     }
     buffer.writeln("━━━━━━━━━━━━━━━━━━━━");
     buffer.writeln("📋 *Category Breakdown:*");
@@ -96,7 +88,7 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
       final label = _catMeta[cat]?['label'] ?? cat;
       buffer.writeln("  • $label: ₹${amt.toInt()}");
     });
-    buffer.writeln("\n_Generated via Mezzo App_");
+    buffer.writeln("\n_Generated via Mezzo Khaata & P&L_");
 
     final encoded = Uri.encodeComponent(buffer.toString());
     final url = Uri.parse("whatsapp://send?text=$encoded");
@@ -111,19 +103,93 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
         Clipboard.setData(ClipboardData(text: buffer.toString()));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Report copied to clipboard!'),
-            backgroundColor: OwnerColors.walnut,
+            content: Text('Report copied to clipboard! 📋'),
+            backgroundColor: Color(0xFF2D231C),
           ),
         );
       }
     }
   }
 
+  void _showExpenseOptions(ExpenseModel exp) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFAF7F2),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD8D0C7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              exp.title,
+              style: GoogleFonts.newsreader(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF231A14),
+              ),
+            ),
+            Text(
+              '₹${exp.amount.toInt()} · ${_catMeta[exp.category]?['label'] ?? exp.category}',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: const Color(0xFF6E645A),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.edit_rounded, color: Color(0xFF2D231C)),
+              title: Text(
+                'Edit Expense',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                AddExpenseSheet.show(context, expenseToEdit: exp);
+              },
+            ),
+            const Divider(height: 1, color: Color(0x182D231C)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626)),
+              title: Text(
+                'Delete Expense',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFDC2626),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDeleteExpense(exp);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _confirmDeleteExpense(ExpenseModel exp) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFAF7F2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Delete Kharcha?',
@@ -131,21 +197,22 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
         ),
         content: Text(
           'Are you sure you want to delete "${exp.title}" (₹${exp.amount.toInt()}) from your ledger?',
-          style: GoogleFonts.inter(fontSize: 13, color: OwnerColors.textDark),
+          style: GoogleFonts.inter(fontSize: 13.5, color: const Color(0xFF231A14)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: OwnerColors.textMuted),
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF6E645A)),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC62828),
+              backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
             ),
             onPressed: () async {
               Navigator.pop(ctx);
@@ -154,7 +221,7 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Expense deleted from ledger.'),
-                    backgroundColor: OwnerColors.textDark,
+                    backgroundColor: Color(0xFF2D231C),
                   ),
                 );
               }
@@ -173,19 +240,24 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     final monthName = _months[selectedMonth.month - 1];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F6F0),
+      backgroundColor: const Color(0xFFF3EFE6),
       body: SafeArea(
         child: Column(
           children: [
+            // Top App Bar Header (Screenshots 1 & 2)
             _buildAppBar(context, state),
+
+            // Month Switcher Floating Pill (Screenshots 1 & 2)
             _buildMonthSwitcher(selectedMonth, monthName),
+
+            // Main Content Area
             Expanded(
               child: state.isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: OwnerColors.walnut),
+                      child: CircularProgressIndicator(color: Color(0xFF2D231C)),
                     )
                   : RefreshIndicator(
-                      color: OwnerColors.walnut,
+                      color: const Color(0xFF2D231C),
                       backgroundColor: Colors.white,
                       onRefresh: () async {
                         await ref
@@ -193,18 +265,29 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
                             .changeMonth(selectedMonth);
                       },
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
+                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
                         children: [
-                          _buildProfitLossHeroCard(state),
+                          // 1. Hero Card: NET CASH PROFIT · THIS MONTH (Screenshots 1 & 2)
+                          _buildNetCashProfitHeroCard(state),
+                          const SizedBox(height: 14),
+
+                          // 2. Projections Card: IF EVERY STUDENT PAYS (Screenshots 1 & 2)
+                          _buildProjectionsCard(state),
                           const SizedBox(height: 16),
-                          _buildCategoryBreakdownCarousel(state),
-                          const SizedBox(height: 16),
-                          _buildExpensesSectionHeader(state),
+
+                          // 3. Category Breakdown: WHERE THE MONEY GOES (Screenshots 1 & 2)
+                          _buildWhereTheMoneyGoesSection(state),
+                          const SizedBox(height: 18),
+
+                          // 4. Expense Entries Header Row (Screenshots 1 & 2)
+                          _buildExpenseEntriesHeader(state),
                           const SizedBox(height: 10),
-                          if (state.filteredExpenses.isEmpty)
-                            _buildEmptyState(state)
+
+                          // 5. Entries List or Empty State (Screenshots 1 & 2)
+                          if (state.expenses.isEmpty)
+                            _buildEmptyState()
                           else
-                            _buildGroupedExpenseList(state),
+                            _buildExpenseItemsList(state),
                         ],
                       ),
                     ),
@@ -212,41 +295,48 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
           ],
         ),
       ),
+
+      // Bottom Floating CTA Button: "+ Log kitchen kharcha" (Screenshots 1 & 2)
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: SizedBox(
           width: double.infinity,
-          height: 54,
+          height: 52,
           child: ElevatedButton(
             onPressed: () => AddExpenseSheet.show(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: OwnerColors.walnut,
-              foregroundColor: Colors.white,
-              elevation: 8,
-              shadowColor: OwnerColors.walnut.withValues(alpha: 0.4),
+              backgroundColor: const Color(0xFFEAA23E),
+              foregroundColor: const Color(0xFF231A14),
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(26),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  width: 28,
+                  height: 28,
                   decoration: const BoxDecoration(
-                    color: OwnerColors.amber,
+                    color: Color(0xFF231A14),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add, color: OwnerColors.textDark, size: 18),
+                  child: const Icon(
+                    Icons.add,
+                    color: Color(0xFFEAA23E),
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Log Kitchen Kharcha (खर्चा जोड़ें)',
+                  'Log kitchen kharcha',
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
+                    color: const Color(0xFF231A14),
                   ),
                 ),
               ],
@@ -257,60 +347,84 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     );
   }
 
-  // ── Top App Bar ────────────────────────────────────────────────────────────
+  // ── 1. Top App Bar (Screenshots 1 & 2) ──────────────────────────────
   Widget _buildAppBar(BuildContext context, ExpenseLedgerState state) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF9F6F0),
-        border: Border(bottom: BorderSide(color: OwnerColors.borderSubtle)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                color: OwnerColors.textDark,
-                visualDensity: VisualDensity.compact,
+          // Circular Back Button
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE5DFD3),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 4),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'DAILY RATION & EXPENSE',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: OwnerColors.textMuted,
-                    ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 15,
+                color: Color(0xFF231A14),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Title & Subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Khaata & P&L',
+                  style: GoogleFonts.newsreader(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF231A14),
+                    height: 1.15,
                   ),
+                ),
+                Text(
+                  'Daily ration & kitchen expense',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    color: const Color(0xFF6E645A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Share Report Pill Button (Screenshots 1 & 2)
+          GestureDetector(
+            onTap: () => _shareReport(state),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2EBE2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.north_east_rounded,
+                    size: 13,
+                    color: Color(0xFF2E5A36),
+                  ),
+                  const SizedBox(width: 4),
                   Text(
-                    'Khaata & P&L Ledger',
-                    style: GoogleFonts.newsreader(
-                      fontSize: 21,
+                    'Share report',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: OwnerColors.textDark,
+                      color: const Color(0xFF2E5A36),
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
-          IconButton(
-            onPressed: () => _shareWhatsAppReport(state),
-            icon: const Icon(Icons.share_rounded, size: 20),
-            color: OwnerColors.walnut,
-            tooltip: 'Share Report on WhatsApp',
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: OwnerColors.borderSubtle),
               ),
             ),
           ),
@@ -319,57 +433,88 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     );
   }
 
-  // ── Month Switcher Bar ─────────────────────────────────────────────────────
+  // ── 2. Month Switcher Bar (Screenshots 1 & 2) ───────────────────────
   Widget _buildMonthSwitcher(DateTime selectedMonth, String monthName) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: OwnerColors.borderSubtle),
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0x182D231C)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () => _previousMonth(selectedMonth),
-            icon: const Icon(Icons.chevron_left_rounded, size: 24),
-            color: OwnerColors.walnut,
-            visualDensity: VisualDensity.compact,
+          // Left < Button
+          GestureDetector(
+            onTap: () => _previousMonth(selectedMonth),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE5DFD3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chevron_left_rounded,
+                size: 20,
+                color: Color(0xFF231A14),
+              ),
+            ),
           ),
+
+          // Middle Month Text: 📅 October 2026
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.calendar_month_rounded, size: 16, color: OwnerColors.amber),
-              const SizedBox(width: 8),
+              const Text('📅', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
               Text(
                 '$monthName ${selectedMonth.year}',
                 style: GoogleFonts.inter(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
-                  color: OwnerColors.walnutDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF231A14),
                 ),
               ),
             ],
           ),
-          IconButton(
-            onPressed: () => _nextMonth(selectedMonth),
-            icon: const Icon(Icons.chevron_right_rounded, size: 24),
-            color: OwnerColors.walnut,
-            visualDensity: VisualDensity.compact,
+
+          // Right > Button
+          GestureDetector(
+            onTap: () => _nextMonth(selectedMonth),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE5DFD3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: Color(0xFF231A14),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ── Profit & Loss Hero Card ────────────────────────────────────────────────
-  Widget _buildProfitLossHeroCard(ExpenseLedgerState state) {
+  // ── 3. Net Cash Profit Hero Card (Screenshots 1 & 2) ────────────────
+  Widget _buildNetCashProfitHeroCard(ExpenseLedgerState state) {
     final isProfitable = state.netCashProfit >= 0;
 
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: OwnerColors.walnutDark,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF38291F), Color(0xFF211914)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
@@ -379,175 +524,311 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Badge
+          // Overline Row: NET CASH PROFIT · THIS MONTH
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'MONTHLY FINANCIAL HEALTH',
+                'NET CASH PROFIT · THIS MONTH',
                 style: GoogleFonts.inter(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
-                  color: const Color(0xFFC7BCB3),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.3,
+                  color: const Color(0xFFE8B676),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isProfitable
-                      ? const Color(0xFF2E7D32).withValues(alpha: 0.25)
-                      : const Color(0xFFC62828).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isProfitable ? const Color(0xFF81C784) : const Color(0xFFE57373),
-                    width: 0.8,
+              if (state.expenses.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF7F2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Live khaata',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF231A14),
+                    ),
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isProfitable ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                      size: 13,
-                      color: isProfitable ? const Color(0xFF81C784) : const Color(0xFFE57373),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isProfitable ? 'In-Hand Profit' : 'Cash Deficit',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isProfitable ? const Color(0xFF81C784) : const Color(0xFFE57373),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 10),
+
+          // Big Serif Number: +₹3630
+          Text(
+            '${isProfitable ? '+' : ''}₹${state.netCashProfit.toInt()}',
+            style: GoogleFonts.newsreader(
+              fontSize: 46,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFF6E8CE),
+              letterSpacing: -0.5,
+              height: 1.1,
+            ),
           ),
           const SizedBox(height: 16),
 
-          // 3 Big Stat Pillars
-          Row(
-            children: [
-              // Collected
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Collected Fees',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFFC7BCB3),
-                        fontWeight: FontWeight.w500,
+          // Embedded Equation Box (Screenshots 1 & 2)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Row(
+              children: [
+                // Fees collected
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Fees collected',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '₹${state.totalCollectedFees.toInt()}',
-                      style: GoogleFonts.newsreader(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF81C784),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹${state.totalCollectedFees.toInt()}',
+                        style: GoogleFonts.newsreader(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF7FB069),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${state.paidStudentsCount} paid',
-                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF9E9E9E)),
-                    ),
-                  ],
+                      Text(
+                        '${state.paidStudentsCount} paid',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Total Expenses
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Kharcha',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFFC7BCB3),
-                        fontWeight: FontWeight.w500,
-                      ),
+                // Minus Sign
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    '—',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '₹${state.totalExpenses.toInt()}',
-                      style: GoogleFonts.newsreader(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF8A80),
-                      ),
-                    ),
-                    Text(
-                      '${state.expenses.length} entries',
-                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF9E9E9E)),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
 
-              // Net Profit
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Net Cash Profit',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFFC7BCB3),
-                        fontWeight: FontWeight.w500,
+                // Kitchen kharcha
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kitchen kharcha',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${isProfitable ? '+' : ''}₹${state.netCashProfit.toInt()}',
-                      style: GoogleFonts.newsreader(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: OwnerColors.amber,
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹${state.totalExpenses.toInt()}',
+                        style: GoogleFonts.newsreader(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFE57373),
+                        ),
                       ),
-                    ),
-                    Text(
-                      'in-hand cash',
-                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF9E9E9E)),
-                    ),
-                  ],
+                      Text(
+                        '${state.expenses.length} entries',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                // Equals Sign
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    '=',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+
+                // In-hand
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'In-hand',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${isProfitable ? '+' : ''}₹${state.netCashProfit.toInt()}',
+                        style: GoogleFonts.newsreader(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFF6E8CE),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
-          const Divider(color: Color(0x22FFFFFF), height: 1),
-          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
 
-          // Secondary Sub-Metrics
+  // ── 4. Projections Card: IF EVERY STUDENT PAYS (Screenshots 1 & 2) ──
+  Widget _buildProjectionsCard(ExpenseLedgerState state) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0x182D231C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overline: IF EVERY STUDENT PAYS
+          Text(
+            'IF EVERY STUDENT PAYS',
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: const Color(0xFF4A684C),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 3 Columns: Pending fees | Projected profit | Cost / student
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSubMetric(
-                label: 'Pending Fees',
-                value: '₹${state.totalPendingFees.toInt()}',
-                note: '${state.pendingStudentsCount} students unpaid',
+              // Pending fees
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pending fees',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '₹${state.totalPendingFees.toInt()}',
+                      style: GoogleFonts.newsreader(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF231A14),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${state.pendingStudentsCount} student${state.pendingStudentsCount == 1 ? '' : 's'} unpaid',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _buildSubMetric(
-                label: 'Projected Profit',
-                value: '₹${state.projectedProfit.toInt()}',
-                note: 'upon 100% collection',
+
+              // Projected profit
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Projected profit',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '₹${state.projectedProfit.toInt()}',
+                      style: GoogleFonts.newsreader(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF231A14),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'at 100% collection',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _buildSubMetric(
-                label: 'Cost / Student',
-                value: '₹${state.perStudentCost.toInt()}',
-                note: '${state.totalActiveStudents} active members',
+
+              // Cost / student
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cost / student',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '₹${state.perStudentCost.toInt()}',
+                      style: GoogleFonts.newsreader(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF231A14),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${state.totalActiveStudents} active members',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: const Color(0xFF6E645A),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -556,493 +837,356 @@ class _OwnerExpenseLedgerPageState extends ConsumerState<OwnerExpenseLedgerPage>
     );
   }
 
-  Widget _buildSubMetric({
-    required String label,
-    required String value,
-    required String note,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFFC7BCB3),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          note,
-          style: GoogleFonts.inter(
-            fontSize: 9.5,
-            color: const Color(0xFF8D837B),
-          ),
-        ),
-      ],
-    );
-  }
+  // ── 5. Category Breakdown: WHERE THE MONEY GOES (Screenshots 1 & 2) ─
+  Widget _buildWhereTheMoneyGoesSection(ExpenseLedgerState state) {
+    final breakdown = state.categoryBreakdown;
+    final total = state.totalExpenses;
 
-  // ── Category Breakdown Carousel & Filter Chips ─────────────────────────────
-  Widget _buildCategoryBreakdownCarousel(ExpenseLedgerState state) {
-    final activeFilter = state.selectedCategoryFilter;
+    final mandiAmt = breakdown['vegetables'] ?? 0.0;
+    final dairyAmt = breakdown['dairy'] ?? 0.0;
+    final kiranaAmt = breakdown['groceries'] ?? 0.0;
+    final lpgAmt = breakdown['fuel'] ?? 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header Row: WHERE THE MONEY GOES + Pill "All kharcha ₹..."
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'CATEGORY SPEND',
+              'WHERE THE MONEY GOES',
               style: GoogleFonts.inter(
                 fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-                color: OwnerColors.textMuted,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: const Color(0xFF4A684C),
               ),
             ),
-            if (activeFilter != null)
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  ref
-                      .read(ownerExpenseLedgerProvider.notifier)
-                      .setCategoryFilter('all');
-                },
-                child: Text(
-                  'Clear Filter',
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: OwnerColors.walnut,
-                  ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D231C),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'All kharcha ₹${total.toInt()}',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFFAF7F2),
                 ),
               ),
+            ),
           ],
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 78,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              // "All" chip
-              _buildCategoryPill(
-                id: 'all',
-                label: 'All Kharcha',
-                icon: Icons.dashboard_outlined,
-                color: OwnerColors.walnut,
-                amount: state.totalExpenses,
-                isSelected: activeFilter == null || activeFilter == 'all',
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  ref
-                      .read(ownerExpenseLedgerProvider.notifier)
-                      .setCategoryFilter('all');
-                },
+        const SizedBox(height: 10),
+
+        // 2x2 Grid of Category Cards (Screenshots 1 & 2)
+        Row(
+          children: [
+            Expanded(
+              child: _buildCategoryProgressCard(
+                label: 'Sabzi & Mandi',
+                amount: mandiAmt,
+                total: total,
+                dotColor: const Color(0xFF4A6B53),
               ),
-              const SizedBox(width: 8),
-
-              ..._catMeta.entries.map((entry) {
-                final id = entry.key;
-                final meta = entry.value;
-                final amt = state.categoryBreakdown[id] ?? 0.0;
-                final isSelected = activeFilter == id;
-
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _buildCategoryPill(
-                    id: id,
-                    label: meta['label'] as String,
-                    icon: meta['icon'] as IconData,
-                    color: meta['color'] as Color,
-                    amount: amt,
-                    isSelected: isSelected,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      ref
-                          .read(ownerExpenseLedgerProvider.notifier)
-                          .setCategoryFilter(id);
-                    },
-                  ),
-                );
-              }),
-            ],
-          ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildCategoryProgressCard(
+                label: 'Doodh & Dairy',
+                amount: dairyAmt,
+                total: total,
+                dotColor: const Color(0xFF7B9E87),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildCategoryProgressCard(
+                label: 'Ration & Kirana',
+                amount: kiranaAmt,
+                total: total,
+                dotColor: const Color(0xFFEAA23E),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildCategoryProgressCard(
+                label: 'LPG Gas',
+                amount: lpgAmt,
+                total: total,
+                dotColor: const Color(0xFFBD5D38),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildCategoryPill({
-    required String id,
+  Widget _buildCategoryProgressCard({
     required String label,
-    required IconData icon,
-    required Color color,
     required double amount,
-    required bool isSelected,
-    required VoidCallback onTap,
+    required double total,
+    required Color dotColor,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        width: 120,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? OwnerColors.walnut : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? OwnerColors.walnut : OwnerColors.borderSubtle,
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 15,
-                  color: isSelected ? OwnerColors.amber : color,
+    final double fraction = total > 0 ? (amount / total).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x182D231C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Dot + Category Label
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isSelected ? Colors.white : OwnerColors.textDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '₹${amount.toInt()}',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: isSelected ? OwnerColors.amber : OwnerColors.walnutDark,
               ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF231A14),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Amount in Serif
+          Text(
+            '₹${amount.toInt()}',
+            style: GoogleFonts.newsreader(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF231A14),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+
+          // Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 5,
+              backgroundColor: const Color(0xFFE5DFD3),
+              valueColor: AlwaysStoppedAnimation<Color>(dotColor),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ── Expenses Section Header ────────────────────────────────────────────────
-  Widget _buildExpensesSectionHeader(ExpenseLedgerState state) {
+  // ── 6. Expense Entries Header Row (Screenshots 1 & 2) ───────────────
+  Widget _buildExpenseEntriesHeader(ExpenseLedgerState state) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'EXPENSE ENTRIES (${state.filteredExpenses.length})',
+          'EXPENSE ENTRIES (${state.expenses.length})',
           style: GoogleFonts.inter(
             fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-            color: OwnerColors.textMuted,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.1,
+            color: const Color(0xFF4A684C),
           ),
         ),
         Text(
-          'Today\'s Spent: ₹${state.todayExpenses.toInt()}',
+          'Today\'s spent: ₹${state.todayExpenses.toInt()}',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: OwnerColors.walnut,
+            color: const Color(0xFF231A14),
           ),
         ),
       ],
     );
   }
 
-  // ── Grouped Expense List by Date ───────────────────────────────────────────
-  Widget _buildGroupedExpenseList(ExpenseLedgerState state) {
-    final Map<String, List<ExpenseModel>> grouped = {};
-    for (final exp in state.filteredExpenses) {
-      final dateKey = '${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}-${exp.date.day.toString().padLeft(2, '0')}';
-      grouped.putIfAbsent(dateKey, () => []).add(exp);
-    }
-
-    final sortedDates = grouped.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
-
-    final now = DateTime.now();
-    final todayKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final yesterday = now.subtract(const Duration(days: 1));
-    final yesterdayKey = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
-
-    return Column(
-      children: sortedDates.map((dateKey) {
-        final list = grouped[dateKey]!;
-        final dayTotal = list.fold(0.0, (sum, i) => sum + i.amount);
-
-        String headerTitle;
-        if (dateKey == todayKey) {
-          headerTitle = 'Today • ${list.first.date.day} ${_months[list.first.date.month - 1]}';
-        } else if (dateKey == yesterdayKey) {
-          headerTitle = 'Yesterday • ${list.first.date.day} ${_months[list.first.date.month - 1]}';
-        } else {
-          headerTitle = '${list.first.date.day} ${_months[list.first.date.month - 1]} ${list.first.date.year}';
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: OwnerColors.borderSubtle),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+  // ── 7. Empty State (Screenshot 1) ──────────────────────────────────
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF7F2),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0x182D231C)),
+      ),
+      child: Column(
+        children: [
+          // Icon Circle
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFE8DA),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: Color(0xFF8C7E72),
+              size: 26,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date Header row
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF7F3EB),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(19)),
-                  border: Border(bottom: BorderSide(color: OwnerColors.borderSubtle)),
+          const SizedBox(height: 16),
+
+          // Headline
+          Text(
+            'No kharcha logged yet',
+            style: GoogleFonts.newsreader(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF231A14),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Subtitle
+          Text(
+            'Log mandi sabzi, milk, ration or gas to see your real monthly profit and loss.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: const Color(0xFF6E645A),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Log First Expense Pill
+          GestureDetector(
+            onTap: () => AddExpenseSheet.show(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3CE92),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '+ Log first expense',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF5A3805),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 8. Expense Items List (Screenshot 2) ───────────────────────────
+  Widget _buildExpenseItemsList(ExpenseLedgerState state) {
+    return Column(
+      children: state.expenses.map((exp) {
+        final meta = _catMeta[exp.category] ?? _catMeta['other']!;
+        final dotColor = meta['dotColor'] as Color;
+        final categoryLabel = meta['label'] as String;
+
+        return GestureDetector(
+          onTap: () => _showExpenseOptions(exp),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAF7F2),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0x142D231C)),
+            ),
+            child: Row(
+              children: [
+                // Squircle Category Color Block (Screenshot 2)
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Item Title & Category Name
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exp.title,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF231A14),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        categoryLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF6E645A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Amount & Payment Mode (Screenshot 2)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      headerTitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
+                      '₹${exp.amount.toInt()}',
+                      style: GoogleFonts.newsreader(
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: OwnerColors.walnutDark,
+                        color: const Color(0xFF231A14),
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'Day Total: ₹${dayTotal.toInt()}',
+                      exp.paymentMode.toUpperCase() == 'UPI' ? 'UPI' : 'Cash',
                       style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: OwnerColors.textDark,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6E645A),
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              // Items
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: list.length,
-                separatorBuilder: (_, _) => const Divider(
-                  height: 1,
-                  indent: 60,
-                  color: OwnerColors.borderSubtle,
-                ),
-                itemBuilder: (context, i) {
-                  final exp = list[i];
-                  final meta = _catMeta[exp.category] ?? _catMeta['other']!;
-                  final catColor = meta['color'] as Color;
-                  final catIcon = meta['icon'] as IconData;
-
-                  return InkWell(
-                    onTap: () => AddExpenseSheet.show(context, expenseToEdit: exp),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      child: Row(
-                        children: [
-                          // Category Icon Box
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: catColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(catIcon, color: catColor, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-
-                          // Title and details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        exp.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: OwnerColors.textDark,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: exp.paymentMode == 'cash'
-                                            ? const Color(0xFFECEFF1)
-                                            : const Color(0xFFE8F5E9),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        exp.paymentMode.toUpperCase(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: exp.paymentMode == 'cash'
-                                              ? const Color(0xFF546E7A)
-                                              : const Color(0xFF2E7D32),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (exp.notes != null && exp.notes!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    exp.notes!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: OwnerColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-
-                          // Amount & More Action
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '₹${exp.amount.toInt()}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: OwnerColors.walnutDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded,
-                                size: 18, color: Color(0xFFB0A8A0)),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _confirmDeleteExpense(exp),
-                            tooltip: 'Delete',
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList(),
-    );
-  }
-
-  // ── Empty State ────────────────────────────────────────────────────────────
-  Widget _buildEmptyState(ExpenseLedgerState state) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: OwnerColors.borderSubtle),
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF4ECE1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.menu_book_rounded,
-                size: 36,
-                color: OwnerColors.walnut,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'No kharcha logged yet',
-              style: GoogleFonts.newsreader(
-                fontSize: 19,
-                fontWeight: FontWeight.w700,
-                color: OwnerColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Log your daily Mandi sabzi, milk, ration, or gas expenses to see your real monthly profit & loss.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                color: OwnerColors.textMuted,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: () => AddExpenseSheet.show(context),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Log First Expense'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: OwnerColors.walnut,
-                side: const BorderSide(color: OwnerColors.walnut),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

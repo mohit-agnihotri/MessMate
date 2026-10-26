@@ -1857,7 +1857,7 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
-  // ── Kitchen Kharcha & P&L Quick Card ──
+  // ── Kitchen Kharcha & P&L Quick Card (Khaata) ──
   Widget _buildKitchenKhaataQuickCard(BuildContext context, WidgetRef ref) {
     final ledgerState = ref.watch(ownerExpenseLedgerProvider);
     final todaySpent = ledgerState.todayExpenses;
@@ -1868,10 +1868,10 @@ class OwnerDashboardPage extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: OwnerColors.borderSubtle),
+        border: Border.all(color: const Color(0xFFEFE8DE)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0C000000),
+            color: Color(0x0A000000),
             blurRadius: 10,
             offset: Offset(0, 3),
           ),
@@ -1883,56 +1883,33 @@ class OwnerDashboardPage extends ConsumerWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAF0E4),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.menu_book_rounded,
-                        color: OwnerColors.walnut,
-                        size: 20,
+                    Text(
+                      'KITCHEN KHARCHA',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                        color: const Color(0xFF887D75),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'KITCHEN EXPENSE & P&L',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
-                              color: OwnerColors.textMuted,
-                            ),
-                          ),
-                          Text(
-                            'Daily Ration & Kharcha (खाता)',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: OwnerColors.textDark,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 3),
+                    Text(
+                      'Daily ration & expense',
+                      style: GoogleFonts.newsreader(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2E2218),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   Navigator.push(
@@ -1941,24 +1918,29 @@ class OwnerDashboardPage extends ConsumerWidget {
                         builder: (_) => const OwnerExpenseLedgerPage()),
                   );
                 },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2EBE2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Open Khaata',
+                        'Open khaata',
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: OwnerColors.walnut,
+                          color: const Color(0xFF4A6B53),
                         ),
                       ),
                       const SizedBox(width: 2),
                       const Icon(
                         Icons.chevron_right_rounded,
-                        size: 16,
-                        color: OwnerColors.walnut,
+                        size: 15,
+                        color: Color(0xFF4A6B53),
                       ),
                     ],
                   ),
@@ -1967,7 +1949,7 @@ class OwnerDashboardPage extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          const Divider(height: 1, color: OwnerColors.borderSubtle),
+          const Divider(height: 1, color: Color(0xFFECE4D9)),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -1976,20 +1958,20 @@ class OwnerDashboardPage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Today\'s Kharcha',
+                      'Today\'s kharcha',
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
-                        color: OwnerColors.textMuted,
+                        color: const Color(0xFF887D75),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       '₹${todaySpent.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 19,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        color: OwnerColors.textDark,
+                        color: const Color(0xFF2E2218),
                       ),
                     ),
                   ],
@@ -1997,8 +1979,8 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
               Container(
                 width: 1,
-                height: 32,
-                color: OwnerColors.borderSubtle,
+                height: 36,
+                color: const Color(0xFFECE4D9),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2006,22 +1988,22 @@ class OwnerDashboardPage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Month\'s Cash Profit',
+                      'This month\'s cash profit',
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
-                        color: OwnerColors.textMuted,
+                        color: const Color(0xFF887D75),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       '${isProfitable ? '+' : ''}₹${inHandProfit.toInt()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 19,
+                      style: GoogleFonts.newsreader(
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: isProfitable
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFFC62828),
+                            ? const Color(0xFF4A6B53)
+                            : const Color(0xFFBD5D38),
                       ),
                     ),
                   ],
@@ -2029,25 +2011,26 @@ class OwnerDashboardPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 42,
-            child: OutlinedButton.icon(
+            height: 44,
+            child: ElevatedButton.icon(
               onPressed: () => AddExpenseSheet.show(context),
-              icon: const Icon(Icons.add_rounded, size: 18),
+              icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFF2E2218)),
               label: Text(
-                'Log Today\'s Kharcha (Mandi / Doodh / Ration)',
+                'Log today\'s kharcha',
                 style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2E2218),
                 ),
               ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: OwnerColors.walnut,
-                side: const BorderSide(color: OwnerColors.walnut, width: 1.2),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEAA23E),
+                elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(24),
                 ),
               ),
             ),
