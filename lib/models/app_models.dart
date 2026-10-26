@@ -1644,7 +1644,8 @@ class AdminGlobalConfigModel {
     this.emergencyBannerText = '',
     this.minSupportedVersion = '1.0.0',
     this.latestAppVersion = '1.0.4',
-    this.apkDownloadUrl = 'https://mezzo-69cab.web.app/assets/mezzo.apk',
+    this.apkDownloadUrl =
+        'https://github.com/mohit-agnihotri/MessMate/releases/download/v1.0.4/mezzo-v1.0.4.apk',
     this.updateChangelog =
         'New Kitchen Kharcha Ledger • Daily Sabzi, Milk, Ration P&L • 1-Click WhatsApp Export',
     this.forceUpdate = false,
