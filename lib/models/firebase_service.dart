@@ -4,8 +4,9 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../config/cloudinary_config.dart';
 import '../services/notification_service.dart';
@@ -405,7 +406,7 @@ class FirebaseService implements AppService {
     final snap = await _db
         .collection('global_dishes')
         .where('name_lower', isGreaterThanOrEqualTo: searchTerm)
-        .where('name_lower', isLessThanOrEqualTo: searchTerm + '\uf8ff')
+        .where('name_lower', isLessThanOrEqualTo: '$searchTerm\uf8ff')
         .limit(20)
         .get();
     
@@ -720,7 +721,7 @@ class FirebaseService implements AppService {
   // BILLING
   @override
   Future<BillModel?> getBill(String studentId, int month, int year) async {
-    final billId = '${studentId}_${month}_${year}';
+    final billId = '${studentId}_${month}_$year';
     final doc = await _db.collection('bills').doc(billId).get();
     if (!doc.exists || doc.data() == null) return null;
     return BillModel.fromMap(doc.data()!);
@@ -867,10 +868,10 @@ class FirebaseService implements AppService {
       
       if (count > 0) {
         await batch.commit();
-        print("Cleaned up $count old announcements");
+        debugPrint("Cleaned up $count old announcements");
       }
     } catch (e) {
-      print("Failed to clean up announcements: $e");
+      debugPrint("Failed to clean up announcements: $e");
     }
   }
 
@@ -1664,41 +1665,199 @@ class FirebaseService implements AppService {
     };
   }
 
+  // ─── CASCADE ACCOUNT DELETION HELPERS ──────────────────────────────
+  Future<void> _deleteQueryBatch(Query query) async {
+    final snap = await query.limit(300).get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    if (snap.docs.length >= 300) {
+      await _deleteQueryBatch(query);
+    }
+  }
+
+  Future<void> _deleteSubcollection(DocumentReference docRef, String subcollectionName) async {
+    await _deleteQueryBatch(docRef.collection(subcollectionName));
+  }
+
+  Future<void> _deleteUserWithReauthFallback(User user) async {
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        debugPrint('[FirebaseService] requires-recent-login: attempting seamless reauthentication...');
+        final isGoogle = user.providerData.any((p) => p.providerId == 'google.com');
+        if (isGoogle) {
+          if (kIsWeb) {
+            final googleProvider = GoogleAuthProvider();
+            googleProvider.setCustomParameters({'prompt': 'select_account'});
+            await user.reauthenticateWithPopup(googleProvider);
+          } else {
+            final googleSignIn = GoogleSignIn.instance;
+            await googleSignIn.initialize();
+            final googleUser = await googleSignIn.authenticate();
+            final String? idToken = googleUser.authentication.idToken;
+            String? accessToken;
+            try {
+              final authClient = googleUser.authorizationClient;
+              final auth = await authClient.authorizationForScopes(['email', 'profile']);
+              accessToken = auth?.accessToken;
+            } catch (_) {}
+            final credential = GoogleAuthProvider.credential(
+              accessToken: accessToken,
+              idToken: idToken,
+            );
+            await user.reauthenticateWithCredential(credential);
+          }
+          await user.delete();
+        } else {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
+  }
+
   @override
   Future<void> deleteStudentAccount(String studentId) async {
+    // 1. Delete student meal records
+    try {
+      await _deleteQueryBatch(
+        _db.collection('meal_records').where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting student meal_records: $e');
+    }
+
+    // 2. Delete student leaves
+    try {
+      await _deleteQueryBatch(
+        _db.collection('leaves').where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting student leaves: $e');
+    }
+
+    // 3. Delete student support tickets
+    try {
+      await _deleteQueryBatch(
+        _db.collection('support_tickets').where('userId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting student support tickets: $e');
+    }
+
+    // 4. Delete student document itself
     try {
       await _db.collection('students').doc(studentId).delete();
     } catch (e) {
       debugPrint('[FirebaseService] Error deleting student doc: $e');
     }
 
+    // 5. Revoke notification token
     try {
       await NotificationService.logout();
     } catch (_) {}
 
+    // 6. Delete FirebaseAuth account (with seamless re-authentication if requires-recent-login)
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && user.uid == studentId) {
-      await user.delete();
+      await _deleteUserWithReauthFallback(user);
     }
   }
 
   @override
   Future<void> deleteOwnerAccount(String ownerId, String messId) async {
     if (messId.isNotEmpty) {
+      final messRef = _db.collection('messes').doc(messId);
+
+      // 1. Delete all subcollections inside mess doc
+      const subcollections = [
+        'dishes',
+        'meal_plans',
+        'extra_fees',
+        'weekly_templates',
+        'closed_slots',
+        'expenses',
+        'feedbacks',
+        'dish_ratings',
+        'reviews',
+      ];
+      for (final sub in subcollections) {
+        try {
+          await _deleteSubcollection(messRef, sub);
+        } catch (e) {
+          debugPrint('[FirebaseService] Error deleting subcollection $sub: $e');
+        }
+      }
+
+      // 2. Delete root collections associated with this mess
+      final rootMessQueries = [
+        _db.collection('menus').where('messId', isEqualTo: messId),
+        _db.collection('announcements').where('messId', isEqualTo: messId),
+        _db.collection('bills').where('messId', isEqualTo: messId),
+        _db.collection('meal_records').where('messId', isEqualTo: messId),
+        _db.collection('leaves').where('messId', isEqualTo: messId),
+      ];
+      for (final query in rootMessQueries) {
+        try {
+          await _deleteQueryBatch(query);
+        } catch (e) {
+          debugPrint('[FirebaseService] Error deleting mess root query: $e');
+        }
+      }
+
+      // 3. Release enrolled students (status left, messId cleared)
       try {
-        await _db.collection('messes').doc(messId).delete();
+        final studentsSnap = await _db
+            .collection('students')
+            .where('messId', isEqualTo: messId)
+            .get();
+        if (studentsSnap.docs.isNotEmpty) {
+          final batch = _db.batch();
+          for (final doc in studentsSnap.docs) {
+            batch.update(doc.reference, {
+              'messId': '',
+              'status': 'left',
+              'assignedPlanId': null,
+            });
+          }
+          await batch.commit();
+        }
+      } catch (e) {
+        debugPrint('[FirebaseService] Error releasing enrolled students: $e');
+      }
+
+      // 4. Delete mess doc itself
+      try {
+        await messRef.delete();
       } catch (e) {
         debugPrint('[FirebaseService] Error deleting mess doc: $e');
       }
     }
 
+    // 5. Delete owner support tickets
+    try {
+      await _deleteQueryBatch(
+        _db.collection('support_tickets').where('userId', isEqualTo: ownerId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting owner support tickets: $e');
+    }
+
+    // 6. Revoke notification token
     try {
       await NotificationService.logout();
     } catch (_) {}
 
+    // 7. Delete FirebaseAuth account (with seamless re-authentication if requires-recent-login)
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && user.uid == ownerId) {
-      await user.delete();
+      await _deleteUserWithReauthFallback(user);
     }
   }
 }

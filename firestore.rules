@@ -109,9 +109,9 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5;
-        // V-16 Fix: Owners cannot delete negative feedbacks to whitewash ratings
+        // V-16 Fix: Owners cannot delete negative feedbacks to whitewash ratings; allows delete on mess/account cleanup
         allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
-        allow delete: if isAdmin();
+        allow delete: if isAdmin() || isMessOwner(messId) || (isAuthenticated() && request.auth.uid == resource.data.studentId);
       }
 
       match /dish_ratings/{ratingId} {
@@ -160,7 +160,8 @@ service cloud.firestore {
           )
         )
       );
-      allow delete: if isAdmin();
+      // Allow student to delete their own account under DPDP Act / GDPR, or Admin
+      allow delete: if isAuthenticated() && (request.auth.uid == studentId || isAdmin());
     }
 
     // ─── Menus ────────────────────────────────────────────────────────
@@ -249,7 +250,11 @@ service cloud.firestore {
         (resource != null && resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
       );
-      allow delete: if isAdmin();
+      // Allow mess owner or Admin to delete bills on mess closure / deletion
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (resource != null && resource.data.messId != null && isMessOwner(resource.data.messId))
+      );
     }
 
     // ─── System Configuration & Admin Vault ───────────────────────────
@@ -268,7 +273,8 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         isAdmin()
       );
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
     }
   }
 }

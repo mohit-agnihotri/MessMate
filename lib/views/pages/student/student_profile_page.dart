@@ -1419,13 +1419,20 @@ class StudentProfilePage extends ConsumerWidget {
                           Navigator.pop(dialogContext);
                         }
                         if (context.mounted) {
+                          final errStr = e.toString().toLowerCase();
+                          final String errorMsg;
+                          if (errStr.contains('cancel') || errStr.contains('cancelled') || errStr.contains('canceled')) {
+                            errorMsg = isHindi
+                                ? 'सुरक्षा सत्यापन रद्द कर दिया गया था।'
+                                : 'Security re-authentication was cancelled.';
+                          } else {
+                            errorMsg = isHindi
+                                ? 'अकाउंट हटाने में त्रुटि: कृपया पुनः प्रयास करें।'
+                                : 'Account deletion failed. Please try again.';
+                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                isHindi
-                                    ? 'अकाउंट हटाने में त्रुटि: सुरक्षा के लिए कृपया दोबारा लॉगिन करके प्रयास करें।'
-                                    : 'Deletion failed: For security, please sign in again before deleting.',
-                              ),
+                              content: Text(errorMsg),
                               backgroundColor: const Color(0xFFDC2626),
                             ),
                           );
