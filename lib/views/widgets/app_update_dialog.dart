@@ -9,7 +9,7 @@ import '../../services/localization_service.dart';
 import '../pages/owner/theme/owner_inspired_theme.dart';
 
 /// App-wide Current Version Constant (Keep in sync with pubspec.yaml)
-const String kCurrentAppVersion = '1.0.4';
+const String kCurrentAppVersion = '1.0.5';
 
 /// Highly polished, executive In-App Update Dialog.
 /// Automatically matches Mezzo's Warm Walnut & Cream aesthetic.

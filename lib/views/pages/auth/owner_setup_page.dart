@@ -11,7 +11,6 @@ import '../../../services/notification_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/owner_main_page.dart';
 import 'login_page.dart';
-import 'role_selection_page.dart';
 
 /// OwnerSetupPage:
 /// 3-step setup wizard for mess owners.
@@ -154,7 +153,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const RoleSelectionPage()),
+                          builder: (_) => const LoginPage()),
                       (r) => false,
                     );
                   }

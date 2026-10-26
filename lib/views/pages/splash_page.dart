@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../../../services/localization_service.dart';
 import '../widgets/mezzo_logo.dart';
@@ -47,12 +48,22 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
     _fadeController.forward();
 
-    // Absolute fallback safety guard: Never allow the app to hang on splash longer than 3.5s
-    Future.delayed(const Duration(milliseconds: 3500), () {
+    // Safety guard: Never hang on splash indefinitely on weak network
+    Future.delayed(const Duration(seconds: 6), () async {
       if (mounted && !_hasNavigated) {
         debugPrint('[SplashPage] Safety fallback triggered');
         final user = FirebaseAuth.instance.currentUser;
-        _navigateTo(user != null ? const RoleSelectionPage() : const LoginPage());
+        if (user != null) {
+          _navigateTo(const RoleSelectionPage(initialStep: 2));
+        } else {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final hasSeen = prefs.getBool('has_completed_onboarding') ?? false;
+            _navigateTo(hasSeen ? const LoginPage() : const RoleSelectionPage(initialStep: 0));
+          } catch (_) {
+            _navigateTo(const LoginPage());
+          }
+        }
       }
     });
 
@@ -65,19 +76,35 @@ class _SplashPageState extends ConsumerState<SplashPage>
       await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted || _hasNavigated) return;
 
-      final user = FirebaseAuth.instance.currentUser;
+      User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        _navigateTo(const LoginPage());
+        // Give Firebase Auth state a moment to restore cached session if cold starting
+        try {
+          user = await FirebaseAuth.instance
+              .authStateChanges()
+              .first
+              .timeout(const Duration(milliseconds: 1000), onTimeout: () => null);
+        } catch (_) {}
+      }
+
+      if (user == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+        if (!hasCompletedOnboarding) {
+          _navigateTo(const RoleSelectionPage(initialStep: 0));
+        } else {
+          _navigateTo(const LoginPage());
+        }
         return;
       }
 
       final service = ref.read(appServiceProvider);
 
-      // 1. Check if user is an owner
+      // 1. Check if user is an owner with realistic network timeout
       try {
         final mess = await service
             .getMessByOwnerId(user.uid)
-            .timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
+            .timeout(const Duration(milliseconds: 4500), onTimeout: () => null);
 
         if (mess != null && mounted && !_hasNavigated) {
           ref.read(authProvider.notifier).setRole(AuthRole.owner);
@@ -90,11 +117,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
       if (!mounted || _hasNavigated) return;
 
-      // 2. Check if user is a student
+      // 2. Check if user is a student with realistic network timeout
       try {
         final student = await service
             .getStudentById(user.uid)
-            .timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
+            .timeout(const Duration(milliseconds: 4500), onTimeout: () => null);
 
         if (student != null && mounted && !_hasNavigated) {
           ref.read(authProvider.notifier).setRole(AuthRole.student);
@@ -117,14 +144,14 @@ class _SplashPageState extends ConsumerState<SplashPage>
         debugPrint('[SplashPage] Error checking student: $e');
       }
 
-      // If neither, route to RoleSelectionPage
+      // If user is authenticated in Firebase but has neither profile, take directly to Role Selection
       if (mounted && !_hasNavigated) {
-        _navigateTo(const RoleSelectionPage());
+        _navigateTo(const RoleSelectionPage(initialStep: 2));
       }
     } catch (e) {
       debugPrint('[SplashPage] Routing exception: $e');
       if (mounted && !_hasNavigated) {
-        _navigateTo(const RoleSelectionPage());
+        _navigateTo(const RoleSelectionPage(initialStep: 2));
       }
     }
   }

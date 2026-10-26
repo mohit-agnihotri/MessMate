@@ -11,7 +11,6 @@ import '../student/student_discovery_page.dart';
 import '../student/student_pending_approval_page.dart';
 import '../../../services/notification_service.dart';
 import 'login_page.dart';
-import 'role_selection_page.dart';
 
 class StudentSetupPage extends ConsumerStatefulWidget {
   const StudentSetupPage({super.key});
@@ -126,7 +125,7 @@ class _StudentSetupPageState extends ConsumerState<StudentSetupPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const RoleSelectionPage()),
+                          builder: (_) => const LoginPage()),
                       (r) => false,
                     );
                   }

@@ -123,7 +123,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+            MaterialPageRoute(
+                builder: (_) => const RoleSelectionPage(initialStep: 2)),
           );
         }
       }
@@ -132,7 +133,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          MaterialPageRoute(
+              builder: (_) => const RoleSelectionPage(initialStep: 2)),
         );
       }
     } finally {
@@ -489,7 +491,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const RoleSelectionPage()),
+                                builder: (_) =>
+                                    const RoleSelectionPage(initialStep: 2)),
                           );
                         },
                         style: TextButton.styleFrom(

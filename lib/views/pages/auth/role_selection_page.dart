@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
@@ -19,16 +20,33 @@ import '../../widgets/mezzo_logo.dart';
 /// Stage 1: Warm Walnut Bilingual Language Selection (English / हिंदी)
 /// Stage 2: Editorial Role Selection (Mess Owner vs Diner/Student Member)
 class RoleSelectionPage extends ConsumerStatefulWidget {
-  const RoleSelectionPage({super.key});
+  final int initialStep;
+  const RoleSelectionPage({super.key, this.initialStep = 0});
 
   @override
   ConsumerState<RoleSelectionPage> createState() => _RoleSelectionPageState();
 }
 
 class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
-  int _currentStep = 0; // 0: Carousel, 1: Language, 2: Role
+  late int _currentStep; // 0: Carousel, 1: Language, 2: Role
   final PageController _carouselCtrl = PageController();
   int _carouselIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStep = widget.initialStep;
+    if (_currentStep == 2) {
+      _markOnboardingDone();
+    }
+  }
+
+  Future<void> _markOnboardingDone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_completed_onboarding', true);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -39,11 +57,14 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
   void _nextStep() {
     if (_currentStep < 2) {
       setState(() => _currentStep++);
+      if (_currentStep == 2) {
+        _markOnboardingDone();
+      }
     }
   }
 
   void _prevStep() {
-    if (_currentStep > 0) {
+    if (_currentStep > widget.initialStep) {
       setState(() => _currentStep--);
     }
   }
@@ -54,9 +75,9 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
     final isHindi = currentLang == 'hi';
 
     return PopScope(
-      canPop: _currentStep == 0,
+      canPop: _currentStep == widget.initialStep,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _currentStep > 0) {
+        if (!didPop && _currentStep > widget.initialStep) {
           _prevStep();
         }
       },
@@ -150,7 +171,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _currentStep > 0
+          _currentStep > widget.initialStep
               ? InkWell(
                   onTap: _prevStep,
                   borderRadius: BorderRadius.circular(20),
@@ -221,7 +242,10 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               if (_currentStep == 0) ...[
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: () => setState(() => _currentStep = 1),
+                  onPressed: () {
+                    _markOnboardingDone();
+                    setState(() => _currentStep = 1);
+                  },
                   style: TextButton.styleFrom(
                     foregroundColor:
                         const Color(0xFFFAF8F3).withValues(alpha: 0.7),
@@ -504,6 +528,26 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    _markOnboardingDone();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
+                  },
+                  child: Text(
+                    isHindi ? 'पहले से खाता है? लॉगिन करें →' : 'Already have an account? Log In →',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD6CEB8).withValues(alpha: 0.9),
+                    ),
                   ),
                 ),
               ),
@@ -857,6 +901,42 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
                 : ['Daily choice & skips', 'Digital passbook', 'Leaves & guest meals'],
             onTap: () => _handleRoleSelection(context, ref, AuthRole.student),
           ),
+
+          if (FirebaseAuth.instance.currentUser == null) ...[
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                child: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: const Color(0xFFD6CEB8).withValues(alpha: 0.85),
+                    ),
+                    children: [
+                      TextSpan(
+                        text: isHindi
+                            ? 'पहले से खाता है? '
+                            : 'Already have an account? ',
+                      ),
+                      TextSpan(
+                        text: isHindi ? 'लॉगिन करें →' : 'Log In →',
+                        style: const TextStyle(
+                          color: Color(0xFFF09E38),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           const SizedBox(height: 32),
         ],

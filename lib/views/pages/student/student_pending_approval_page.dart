@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
-import '../auth/role_selection_page.dart';
+import '../auth/login_page.dart';
 import '../auth/student_setup_page.dart';
 import 'student_main_page.dart';
 import 'theme/student_inspired_theme.dart';
@@ -310,7 +310,7 @@ class _StudentPendingApprovalPageState
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,
       );
     }
