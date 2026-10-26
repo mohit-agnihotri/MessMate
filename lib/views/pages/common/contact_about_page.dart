@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -200,20 +201,67 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
         body: TabBarView(
           controller: _tabCtrl,
           children: [
-            _buildContactSupportTab(context, isHi),
-            _buildAboutMezzoTab(context, isHi),
+            _ContactSupportTab(
+              userRole: widget.userRole,
+              messId: widget.messId,
+              messName: widget.messName,
+              onWhatsApp: _launchWhatsApp,
+              onEmail: _launchEmail,
+              onCall: _launchCall,
+              onOpenComplaint: _openComplaintSheet,
+              onPreviewImage: _showImagePreviewDialog,
+            ),
+            const _AboutMezzoTab(),
           ],
         ),
       ),
     );
   }
+}
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // TAB 1: 📞 CONTACT & SUPPORT + REAL-TIME TICKET TRACKER
-  // ═════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB 1: 📞 CONTACT & SUPPORT + REAL-TIME TICKET TRACKER (KEEP-ALIVE)
+// ═════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildContactSupportTab(BuildContext context, bool isHi) {
-    final userId = ref.watch(authProvider).userId ?? '';
+class _ContactSupportTab extends ConsumerStatefulWidget {
+  final String userRole;
+  final String messId;
+  final String messName;
+  final VoidCallback onWhatsApp;
+  final VoidCallback onEmail;
+  final VoidCallback onCall;
+  final VoidCallback onOpenComplaint;
+  final Function(String) onPreviewImage;
+
+  const _ContactSupportTab({
+    required this.userRole,
+    required this.messId,
+    required this.messName,
+    required this.onWhatsApp,
+    required this.onEmail,
+    required this.onCall,
+    required this.onOpenComplaint,
+    required this.onPreviewImage,
+  });
+
+  @override
+  ConsumerState<_ContactSupportTab> createState() => _ContactSupportTabState();
+}
+
+class _ContactSupportTabState extends ConsumerState<_ContactSupportTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isHi = ref.watch(localizationProvider) == 'hi';
+    final userId = FirebaseAuth.instance.currentUser?.uid ??
+        ref.watch(authProvider).userId ??
+        '';
+
+    final ticketsAsync = ref.watch(userTicketsStreamProvider(userId));
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -242,7 +290,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
                   bgColor: const Color(0xFFE8F9EE),
                   title: 'WhatsApp',
                   subtitle: isHi ? 'तुरंत चैट करें' : 'Chat Instantly',
-                  onTap: _launchWhatsApp,
+                  onTap: widget.onWhatsApp,
                 ),
               ),
               const SizedBox(width: 10),
@@ -255,7 +303,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
                   bgColor: const Color(0xFFEFF6FF),
                   title: isHi ? 'ईमेल' : 'Email Us',
                   subtitle: 'support@mezzo.app',
-                  onTap: _launchEmail,
+                  onTap: widget.onEmail,
                 ),
               ),
             ],
@@ -264,7 +312,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
 
           // Helpline Card
           InkWell(
-            onTap: _launchCall,
+            onTap: widget.onCall,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -386,7 +434,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
                       ),
                       elevation: 0,
                     ),
-                    onPressed: _openComplaintSheet,
+                    onPressed: widget.onOpenComplaint,
                     icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
                     label: Text(
                       isHi ? 'शिकायत / सुझाव दर्ज करें' : 'Raise Ticket with Screenshot',
@@ -413,7 +461,9 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
               ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, size: 18, color: OwnerColors.textMuted),
-                onPressed: () => setState(() {}),
+                onPressed: () {
+                  ref.invalidate(userTicketsStreamProvider(userId));
+                },
                 tooltip: isHi ? 'रिफ्रेश करें' : 'Refresh',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -422,23 +472,12 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
           ),
           const SizedBox(height: 10),
 
-          StreamBuilder<List<SupportTicketModel>>(
-            stream: ref.watch(adminServiceProvider).streamUserTickets(userId),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(color: OwnerColors.sageGreen),
-                  ),
-                );
-              }
-
-              final tickets = snapshot.data ?? [];
+          // Render Tickets via Riverpod StreamProvider
+          ticketsAsync.when(
+            data: (tickets) {
               if (tickets.isEmpty) {
                 return _buildEmptyTicketState(isHi);
               }
-
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -448,6 +487,15 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
                   return _buildTicketCard(tickets[index], isHi);
                 },
               );
+            },
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(color: OwnerColors.sageGreen),
+              ),
+            ),
+            error: (err, stack) {
+              return _buildEmptyTicketState(isHi);
             },
           ),
           const SizedBox(height: 30),
@@ -523,7 +571,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: OwnerColors.sageLight,
               shape: BoxShape.circle,
             ),
@@ -658,7 +706,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
           // Attached Screenshot Thumbnail (if present)
           if (ticket.screenshotUrl != null && ticket.screenshotUrl!.isNotEmpty) ...[
             GestureDetector(
-              onTap: () => _showImagePreviewDialog(ticket.screenshotUrl!),
+              onTap: () => widget.onPreviewImage(ticket.screenshotUrl!),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(6),
@@ -768,197 +816,234 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
     );
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // TAB 2: ℹ️ ABOUT MEZZO (STORY, VISION & LEGAL COMPLIANCE)
-  // ═════════════════════════════════════════════════════════════════════════════
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago';
+    } else {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    }
+  }
+}
 
-  Widget _buildAboutMezzoTab(BuildContext context, bool isHi) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 8),
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB 2: ℹ️ ABOUT MEZZO (STORY, VISION & LEGAL COMPLIANCE) (KEEP-ALIVE)
+// ═════════════════════════════════════════════════════════════════════════════
 
-          // Central Brand Squircle Logo
-          const Center(
-            child: MezzoLogo(
-              size: 80,
-              showSquircle: true,
-              showShadow: true,
-              backgroundColor: Color(0xFF2B1D14),
-            ),
-          ),
-          const SizedBox(height: 16),
+class _AboutMezzoTab extends StatefulWidget {
+  const _AboutMezzoTab();
 
-          // Brand Title: Mezzo
-          Text(
-            'Mezzo',
-            style: GoogleFonts.newsreader(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: OwnerColors.walnutDark,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
+  @override
+  State<_AboutMezzoTab> createState() => _AboutMezzoTabState();
+}
 
-          // Subtitle / Tagline
-          Text(
-            isHi
-                ? 'स्मार्ट मेस मैनेजमेंट • स्वाद भी, हिसाब भी'
-                : 'SMART MESS MANAGEMENT',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.2,
-              color: OwnerColors.amberDark,
-            ),
-          ),
-          const SizedBox(height: 10),
+class _AboutMezzoTabState extends State<_AboutMezzoTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
-          // Version badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: OwnerColors.borderSubtle),
-            ),
-            child: Text(
-              'v1.0.4 • Build 2026 (Production)',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: OwnerColors.textSecondary,
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    return Consumer(
+      builder: (context, ref, child) {
+        final isHi = ref.watch(localizationProvider) == 'hi';
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 8),
+
+              // Central Brand Squircle Logo
+              const Center(
+                child: MezzoLogo(
+                  size: 80,
+                  showSquircle: true,
+                  showShadow: true,
+                  backgroundColor: Color(0xFF2B1D14),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-          // Story & Mission Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: OwnerColors.borderSubtle),
-              boxShadow: OwnerColors.softShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              // Brand Title: Mezzo
+              Text(
+                'Mezzo',
+                style: GoogleFonts.newsreader(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  color: OwnerColors.walnutDark,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // Subtitle / Tagline
+              Text(
+                isHi
+                    ? 'स्मार्ट मेस मैनेजमेंट • स्वाद भी, हिसाब भी'
+                    : 'SMART MESS MANAGEMENT',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.2,
+                  color: OwnerColors.amberDark,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Version badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: OwnerColors.borderSubtle),
+                ),
+                child: Text(
+                  'v1.0.4 • Build 2026 (Production)',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: OwnerColors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Story & Mission Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: OwnerColors.borderSubtle),
+                  boxShadow: OwnerColors.softShadow,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.restaurant_menu_rounded,
-                        color: OwnerColors.amberGlow, size: 22),
-                    const SizedBox(width: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.restaurant_menu_rounded,
+                            color: OwnerColors.amberGlow, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          isHi ? 'हमारा उद्देश्य (Our Mission)' : 'About Mezzo',
+                          style: OwnerTypography.editorialSerif(
+                            size: 18,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      isHi ? 'हमारा उद्देश्य (Our Mission)' : 'About Mezzo',
-                      style: OwnerTypography.editorialSerif(
-                        size: 18,
-                        weight: FontWeight.w700,
+                      isHi
+                          ? 'Mezzo को मेस संचालकों और छात्रों के बीच रोज़मर्रा के मैन्युअल रजिस्टर और बिलिंग विवादों को खत्म करने के लिए बनाया गया है।\n\n'
+                            'हम हॉस्टल और प्राइवेट मेस को पूरी तरह डिजिटल बनाते हैं — लाइव मेन्यू ब्रॉडकास्ट, ऑटोमैटिक 30-मिनट कटऑफ कैंसलेशन, पारदर्शी मासिक बिल, और क्लाउड लेज़र हिसाब-किताब।'
+                          : 'Mezzo was engineered to eliminate paper meal registers, missed cancellation deadlines, and end-of-month fee disputes for hostels and independent messes across India.\n\n'
+                            'With real-time menu broadcasts, automated cancellation cutoffs, accurate per-meal & monthly billing, and an integrated kitchen expense ledger, Mezzo brings trust and transparency to daily dining.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: OwnerColors.textPrimary,
+                        height: 1.5,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  isHi
-                      ? 'Mezzo को मेस संचालकों और छात्रों के बीच रोज़मर्रा के मैन्युअल रजिस्टर और बिलिंग विवादों को खत्म करने के लिए बनाया गया है।\n\n'
-                        'हम हॉस्टल और प्राइवेट मेस को पूरी तरह डिजिटल बनाते हैं — लाइव मेन्यू ब्रॉडकास्ट, ऑटोमैटिक 30-मिनट कटऑफ कैंसलेशन, पारदर्शी मासिक बिल, और क्लाउड लेज़र हिसाब-किताब।'
-                      : 'Mezzo was engineered to eliminate paper meal registers, missed cancellation deadlines, and end-of-month fee disputes for hostels and independent messes across India.\n\n'
-                        'With real-time menu broadcasts, automated cancellation cutoffs, accurate per-meal & monthly billing, and an integrated kitchen expense ledger, Mezzo brings trust and transparency to daily dining.',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: OwnerColors.textPrimary,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Key Trust & Security Pillars
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: OwnerColors.borderSubtle),
-              boxShadow: OwnerColors.softShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isHi ? 'सुरक्षा एवं तकनीक' : 'SECURITY & PRIVACY GUARANTEES',
-                  style: OwnerTypography.overline(
-                    size: 11,
-                    color: OwnerColors.walnutMuted,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildTrustRow(
-                  Icons.shield_outlined,
-                  isHi ? '100% डेटा सुरक्षा' : 'Data Isolation & Privacy',
-                  isHi
-                      ? 'DPDP Act 2023 और Google Play नियमों के पूर्णतः अनुकूल।'
-                      : 'Compliant with India DPDP Act 2023 and Google Play privacy policies.',
-                ),
-                const Divider(height: 18, color: OwnerColors.borderSubtle),
-                _buildTrustRow(
-                  Icons.cloud_done_outlined,
-                  isHi ? 'सुरक्षित मीडिया क्लाउड' : 'Optimized Media Cloud',
-                  isHi
-                      ? 'Cloudinary CDN के साथ तेज और सुरक्षित फोटो स्टोरेज।'
-                      : 'Powered by Cloudinary CDN with auto-optimized WebP image delivery.',
-                ),
-                const Divider(height: 18, color: OwnerColors.borderSubtle),
-                _buildTrustRow(
-                  Icons.delete_outline_rounded,
-                  isHi ? 'खाता हटाने का पूर्ण अधिकार' : 'Right to Erasure',
-                  isHi
-                      ? 'छात्र एवं संचालक कभी भी एक क्लिक में अपना खाता और डेटा हटा सकते हैं।'
-                      : 'Both students and owners can delete accounts and wipe personal data anytime.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Made with Pride footer
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Made with ',
-                style: GoogleFonts.inter(fontSize: 12, color: OwnerColors.textMuted),
               ),
-              const Icon(Icons.favorite_rounded, color: Color(0xFFEF4444), size: 14),
-              Text(
-                ' in India for Students & Mess Owners',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: OwnerColors.textPrimary,
+              const SizedBox(height: 16),
+
+              // Key Trust & Security Pillars
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: OwnerColors.borderSubtle),
+                  boxShadow: OwnerColors.softShadow,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isHi ? 'सुरक्षा एवं तकनीक' : 'SECURITY & PRIVACY GUARANTEES',
+                      style: OwnerTypography.overline(
+                        size: 11,
+                        color: OwnerColors.walnutMuted,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTrustRow(
+                      Icons.shield_outlined,
+                      isHi ? '100% डेटा सुरक्षा' : 'Data Isolation & Privacy',
+                      isHi
+                          ? 'DPDP Act 2023 और Google Play नियमों के पूर्णतः अनुकूल।'
+                          : 'Compliant with India DPDP Act 2023 and Google Play privacy policies.',
+                    ),
+                    const Divider(height: 18, color: OwnerColors.borderSubtle),
+                    _buildTrustRow(
+                      Icons.cloud_done_outlined,
+                      isHi ? 'सुरक्षित मीडिया क्लाउड' : 'Optimized Media Cloud',
+                      isHi
+                          ? 'Cloudinary CDN के साथ तेज और सुरक्षित फोटो स्टोरेज।'
+                          : 'Powered by Cloudinary CDN with auto-optimized WebP image delivery.',
+                    ),
+                    const Divider(height: 18, color: OwnerColors.borderSubtle),
+                    _buildTrustRow(
+                      Icons.delete_outline_rounded,
+                      isHi ? 'खाता हटाने का पूर्ण अधिकार' : 'Right to Erasure',
+                      isHi
+                          ? 'छात्र एवं संचालक कभी भी एक क्लिक में अपना खाता और डेटा हटा सकते हैं।'
+                          : 'Both students and owners can delete accounts and wipe personal data anytime.',
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Made with Pride footer
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Made with ',
+                    style: GoogleFonts.inter(fontSize: 12, color: OwnerColors.textMuted),
+                  ),
+                  const Icon(Icons.favorite_rounded, color: Color(0xFFEF4444), size: 14),
+                  Text(
+                    ' in India for Students & Mess Owners',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: OwnerColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '© 2026 Mezzo Technologies. All rights reserved.',
+                style: GoogleFonts.inter(fontSize: 11, color: OwnerColors.textMuted),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '© 2026 Mezzo Technologies. All rights reserved.',
-            style: GoogleFonts.inter(fontSize: 11, color: OwnerColors.textMuted),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -968,9 +1053,9 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: OwnerColors.sageLight,
-            borderRadius: BorderRadius.circular(10),
+            shape: BoxShape.circle,
           ),
           child: Icon(icon, color: OwnerColors.sageGreen, size: 20),
         ),
@@ -1001,20 +1086,5 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage>
         ),
       ],
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else {
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
-    }
   }
 }

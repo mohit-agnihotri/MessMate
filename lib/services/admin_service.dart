@@ -22,6 +22,12 @@ final adminStudentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
   return ref.watch(adminServiceProvider).streamAllStudents();
 });
 
+/// StreamProvider for real-time complaints & tickets raised by a specific user
+final userTicketsStreamProvider =
+    StreamProvider.autoDispose.family<List<SupportTicketModel>, String>((ref, userId) {
+  return ref.watch(adminServiceProvider).streamUserTickets(userId);
+});
+
 /// Centralized service powering the Super Admin Mission Control,
 /// dual-gate security authentication, mess management, support tickets, and monetization.
 class AdminService {
@@ -268,12 +274,14 @@ class AdminService {
     }).handleError((error) {
       debugPrint('[AdminService] streamSupportTickets error caught gracefully: $error');
       return <SupportTicketModel>[];
-    });
+    }).asBroadcastStream();
   }
 
   /// Real-time stream of complaints & tickets raised by a specific user.
   Stream<List<SupportTicketModel>> streamUserTickets(String userId) {
-    if (userId.isEmpty) return Stream.value([]);
+    if (userId.isEmpty) {
+      return Stream<List<SupportTicketModel>>.value([]).asBroadcastStream();
+    }
     return _db
         .collection(_ticketsCollection)
         .where('userId', isEqualTo: userId)
@@ -288,7 +296,7 @@ class AdminService {
     }).handleError((error) {
       debugPrint('[AdminService] streamUserTickets error caught gracefully: $error');
       return <SupportTicketModel>[];
-    });
+    }).asBroadcastStream();
   }
 
   /// Replies to a ticket and dispatches an instant OneSignal push notification to the user.
