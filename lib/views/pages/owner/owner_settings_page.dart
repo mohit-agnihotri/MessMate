@@ -9,7 +9,7 @@ import '../../../models/app_models.dart';
 import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/login_page.dart';
-import '../common/user_feedback_sheet.dart';
+import '../common/contact_about_page.dart';
 import '../common/full_screen_image_gallery.dart';
 import 'owner_about_mess_page.dart';
 import 'owner_feast_policy_page.dart';
@@ -1461,20 +1461,20 @@ class OwnerSettingsPage extends ConsumerWidget {
           ),
           const Divider(height: 1, indent: 52, color: OwnerColors.borderSubtle),
           _buildActionTile(
-            Icons.support_agent_rounded,
+            Icons.headset_mic_rounded,
             isHi
-                ? 'सहायता और शिकायत (Help & Support)'
-                : 'Help & Feedback',
+                ? 'सहायता, संपर्क एवं जानकारी (Contact & About)'
+                : 'Contact Us, Support & About',
             const Color(0xFF06B6D4),
             () {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-                builder: (_) => UserFeedbackSheet(
-                  userRole: 'owner',
-                  messId: mess?.messId ?? '',
-                  messName: mess?.name ?? '',
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ContactAboutPage(
+                    userRole: 'owner',
+                    messId: mess?.messId ?? '',
+                    messName: mess?.name ?? '',
+                  ),
                 ),
               );
             },

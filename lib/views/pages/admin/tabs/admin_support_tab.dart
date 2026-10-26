@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -183,6 +184,69 @@ class _AdminSupportTabState extends ConsumerState<AdminSupportTab> {
                               height: 1.45,
                             ),
                           ),
+                          if (ticket.screenshotUrl != null &&
+                              ticket.screenshotUrl!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => Dialog(
+                                    backgroundColor: Colors.black,
+                                    insetPadding: const EdgeInsets.all(12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: InteractiveViewer(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: CachedNetworkImage(
+                                          imageUrl: ticket.screenshotUrl!,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF221A14),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0xFF382F25)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: ticket.screenshotUrl!,
+                                        width: 48,
+                                        height: 48,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'View Attached Screenshot',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AdminCyberTheme.neonAmber,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.open_in_new_rounded,
+                                        size: 14,
+                                        color: AdminCyberTheme.neonAmber),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,

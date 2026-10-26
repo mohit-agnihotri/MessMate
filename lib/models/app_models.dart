@@ -1523,6 +1523,7 @@ class SupportTicketModel {
   final String appVersion;
   final String status; // 'open' | 'in_progress' | 'resolved'
   final DateTime createdAt;
+  final String? screenshotUrl;
   final String? adminReply;
   final DateTime? adminRepliedAt;
 
@@ -1541,6 +1542,7 @@ class SupportTicketModel {
     this.appVersion = '',
     this.status = 'open',
     required this.createdAt,
+    this.screenshotUrl,
     this.adminReply,
     this.adminRepliedAt,
   });
@@ -1585,6 +1587,7 @@ class SupportTicketModel {
       appVersion: map['appVersion'] ?? '',
       status: map['status'] ?? 'open',
       createdAt: created,
+      screenshotUrl: map['screenshotUrl'],
       adminReply: map['adminReply'],
       adminRepliedAt: replied,
     );
@@ -1605,6 +1608,8 @@ class SupportTicketModel {
         'appVersion': appVersion,
         'status': status,
         'createdAt': createdAt.toIso8601String(),
+        if (screenshotUrl != null && screenshotUrl!.isNotEmpty)
+          'screenshotUrl': screenshotUrl,
         if (adminReply != null) 'adminReply': adminReply,
         if (adminRepliedAt != null)
           'adminRepliedAt': adminRepliedAt!.toIso8601String(),

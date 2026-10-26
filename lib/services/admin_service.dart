@@ -241,6 +241,7 @@ class AdminService {
       messName: ticket.messName,
       category: ticket.category,
       message: ticket.message,
+      screenshotUrl: ticket.screenshotUrl,
       deviceModel: ticket.deviceModel,
       osVersion: ticket.osVersion,
       appVersion: ticket.appVersion,
@@ -266,6 +267,26 @@ class AdminService {
       return list;
     }).handleError((error) {
       debugPrint('[AdminService] streamSupportTickets error caught gracefully: $error');
+      return <SupportTicketModel>[];
+    });
+  }
+
+  /// Real-time stream of complaints & tickets raised by a specific user.
+  Stream<List<SupportTicketModel>> streamUserTickets(String userId) {
+    if (userId.isEmpty) return Stream.value([]);
+    return _db
+        .collection(_ticketsCollection)
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs.map((doc) {
+        return SupportTicketModel.fromMap(doc.data(), doc.id);
+      }).toList();
+      // Sort by createdAt descending
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    }).handleError((error) {
+      debugPrint('[AdminService] streamUserTickets error caught gracefully: $error');
       return <SupportTicketModel>[];
     });
   }

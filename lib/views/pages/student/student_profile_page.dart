@@ -9,7 +9,7 @@ import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/login_page.dart';
 import '../auth/student_setup_page.dart';
-import '../common/user_feedback_sheet.dart';
+import '../common/contact_about_page.dart';
 import 'theme/student_inspired_theme.dart';
 import 'widgets/rate_mess_sheet.dart';
 
@@ -664,24 +664,24 @@ class StudentProfilePage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
 
-          // Help & Feedback
+          // Contact Us, Support & About Mezzo
           InkWell(
             onTap: () {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-                builder: (_) => UserFeedbackSheet(
-                  userRole: 'student',
-                  messId: state.student?.messId ?? '',
-                  messName: state.mess?.name ?? '',
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ContactAboutPage(
+                    userRole: 'student',
+                    messId: state.student?.messId ?? '',
+                    messName: state.mess?.name ?? '',
+                  ),
                 ),
               );
             },
             borderRadius: BorderRadius.circular(12),
             child: _buildActionLink(
               Icons.support_agent_rounded,
-              isHindi ? 'सहायता एवं प्रतिक्रिया' : 'Help, Feedback & Issues',
+              isHindi ? 'सहायता, संपर्क एवं जानकारी (Contact & About)' : 'Contact Us, Support & About',
               StudentColors.textDark,
             ),
           ),

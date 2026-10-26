@@ -6,7 +6,7 @@ import '../../../../models/app_models.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../viewmodels/all_viewmodels.dart';
 import '../../auth/login_page.dart';
-import '../../common/user_feedback_sheet.dart';
+import '../../common/contact_about_page.dart';
 import '../owner_about_mess_page.dart';
 import '../owner_absentee_tracker_page.dart';
 import '../owner_main_page.dart';
@@ -26,6 +26,7 @@ class OwnerDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(ownerDashboardProvider);
     final MessModel? mess = dashboardState.mess;
+    final isHindi = ref.watch(localizationProvider) == 'hi';
 
     final isClosedNow = mess?.isClosedNow ?? false;
     final isUpcoming = mess?.isClosureUpcoming ?? false;
@@ -353,17 +354,17 @@ class OwnerDrawer extends ConsumerWidget {
               },
             ),
             _buildDrawerItem(
-              title: 'Help & feedback',
+              title: isHindi ? 'सहायता एवं संपर्क (Contact & About)' : 'Contact Us & About',
               onTap: () {
                 Navigator.pop(context);
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  builder: (_) => UserFeedbackSheet(
-                    userRole: 'owner',
-                    messId: mess?.messId ?? '',
-                    messName: mess?.name ?? '',
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ContactAboutPage(
+                      userRole: 'owner',
+                      messId: mess?.messId ?? '',
+                      messName: mess?.name ?? '',
+                    ),
                   ),
                 );
               },

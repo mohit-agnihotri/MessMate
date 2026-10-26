@@ -2,14 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../models/app_models.dart';
 import '../../../services/admin_service.dart';
+import '../../../services/localization_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../owner/theme/owner_inspired_theme.dart';
 
 /// User-facing In-App Feedback, Bug Report, & Feature Suggestion Sheet.
-/// Allows students and mess owners to report issues or send suggestions.
+/// Allows students and mess owners to report issues, attach screenshots, or send suggestions.
 class UserFeedbackSheet extends ConsumerStatefulWidget {
   final String userRole; // 'student' | 'owner'
   final String messId;
@@ -31,19 +33,62 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
   final TextEditingController _msgCtrl = TextEditingController();
   bool _isSubmitting = false;
 
+  XFile? _selectedScreenshot;
+  Uint8List? _screenshotBytes;
+
   @override
   void dispose() {
     _msgCtrl.dispose();
     super.dispose();
   }
 
+  Future<void> _pickScreenshot() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _selectedScreenshot = picked;
+          _screenshotBytes = bytes;
+        });
+      }
+    } catch (e) {
+      debugPrint('[UserFeedbackSheet] Error picking screenshot: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeScreenshot() {
+    setState(() {
+      _selectedScreenshot = null;
+      _screenshotBytes = null;
+    });
+  }
+
   Future<void> _submitFeedback() async {
+    final isHi = ref.read(localizationProvider) == 'hi';
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please write your message or issue description.'),
-          backgroundColor: Color(0xFFEF4444),
+        SnackBar(
+          content: Text(
+            isHi
+                ? 'कृपया अपनी समस्या या सुझाव का विवरण लिखें।'
+                : 'Please write your message or issue description.',
+          ),
+          backgroundColor: const Color(0xFFEF4444),
         ),
       );
       return;
@@ -53,7 +98,9 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
 
     try {
       final authState = ref.read(authProvider);
-      final userId = authState.userId ?? 'anonymous';
+      final userId = authState.userId ??
+          await ref.read(appServiceProvider).getCurrentUserId() ??
+          'anonymous';
       String resolvedName =
           widget.userRole == 'owner' ? 'Mess Owner' : 'Student User';
       String resolvedPhone = '';
@@ -78,6 +125,22 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
         }
       }
 
+      // Upload screenshot to Cloudinary if selected
+      String? uploadedScreenshotUrl;
+      if (_screenshotBytes != null && _selectedScreenshot != null) {
+        final ext = _selectedScreenshot!.name.split('.').last.toLowerCase();
+        try {
+          uploadedScreenshotUrl = await ref.read(appServiceProvider).uploadImage(
+                'support_tickets',
+                _screenshotBytes!,
+                ext.isEmpty ? 'jpg' : ext,
+              );
+        } catch (uploadError) {
+          debugPrint('[UserFeedbackSheet] Screenshot upload warning: $uploadError');
+          // Proceed even if screenshot upload fails gracefully
+        }
+      }
+
       final ticket = SupportTicketModel(
         ticketId: '',
         userId: userId,
@@ -88,6 +151,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
         messName: resolvedMess,
         category: _category,
         message: text,
+        screenshotUrl: uploadedScreenshotUrl,
         deviceModel: defaultTargetPlatform.name.toUpperCase(),
         osVersion: 'Flutter ${defaultTargetPlatform.name}',
         appVersion: 'v1.0.4',
@@ -109,7 +173,9 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Your feedback has been submitted successfully!',
+                  isHi
+                      ? 'आपकी शिकायत/सुझाव सफलतापूर्वक दर्ज हो गया है!'
+                      : 'Your feedback has been submitted successfully!',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -135,6 +201,8 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isHi = ref.watch(localizationProvider) == 'hi';
+
     return Container(
       decoration: const BoxDecoration(
         color: OwnerColors.canvas,
@@ -166,7 +234,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                 const SizedBox(height: 18),
 
                 Text(
-                  'Help & feedback',
+                  isHi ? 'सहायता एवं प्रतिक्रिया' : 'Help & Feedback',
                   style: OwnerTypography.editorialSerif(
                     size: 24,
                     weight: FontWeight.w700,
@@ -175,7 +243,9 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Send complaints, suggestions or billing issues directly.',
+                  isHi
+                      ? 'शिकायतें, सुझाव या बिलिंग संबंधी समस्याएं सीधे दर्ज करें।'
+                      : 'Send complaints, suggestions, or billing issues directly.',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: OwnerColors.textSecondary,
@@ -188,13 +258,18 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildCategoryChip('Bug report', 'bug'),
+                      _buildCategoryChip(
+                          isHi ? '🐛 बग रिपोर्ट' : 'Bug report', 'bug'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('Suggestion', 'suggestion'),
+                      _buildCategoryChip(
+                          isHi ? '💡 सुझाव' : 'Suggestion', 'suggestion'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('Mess issue', 'mess_issue'),
+                      _buildCategoryChip(
+                          isHi ? '🍽️ मेस समस्या' : 'Mess issue', 'mess_issue'),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('Bill dispute', 'billing_dispute'),
+                      _buildCategoryChip(
+                          isHi ? '💳 बिल विवाद' : 'Bill dispute',
+                          'billing_dispute'),
                     ],
                   ),
                 ),
@@ -209,7 +284,9 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                     fontSize: 14,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Describe your issue or suggestion in detail...',
+                    hintText: isHi
+                        ? 'अपनी समस्या या सुझाव का विवरण विस्तार से लिखें...'
+                        : 'Describe your issue or suggestion in detail...',
                     hintStyle: GoogleFonts.inter(
                       color: OwnerColors.textMuted,
                       fontSize: 13,
@@ -238,6 +315,103 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                     contentPadding: const EdgeInsets.all(16),
                   ),
                 ),
+                const SizedBox(height: 14),
+
+                // Screenshot Attachment Button & Preview
+                if (_screenshotBytes != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: OwnerColors.borderSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.memory(
+                            _screenshotBytes!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHi
+                                    ? 'स्क्रीनशॉट संलग्न है'
+                                    : 'Screenshot Attached',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: OwnerColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                isHi
+                                    ? 'शिकायत के साथ अपलोड होगा'
+                                    : 'Ready to upload with ticket',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: OwnerColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded,
+                              color: Color(0xFFEF4444)),
+                          onPressed: _removeScreenshot,
+                          tooltip: isHi ? 'हटाएं' : 'Remove',
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  InkWell(
+                    onTap: _pickScreenshot,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: OwnerColors.borderSubtle,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.add_photo_alternate_outlined,
+                            size: 20,
+                            color: OwnerColors.walnutDark,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isHi
+                                ? 'स्क्रीनशॉट जोड़ें (वैकल्पिक)'
+                                : 'Attach Screenshot (Optional)',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: OwnerColors.walnutDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Submit Button
@@ -264,7 +438,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
                             ),
                           )
                         : Text(
-                            'Submit',
+                            isHi ? 'शिकायत दर्ज करें (Submit)' : 'Submit Ticket',
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
