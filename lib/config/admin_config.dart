@@ -12,12 +12,7 @@ class AdminConfig {
 
   /// Default whitelisted admin emails (case-insensitive check).
   static const List<String> defaultAdminEmails = [
-    'mohitagnihotri.dev@gmail.com',
-    'mohit.developer@gmail.com',
-    'admin@messmate.app',
     'agnihotrimohit185@gmail.com',
-    'mohitagnihotri1320@gmail.com',
-    'mohitagnihotri1305@gmail.com',
   ];
 
   /// Developer Direct UPI ID for 0% gateway cut remittances.

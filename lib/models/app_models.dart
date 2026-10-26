@@ -1651,8 +1651,7 @@ class AdminGlobalConfigModel {
     this.forceUpdate = false,
     this.developerUpiId = 'messmate.admin@okaxis',
     this.adminEmails = const [
-      'mohitagnihotri.dev@gmail.com',
-      'mohit.developer@gmail.com',
+      'agnihotrimohit185@gmail.com',
     ],
     this.masterPin =
         '5daad081c23a1a01894770cbe7b1ffa07b8465e02b4fa541eba5927a0c1c13e0',
@@ -1682,8 +1681,7 @@ class AdminGlobalConfigModel {
       developerUpiId:
           map['developerUpiId'] as String? ?? 'messmate.admin@okaxis',
       adminEmails: List<String>.from(map['adminEmails'] ?? [
-        'mohitagnihotri.dev@gmail.com',
-        'mohit.developer@gmail.com',
+        'agnihotrimohit185@gmail.com',
       ]),
       masterPin: map['masterPin'] as String? ?? '778899',
     );

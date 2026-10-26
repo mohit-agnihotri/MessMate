@@ -16,12 +16,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
         (request.auth.token.email_verified == true && request.auth.token.email != null && (
-          request.auth.token.email == 'mohitagnihotri.dev@gmail.com' ||
-          request.auth.token.email == 'mohit.developer@gmail.com' ||
-          request.auth.token.email == 'admin@messmate.app' ||
-          request.auth.token.email == 'agnihotrimohit185@gmail.com' ||
-          request.auth.token.email == 'mohitagnihotri1320@gmail.com' ||
-          request.auth.token.email == 'mohitagnihotri1305@gmail.com'
+          request.auth.token.email == 'agnihotrimohit185@gmail.com'
         ))
       );
     }

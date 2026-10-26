@@ -8,12 +8,7 @@ if (!admin.apps.length) {
 }
 
 const adminEmails = [
-  'mohitagnihotri.dev@gmail.com',
-  'mohit.developer@gmail.com',
-  'admin@messmate.app',
-  'agnihotrimohit185@gmail.com',
-  'mohitagnihotri1320@gmail.com',
-  'mohitagnihotri1305@gmail.com'
+  'agnihotrimohit185@gmail.com'
 ];
 
 async function setAdminClaims() {
