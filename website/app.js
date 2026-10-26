@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFaqAccordion();
   initDownloadModal();
   initMobileNav();
+  initQrScannerUrlHandler();
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -258,3 +259,38 @@ function initMobileNav() {
     });
   });
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   8. COUNTER STANDEE QR CODE SCAN HANDLER
+   ───────────────────────────────────────────────────────────────────────── */
+function initQrScannerUrlHandler() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const messCode = urlParams.get('code');
+  const messId = urlParams.get('id');
+
+  if (messCode || messId) {
+    // Switch to Student view automatically
+    const studentBtn = document.getElementById('persona-student-btn');
+    if (studentBtn) studentBtn.click();
+
+    // Show custom welcome modal for the scanned mess
+    const modal = document.getElementById('download-modal');
+    const modalTitle = document.getElementById('modal-title');
+    if (modal && modalTitle) {
+      modalTitle.textContent = `Connect to Mess Code: ${messCode || 'Counter Standee'}`;
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background: #EBF3ED; color: #2B4532; padding: 12px 16px; border-radius: 12px; font-size: 0.86rem; margin-bottom: 16px; font-weight: 600; text-align: center; border: 1px solid #7B9E87;';
+      banner.innerHTML = `📍 <strong>Counter QR Scanned!</strong><br>Download Mezzo to view today\'s live menu, track meals & join <strong>${messCode || 'this mess'}</strong>.`;
+      
+      const modalBody = modal.querySelector('.modal-body');
+      if (modalBody && !modalBody.querySelector('.scanned-qr-banner')) {
+        banner.className = 'scanned-qr-banner';
+        modalBody.insertBefore(banner, modalBody.firstChild);
+      }
+    }
+  }
+}
+

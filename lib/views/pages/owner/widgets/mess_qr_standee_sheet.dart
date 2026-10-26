@@ -24,7 +24,7 @@ class MessQrStandeeSheet extends StatelessWidget {
   }
 
   String get _qrPayload =>
-      'https://mezzoapp.in/mess?id=${mess.messId}&code=${mess.messCode}';
+      'https://mezzo-69cab.web.app/?id=${mess.messId}&code=${mess.messCode}';
 
   @override
   Widget build(BuildContext context) {
