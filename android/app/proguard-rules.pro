@@ -21,3 +21,7 @@
 # AndroidX & Material
 -dontwarn androidx.**
 -keep class androidx.** { *; }
+
+# Google Play Core & Split Compat
+-dontwarn com.google.android.play.core.**
+

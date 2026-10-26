@@ -1626,6 +1626,10 @@ class AdminGlobalConfigModel {
   final bool emergencyBannerEnabled;
   final String emergencyBannerText;
   final String minSupportedVersion;
+  final String latestAppVersion;
+  final String apkDownloadUrl;
+  final String updateChangelog;
+  final bool forceUpdate;
   final String developerUpiId;
   final List<String> adminEmails;
   final String masterPin;
@@ -1639,6 +1643,11 @@ class AdminGlobalConfigModel {
     this.emergencyBannerEnabled = false,
     this.emergencyBannerText = '',
     this.minSupportedVersion = '1.0.0',
+    this.latestAppVersion = '1.0.4',
+    this.apkDownloadUrl = 'https://mezzo-69cab.web.app/assets/mezzo.apk',
+    this.updateChangelog =
+        'New Kitchen Kharcha Ledger • Daily Sabzi, Milk, Ration P&L • 1-Click WhatsApp Export',
+    this.forceUpdate = false,
     this.developerUpiId = 'messmate.admin@okaxis',
     this.adminEmails = const [
       'mohitagnihotri.dev@gmail.com',
@@ -1662,6 +1671,13 @@ class AdminGlobalConfigModel {
       emergencyBannerText: map['emergencyBannerText'] as String? ?? '',
       minSupportedVersion:
           map['minSupportedVersion'] as String? ?? '1.0.0',
+      latestAppVersion:
+          map['latestAppVersion'] as String? ?? '1.0.4',
+      apkDownloadUrl: map['apkDownloadUrl'] as String? ??
+          'https://mezzo-69cab.web.app/assets/mezzo.apk',
+      updateChangelog: map['updateChangelog'] as String? ??
+          'New Kitchen Kharcha Ledger • Daily Sabzi, Milk, Ration P&L • 1-Click WhatsApp Export',
+      forceUpdate: map['forceUpdate'] as bool? ?? false,
       developerUpiId:
           map['developerUpiId'] as String? ?? 'messmate.admin@okaxis',
       adminEmails: List<String>.from(map['adminEmails'] ?? [
@@ -1681,6 +1697,10 @@ class AdminGlobalConfigModel {
         'emergencyBannerEnabled': emergencyBannerEnabled,
         'emergencyBannerText': emergencyBannerText,
         'minSupportedVersion': minSupportedVersion,
+        'latestAppVersion': latestAppVersion,
+        'apkDownloadUrl': apkDownloadUrl,
+        'updateChangelog': updateChangelog,
+        'forceUpdate': forceUpdate,
         'developerUpiId': developerUpiId,
         'adminEmails': adminEmails,
         'masterPin': masterPin,

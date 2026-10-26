@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'theme/student_inspired_theme.dart';
 import 'student_home_page.dart';
@@ -8,15 +9,26 @@ import 'student_history_page.dart';
 import 'student_bill_page.dart';
 import 'student_profile_page.dart';
 import 'student_discovery_page.dart';
+import '../../widgets/app_update_dialog.dart';
 
-class StudentMainPage extends StatefulWidget {
+class StudentMainPage extends ConsumerStatefulWidget {
   const StudentMainPage({super.key});
   @override
-  State<StudentMainPage> createState() => _StudentMainPageState();
+  ConsumerState<StudentMainPage> createState() => _StudentMainPageState();
 }
 
-class _StudentMainPageState extends State<StudentMainPage> {
+class _StudentMainPageState extends ConsumerState<StudentMainPage> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateDialog.checkAndShow(context, ref);
+      }
+    });
+  }
 
   final List<Widget> _pages = const [
     StudentHomePage(),

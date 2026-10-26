@@ -4,11 +4,13 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "mezzo-69cab",
     "public": "website",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.apk"
     ],
     "headers": [
       {

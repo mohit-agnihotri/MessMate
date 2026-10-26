@@ -14,6 +14,7 @@ import 'widgets/post_today_meal_sheet.dart';
 import 'theme/owner_inspired_theme.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import '../auth/owner_setup_page.dart';
+import '../../widgets/app_update_dialog.dart';
 
 final ownerBottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -24,6 +25,14 @@ class OwnerMainPage extends ConsumerStatefulWidget {
 }
 
 class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateDialog.checkAndShow(context, ref);
+    });
+  }
+
   final List<Widget> _pages = [
     const OwnerDashboardPage(),        // 0: Today
     const OwnerMenuPlannerV2Page(),     // 1: Menu
