@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
-import '../../../viewmodels/cutoff_helper.dart';
 import 'theme/student_inspired_theme.dart';
 import 'widgets/rate_mess_sheet.dart';
 import 'widgets/view_mess_menu_sheet.dart';
@@ -2782,20 +2781,32 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          ref
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          final mess = ref.read(studentHomeProvider).mess;
+                          final isCutoffPassed = mess != null &&
+                              CutoffHelper.isChoiceGroupCutoffPassed(DateTime.now(), group, mess);
+
+                          await ref
                               .read(studentHomeProvider.notifier)
                               .saveRegularPreference(
                                 group.groupId,
                                 selectedSlot,
                               );
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Default preference saved!'),
-                              backgroundColor: StudentColors.sage,
-                            ),
-                          );
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isCutoffPassed
+                                      ? 'Default preference saved! Applies from tomorrow.'
+                                      : 'Default preference saved and applied for today!',
+                                ),
+                                backgroundColor: StudentColors.sage,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: StudentColors.walnut,

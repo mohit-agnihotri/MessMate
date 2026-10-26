@@ -21,6 +21,8 @@ import 'package:geolocator/geolocator.dart';
 // ─── Global Billing Logic Helper ─────────────────────────────────────────────
 import 'billing_helper.dart';
 export 'billing_helper.dart';
+import 'cutoff_helper.dart';
+export 'cutoff_helper.dart';
 
 // ─── Global Service Provider ─────────────────────────────────────────────────
 final isDemoModeProvider = StateProvider<bool>((ref) => false);
@@ -1672,7 +1674,46 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
       );
       final regPrefs = Map<String, String>.from(state.student!.regularMealPreference);
       regPrefs[choiceGroupId] = selectedSlot;
-      final updatedStudent = state.student!.copyWith(regularMealPreference: regPrefs);
+
+      // If today's cutoff has NOT passed yet, also sync today's date preference so home screen updates immediately
+      Map<String, Map<String, String>> updatedDatePrefs =
+          Map<String, Map<String, String>>.from(state.student!.datePreferences);
+      final todayIso = _today.toIso8601String().substring(0, 10);
+      bool shouldSyncToday = false;
+
+      if (state.mess != null && state.assignedPlan != null) {
+        final group = state.assignedPlan!.choiceGroups
+            .where((g) => g.groupId == choiceGroupId)
+            .firstOrNull;
+        if (group != null) {
+          final isCutoffPassed = CutoffHelper.isChoiceGroupCutoffPassed(DateTime.now(), group, state.mess!);
+          if (!isCutoffPassed) {
+            shouldSyncToday = true;
+          }
+        }
+      }
+
+      if (shouldSyncToday && state.mess != null) {
+        try {
+          await _service.updateStudentMealPreference(
+            state.student!.studentId,
+            state.mess!.messId,
+            todayIso,
+            choiceGroupId,
+            selectedSlot,
+          );
+          final dayPrefs = Map<String, String>.from(updatedDatePrefs[todayIso] ?? {});
+          dayPrefs[choiceGroupId] = selectedSlot;
+          updatedDatePrefs[todayIso] = dayPrefs;
+        } catch (e) {
+          debugPrint('Could not sync today preference with default: $e');
+        }
+      }
+
+      final updatedStudent = state.student!.copyWith(
+        regularMealPreference: regPrefs,
+        datePreferences: updatedDatePrefs,
+      );
       state = state.copyWith(student: updatedStudent);
     } catch (e) {
       debugPrint('Error saving regular preference: $e');
