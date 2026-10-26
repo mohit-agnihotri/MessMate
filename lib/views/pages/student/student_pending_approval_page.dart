@@ -64,6 +64,13 @@ class _StudentPendingApprovalPageState
       final student = await appService.getStudentById(user.uid);
       if (student != null) {
         _student = student;
+        if ((student.status == 'left' || student.messId.isEmpty) && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+          );
+          return;
+        }
         if (student.messId.isNotEmpty) {
           final mess = await appService.getMessById(student.messId);
           _mess = mess;
@@ -99,6 +106,12 @@ class _StudentPendingApprovalPageState
       if ((status == 'active' || status == 'approved') && mounted) {
         _subscription?.cancel();
         _onApproved();
+      } else if (status == 'left' && mounted) {
+        _subscription?.cancel();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+        );
       } else if (status == 'rejected' && mounted) {
         setState(() {
           if (_student != null) {

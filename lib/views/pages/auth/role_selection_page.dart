@@ -1155,6 +1155,11 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
               context,
               MaterialPageRoute(builder: (_) => const StudentMainPage()),
             );
+          } else if (student.status == 'left' || student.messId.isEmpty) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentSetupPage()),
+            );
           } else {
             Navigator.pushReplacement(
               context,
