@@ -245,7 +245,7 @@ class StubService implements AppService {
       _students.where((s) => s.status == 'active').toList();
   @override
   Stream<List<StudentModel>> streamStudents(String messId) =>
-      Stream.value(_students.where((s) => s.status != 'pending').toList());
+      Stream.value(_students);
   @override
   Future<List<StudentModel>> getPendingRequests(String messId) async =>
       _students.where((s) => s.status == 'pending').toList();

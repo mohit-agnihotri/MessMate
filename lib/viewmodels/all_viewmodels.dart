@@ -387,13 +387,19 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
 
       _recalculateCurrentSlot();
 
-      final students = await _service.getStudents(mess.messId);
-      _activeStudents = students.where((s) => s.status == 'active').toList();
-      state = state.copyWith(
-        pendingRequests: students.where((s) => s.status == 'pending').length,
-        activeStudents: _activeStudents.length,
-        activeStudentsList: _activeStudents,
-      );
+      _studentSub?.cancel();
+      _studentSub = _service.streamStudents(mess.messId).listen((students) {
+        final uniquePending = {for (var s in students.where((s) => s.status == 'pending')) s.studentId: s}.values.toList();
+        _activeStudents = {for (var s in students.where((s) => s.status == 'active' || s.status == 'approved')) s.studentId: s}.values.toList();
+        state = state.copyWith(
+          pendingRequests: uniquePending.length,
+          activeStudents: _activeStudents.length,
+          activeStudentsList: _activeStudents,
+        );
+        _recomputeHeadcount();
+      }, onError: (e) {
+        debugPrint('Error in OwnerDashboard _studentSub: $e');
+      });
 
       final leaves = await _service.getUpcomingLeaves(mess.messId);
       _activeLeaves = leaves.where((l) => l.status == 'active').toList();
@@ -688,6 +694,7 @@ class OwnerStudentsState {
 class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
   final AppService _service;
   final String ownerId;
+  StreamSubscription<List<StudentModel>>? _studentsSub;
 
   OwnerStudentsViewModel(this._service, this.ownerId)
     : super(const OwnerStudentsState()) {
@@ -702,17 +709,22 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
         state = state.copyWith(isLoading: false);
         return;
       }
-      final rawStudents = await _service.getStudents(mess.messId);
-      final rawPending = await _service.getPendingRequests(mess.messId);
-      // Deduplicate by studentId to guarantee zero duplicacy
-      final uniquePending = {for (var s in rawPending) s.studentId: s}.values.toList();
-      final uniqueActive = {for (var s in rawStudents.where((s) => s.status == 'active' || s.status == 'approved')) s.studentId: s}.values.toList();
-      state = state.copyWith(
-        students: uniqueActive,
-        pending: uniquePending,
-        messCode: mess.messCode,
-        isLoading: false,
-      );
+      state = state.copyWith(messCode: mess.messCode);
+
+      _studentsSub?.cancel();
+      _studentsSub = _service.streamStudents(mess.messId).listen((rawStudents) {
+        // Deduplicate by studentId to guarantee zero duplicacy
+        final uniquePending = {for (var s in rawStudents.where((s) => s.status == 'pending')) s.studentId: s}.values.toList();
+        final uniqueActive = {for (var s in rawStudents.where((s) => s.status == 'active' || s.status == 'approved')) s.studentId: s}.values.toList();
+        state = state.copyWith(
+          students: uniqueActive,
+          pending: uniquePending,
+          isLoading: false,
+        );
+      }, onError: (e) {
+        debugPrint('Error streaming students in OwnerStudentsViewModel: $e');
+        state = state.copyWith(isLoading: false);
+      });
     } catch (e) {
       state = state.copyWith(isLoading: false);
       debugPrint('Error loading students: $e');
@@ -723,7 +735,6 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
       await _service.acceptStudent(mess.messId, studentId, planId);
-      await load();
     }
   }
 
@@ -731,8 +742,13 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
       await _service.rejectStudent(mess.messId, studentId);
-      await load();
     }
+  }
+
+  @override
+  void dispose() {
+    _studentsSub?.cancel();
+    super.dispose();
   }
 
   Future<void> toggleBillPaymentStatus(
@@ -836,7 +852,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
 }
 
 final ownerStudentsProvider =
-    StateNotifierProvider.autoDispose<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
+    StateNotifierProvider<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? ref.watch(authProvider).userId ?? '';
       return OwnerStudentsViewModel(ref.read(appServiceProvider), uid);
     });
