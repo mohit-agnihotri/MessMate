@@ -1189,23 +1189,77 @@ class _PlanEditorModalState extends ConsumerState<_PlanEditorModal> {
                             Padding(
                               padding:
                                   const EdgeInsets.fromLTRB(52, 0, 16, 12),
-                              child: TextField(
-                                controller: _flatRateCtrl,
-                                keyboardType: TextInputType.number,
-                                style: GoogleFonts.inter(fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: 'Rebate amount (₹)',
-                                  filled: true,
-                                  fillColor: OwnerColors.canvas,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextField(
+                                    controller: _flatRateCtrl,
+                                    keyboardType: TextInputType.number,
+                                    style: GoogleFonts.inter(fontSize: 14),
+                                    decoration: InputDecoration(
+                                      hintText: 'Rebate amount (₹)',
+                                      filled: true,
+                                      fillColor: OwnerColors.canvas,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      suffixIcon: Builder(
+                                        builder: (_) {
+                                          final daily = _computedDailyMeals;
+                                          final fee = double.tryParse(_feeCtrl.text.trim()) ?? 0.0;
+                                          final monthlyMeals = daily * 30;
+                                          final perMeal = monthlyMeals > 0 ? (fee / monthlyMeals).round().toString() : '40';
+                                          return InkWell(
+                                            onTap: () {
+                                              _flatRateCtrl.text = perMeal;
+                                              setState(() {});
+                                            },
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(6.0),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: OwnerColors.sageLight,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  'Rec: ₹$perMeal',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: OwnerColors.sageGreen,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
+                                  const SizedBox(height: 4),
+                                  Builder(
+                                    builder: (_) {
+                                      final daily = _computedDailyMeals;
+                                      final fee = double.tryParse(_feeCtrl.text.trim()) ?? 0.0;
+                                      final monthlyMeals = daily * 30;
+                                      final perMeal = monthlyMeals > 0 ? (fee / monthlyMeals).round().toString() : '40';
+                                      return Text(
+                                        'Recommended: ₹$perMeal/meal (based on ₹${fee.toStringAsFixed(0)} ÷ $monthlyMeals meals)',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: OwnerColors.textMuted,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           const Divider(

@@ -590,7 +590,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 3800.0,
-        'skipRefund': 35.0,
+        'skipRefund': 32.0, // (3800 / 120).round()
         'maxSkip': 8,
         'enabled': true,
       });
@@ -605,7 +605,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 3000.0,
-        'skipRefund': 40.0,
+        'skipRefund': 33.0, // (3000 / 90).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -620,7 +620,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 2400.0,
-        'skipRefund': 45.0,
+        'skipRefund': 40.0, // (2400 / 60).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -636,7 +636,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'choiceSlots': ['morning', 'evening'],
         'choiceDesc': 'Student picks 1: Breakfast or Snacks',
         'monthlyFee': 2800.0,
-        'skipRefund': 40.0,
+        'skipRefund': 31.0, // (2800 / 90).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -652,7 +652,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'choiceSlots': ['noon', 'night'],
         'choiceDesc': 'Student picks 1: Lunch or Dinner',
         'monthlyFee': 1500.0,
-        'skipRefund': 50.0,
+        'skipRefund': 50.0, // (1500 / 30).round()
         'maxSkip': 4,
         'enabled': false,
       });
@@ -667,7 +667,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 3000.0,
-        'skipRefund': 40.0,
+        'skipRefund': 33.0, // (3000 / 90).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -682,7 +682,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 2400.0,
-        'skipRefund': 45.0,
+        'skipRefund': 40.0, // (2400 / 60).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -698,7 +698,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'choiceSlots': ['morning', 'noon'],
         'choiceDesc': 'Student picks 1: Breakfast or Lunch',
         'monthlyFee': 2200.0,
-        'skipRefund': 45.0,
+        'skipRefund': 37.0, // (2200 / 60).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -714,7 +714,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'choiceSlots': ['noon', 'night'],
         'choiceDesc': 'Student picks 1: Lunch or Dinner',
         'monthlyFee': 1500.0,
-        'skipRefund': 50.0,
+        'skipRefund': 50.0, // (1500 / 30).round()
         'maxSkip': 4,
         'enabled': false,
       });
@@ -731,7 +731,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 2500.0,
-        'skipRefund': 45.0,
+        'skipRefund': 42.0, // (2500 / 60).round()
         'maxSkip': 6,
         'enabled': true,
       });
@@ -748,7 +748,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'choiceDesc':
             'Student picks 1: ${_timings[activeSlots[0]]!['slotNameEn']} or ${_timings[activeSlots[1]]!['slotNameEn']}',
         'monthlyFee': 1400.0,
-        'skipRefund': 50.0,
+        'skipRefund': 47.0, // (1400 / 30).round()
         'maxSkip': 4,
         'enabled': true,
       });
@@ -765,7 +765,7 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
         'hasChoice': false,
         'choiceSlots': <String>[],
         'monthlyFee': 1600.0,
-        'skipRefund': 50.0,
+        'skipRefund': 53.0, // (1600 / 30).round()
         'maxSkip': 4,
         'enabled': true,
       });
@@ -1808,12 +1808,45 @@ class _OwnerSetupPageState extends ConsumerState<OwnerSetupPage> {
                                         color: const Color(0xFF231A14),
                                       ),
                                     ),
-                                    Text(
-                                      isHindi ? 'प्रति वैध स्किप' : 'per valid skip',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        color: const Color(0xFF7A7971),
-                                      ),
+                                    Wrap(
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      spacing: 6,
+                                      children: [
+                                        Text(
+                                          isHindi ? 'प्रति वैध स्किप' : 'per valid skip',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            color: const Color(0xFF7A7971),
+                                          ),
+                                        ),
+                                        Builder(builder: (_) {
+                                          final mealsCount = hasChoice ? (fixedMeals.length + 1) : fixedMeals.length;
+                                          final feeVal = double.tryParse(feeCtrl.text) ?? 3000.0;
+                                          final recRate = mealsCount > 0 ? (feeVal / (mealsCount * 30)).round() : 40;
+                                          return InkWell(
+                                            onTap: () {
+                                              skipCtrl.text = recRate.toString();
+                                              setState(() {});
+                                            },
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE2EBE0),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'Rec: ₹$recRate',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF2B3B2C),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
                                   ],
                                 ),
