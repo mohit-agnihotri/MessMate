@@ -33,7 +33,7 @@ function initPersonaSwitcher() {
     heroBadge.textContent = '🚀 Built for Mess Owners, Hostels & Independent Canteens';
     heroHeading.innerHTML = 'Zero Fee Leakage. Zero Food Wastage. <span class="highlight">100% In-Hand Profit.</span>';
     heroSub.textContent = 'Track daily sabzi, doodh & ration kharcha in 1 tap, eliminate paper registers, and automate monthly bill collections directly via UPI.';
-    primaryCta.innerHTML = '<span>⚡</span> Download Owner App (v1.0.4)';
+    primaryCta.innerHTML = '<span>⚡</span> Download Owner App (v1.0.6)';
 
     // Trigger tab 1 in simulator
     switchPreviewTab('ledger');
@@ -46,7 +46,7 @@ function initPersonaSwitcher() {
     heroBadge.textContent = '🎓 Built for College Students, Hostellers & Daily Diners';
     heroHeading.innerHTML = 'Know Today\'s Menu. Skip Meals in 1-Tap. <span class="highlight">Pay Only for What You Eat.</span>';
     heroSub.textContent = 'Check live breakfast, lunch & dinner menu in real-time, cancel meals with 30-min automated cutoff to save money, and get transparent monthly bills.';
-    primaryCta.innerHTML = '<span>⚡</span> Download Student App (v1.0.4)';
+    primaryCta.innerHTML = '<span>⚡</span> Download Student App (v1.0.6)';
 
     // Trigger tab 2 in simulator
     switchPreviewTab('menu');
