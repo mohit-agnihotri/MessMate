@@ -36,8 +36,8 @@ class ContactAboutPage extends ConsumerStatefulWidget {
 class _ContactAboutPageState extends ConsumerState<ContactAboutPage> {
   late int _selectedTab;
 
-  static const String _supportPhone = '+919011736577';
-  static const String _supportEmail = 'support@mezzo.app';
+  static const String _supportPhone = '+917974220107';
+  static const String _supportEmail = 'agnihotrimohit185@gmail.com';
 
   @override
   void initState() {
@@ -75,7 +75,7 @@ class _ContactAboutPageState extends ConsumerState<ContactAboutPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Support email: support@mezzo.app'),
+            content: const Text('Support email: agnihotrimohit185@gmail.com'),
             backgroundColor: const Color(0xFF241A14),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -329,7 +329,7 @@ class _ContactSupportView extends ConsumerWidget {
                   iconBgColor: const Color(0xFFEAA23E),
                   icon: Icons.mail_rounded,
                   title: 'Email us',
-                  subtitle: 'support@mezzo.app',
+                  subtitle: 'agnihotrimohit185@gmail.com',
                   onTap: onEmail,
                 ),
               ),
@@ -384,7 +384,7 @@ class _ContactSupportView extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          '+91 90117 36577',
+                          '+91 79742 20107',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: const Color(0xFF7A7571),
