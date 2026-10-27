@@ -229,7 +229,7 @@ class _MessDiscoveryDetailsSheetState
             // Tab View Content
             Expanded(
               child: _selectedTabIndex == 0
-                  ? _buildDetailsTab(mess, displayRating, reviewCount)
+                  ? _buildDetailsTab(mess, displayRating, reviewCount, currentStudent)
                   : _buildRatingsTab(
                       mess,
                       reviews,
@@ -251,6 +251,7 @@ class _MessDiscoveryDetailsSheetState
     MessModel mess,
     double displayRating,
     int reviewCount,
+    StudentModel? currentStudent,
   ) {
     bool isClosed = mess.temporarilyClosedUntil != null &&
         mess.temporarilyClosedUntil!.isAfter(DateTime.now());
@@ -577,26 +578,221 @@ class _MessDiscoveryDetailsSheetState
           ),
           const SizedBox(height: 26),
 
-          // Primary Join CTA Button
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: StudentColors.amber,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          // Multi-Mess Enrollment & Join CTA Protection
+          Builder(
+            builder: (context) {
+              final bool isEnrolledInAnotherMess = currentStudent != null &&
+                  (currentStudent.status == 'active' ||
+                      currentStudent.status == 'approved') &&
+                  currentStudent.messId.isNotEmpty &&
+                  currentStudent.messId != mess.messId;
+
+              final bool isAlreadyInThisMess = currentStudent != null &&
+                  (currentStudent.status == 'active' ||
+                      currentStudent.status == 'approved') &&
+                  currentStudent.messId == mess.messId;
+
+              final bool isPendingThisMess = currentStudent != null &&
+                  currentStudent.status == 'pending' &&
+                  currentStudent.messId == mess.messId;
+
+              final bool isPendingOtherMess = currentStudent != null &&
+                  currentStudent.status == 'pending' &&
+                  currentStudent.messId.isNotEmpty &&
+                  currentStudent.messId != mess.messId;
+
+              if (isEnrolledInAnotherMess) {
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3F2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFECDCA)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded,
+                              color: Color(0xFFD92D20), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Already Enrolled in a Mess',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFB42318),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Aap already ek mess ke active member hain. Doosri mess join karne ke liye pehle Profile se apni current mess leave karein.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    color: const Color(0xFF7A271A),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          foregroundColor: Colors.grey.shade600,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.lock_outline_rounded, size: 20),
+                        label: Text(
+                          'Leave Current Mess to Join',
+                          style: GoogleFonts.inter(
+                              fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        onPressed: null,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              if (isAlreadyInThisMess) {
+                return SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE2EBE0),
+                      foregroundColor: const Color(0xFF2C5E3B),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.check_circle_rounded, size: 20),
+                    label: Text(
+                      'You are a Member of this Mess',
+                      style: GoogleFonts.inter(
+                          fontSize: 14.5, fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: null,
+                  ),
+                );
+              }
+
+              if (isPendingThisMess) {
+                return SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFEF0C7),
+                      foregroundColor: const Color(0xFFB54708),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.hourglass_top_rounded, size: 20),
+                    label: Text(
+                      'Join Request Pending Approval',
+                      style: GoogleFonts.inter(
+                          fontSize: 14.5, fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: null,
+                  ),
+                );
+              }
+
+              if (isPendingOtherMess) {
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF0C7),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFEDF89)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline_rounded,
+                              color: Color(0xFFB54708), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Aapka ek join request already doosri mess me pending hai.',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: const Color(0xFF7A2E0E),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          foregroundColor: Colors.grey.shade600,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.lock_outline_rounded, size: 20),
+                        label: Text(
+                          'Request Pending in Another Mess',
+                          style: GoogleFonts.inter(
+                              fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        onPressed: null,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudentColors.amber,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.group_add_rounded, size: 20),
+                  label: Text(
+                    'Request to Join Mess',
+                    style: GoogleFonts.inter(
+                        fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => widget.onJoinRequest(mess),
                 ),
-              ),
-              icon: const Icon(Icons.group_add_rounded, size: 20),
-              label: Text(
-                'Request to Join Mess',
-                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-              onPressed: () => widget.onJoinRequest(mess),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 24),
         ],

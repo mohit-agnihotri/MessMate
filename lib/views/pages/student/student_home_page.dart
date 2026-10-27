@@ -314,7 +314,9 @@ class StudentHomePage extends ConsumerWidget {
       return _MessClosureCard(mess: state.mess!);
     }
 
-    if (state.currentSlot == 'closed') return _ClosedCard();
+    if (state.currentSlot == 'closed') {
+      return _TomorrowBreakfastHeroCard(state: state);
+    }
 
     // ── Choice-Aligned Slot Resolution ──
     // If student has a flexible meal plan, align hero card with student's active choice
@@ -1858,37 +1860,243 @@ class _UpcomingMealCard extends StatelessWidget {
   }
 }
 
-// ─── Closed Card ─────────────────────────────────────────────────────────────
-class _ClosedCard extends StatelessWidget {
+// ─── Night Hero Card: Tomorrow's Breakfast ───────────────────────────────────
+class _TomorrowBreakfastHeroCard extends ConsumerWidget {
+  final StudentHomeState state;
+  const _TomorrowBreakfastHeroCard({required this.state});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tomorrowMorningMenu =
+        state.tomorrowMenus['morning'] ?? state.nextMeal;
+    final timings = state.mess?.mealTimings['morning'];
+    final startStr = timings?['start'] ?? '07:30 AM';
+    final endStr = timings?['end'] ?? '09:30 AM';
+    final timeRange = '$startStr - $endStr';
+
+    final dishes = tomorrowMorningMenu?.dishes ?? [];
+    final bool hasDishes = dishes.isNotEmpty;
+    final isSkipped = state.skippedUpcomingMeals.containsKey('morning');
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: StudentColors.surfaceLight,
+        color: StudentColors.walnut,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: StudentColors.borderSubtle),
-        boxShadow: StudentColors.softShadow,
+        boxShadow: StudentColors.elevated,
       ),
-      child: Column(
-        children: [
-          const Text('🌙', style: TextStyle(fontSize: 42)),
-          const SizedBox(height: 12),
-          Text(
-            'Mess Closed for Today',
-            style: StudentTypography.serifHeading(fontSize: 20),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'All meals for today have concluded. Check tomorrow\'s schedule below.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: StudentColors.textSecondary,
-              fontSize: 13,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Background Morning Illustration with smooth blend
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 220,
+              child: ShaderMask(
+                shaderCallback: (rect) {
+                  return const LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [Colors.black, Colors.transparent],
+                    stops: [0.35, 1.0],
+                  ).createShader(rect);
+                },
+                blendMode: BlendMode.dstIn,
+                child: Image.asset(
+                  'assets/images/slot_morning.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
             ),
-          ),
-        ],
+
+            // Gradient Overlay for 100% contrast
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      StudentColors.walnut,
+                      StudentColors.walnut.withOpacity(0.92),
+                      StudentColors.walnut.withOpacity(0.4),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Row: Tomorrow Badge & Timings
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: StudentColors.amber.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: StudentColors.amber.withOpacity(0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🌅', style: TextStyle(fontSize: 13)),
+                            const SizedBox(width: 5),
+                            Text(
+                              'TOMORROW\'S BREAKFAST',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: StudentColors.amber,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.access_time_rounded,
+                                size: 13, color: Colors.white70),
+                            const SizedBox(width: 4),
+                            Text(
+                              timeRange,
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Title
+                  Text(
+                    hasDishes ? 'Morning Breakfast' : 'Tomorrow Morning Meal',
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Menu Items or Prep Note
+                  if (hasDishes) ...[
+                    Text(
+                      dishes.map((d) => d.name).join(' • '),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.restaurant_menu_rounded,
+                            size: 16, color: Colors.white70),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Chef is prepping fresh breakfast for tomorrow morning.',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: Colors.white70,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 18),
+
+                  // Bottom Status Bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSkipped
+                              ? Icons.cancel_outlined
+                              : Icons.check_circle_outline_rounded,
+                          size: 16,
+                          color: isSkipped
+                              ? const Color(0xFFF07167)
+                              : const Color(0xFF67B99A),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isSkipped
+                                ? 'You have skipped tomorrow\'s breakfast'
+                                : 'Included in your meal plan',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.85),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Opens $startStr',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white60,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
