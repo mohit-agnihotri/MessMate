@@ -933,7 +933,7 @@ class _AboutMezzoView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'v1.0.5 · Build 2026 (Production)',
+                    'v1.0.6 · Build 2026 (Production)',
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,

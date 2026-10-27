@@ -1683,11 +1683,11 @@ class AdminGlobalConfigModel {
     this.emergencyBannerEnabled = false,
     this.emergencyBannerText = '',
     this.minSupportedVersion = '1.0.0',
-    this.latestAppVersion = '1.0.5',
+    this.latestAppVersion = '1.0.6',
     this.apkDownloadUrl =
-        'https://github.com/mohit-agnihotri/MessMate/releases/download/v1.0.5/mezzo-v1.0.5.apk',
+        'https://github.com/mohit-agnihotri/MessMate/releases/download/v1.0.6/mezzo-v1.0.6.apk',
     this.updateChangelog =
-        'New Kitchen Kharcha Ledger • Daily Sabzi, Milk, Ration P&L • 1-Click WhatsApp Export',
+        'Real-time join request sync • Smart fee auto-recommendation • Enhanced tomorrow preview • Multi-mess protection',
     this.forceUpdate = false,
     this.developerUpiId = 'messmate.admin@okaxis',
     this.adminEmails = const [
@@ -1712,11 +1712,11 @@ class AdminGlobalConfigModel {
       minSupportedVersion:
           map['minSupportedVersion'] as String? ?? '1.0.0',
       latestAppVersion:
-          map['latestAppVersion'] as String? ?? '1.0.5',
+          map['latestAppVersion'] as String? ?? '1.0.6',
       apkDownloadUrl: map['apkDownloadUrl'] as String? ??
-          'https://mezzo-69cab.web.app/assets/mezzo.apk',
+          'https://github.com/mohit-agnihotri/MessMate/releases/download/v1.0.6/mezzo-v1.0.6.apk',
       updateChangelog: map['updateChangelog'] as String? ??
-          'New Kitchen Kharcha Ledger • Daily Sabzi, Milk, Ration P&L • 1-Click WhatsApp Export',
+          'Real-time join request sync • Smart fee auto-recommendation • Enhanced tomorrow preview • Multi-mess protection',
       forceUpdate: map['forceUpdate'] as bool? ?? false,
       developerUpiId:
           map['developerUpiId'] as String? ?? 'messmate.admin@okaxis',

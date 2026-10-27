@@ -155,7 +155,7 @@ class _UserFeedbackSheetState extends ConsumerState<UserFeedbackSheet> {
         screenshotUrl: uploadedScreenshotUrl,
         deviceModel: defaultTargetPlatform.name.toUpperCase(),
         osVersion: 'Flutter ${defaultTargetPlatform.name}',
-        appVersion: 'v1.0.5',
+        appVersion: 'v1.0.6',
         createdAt: DateTime.now(),
       );
 
