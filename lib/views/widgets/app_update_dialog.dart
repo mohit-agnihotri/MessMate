@@ -80,63 +80,10 @@ class AppUpdateDialog extends StatelessWidget {
 
   Future<void> _startDownload(BuildContext context) async {
     final cleanUrl = apkDownloadUrl.trim();
-    if (cleanUrl.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Download link is temporarily unavailable.',
-              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFFAF8F5)),
-            ),
-            backgroundColor: OwnerColors.walnutDark,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-      return;
-    }
+    if (cleanUrl.isEmpty) return;
 
     final uri = Uri.parse(cleanUrl);
     try {
-      if (!isForced && context.mounted) {
-        Navigator.of(context).pop();
-      }
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEAA23E)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Starting APK download... Check notification bar to install.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFFAF8F5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: OwnerColors.walnutDark,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
@@ -290,7 +237,7 @@ class AppUpdateDialog extends StatelessWidget {
                 onPressed: () => _startDownload(context),
                 icon: const Icon(Icons.download_rounded, size: 20, color: Color(0xFF241A14)),
                 label: Text(
-                  'Update Now (Direct APK)',
+                  'Update Now',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
