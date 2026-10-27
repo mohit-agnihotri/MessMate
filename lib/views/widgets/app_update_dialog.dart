@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../models/app_models.dart';
 import '../../services/admin_service.dart';
-import '../../services/localization_service.dart';
 import '../pages/owner/theme/owner_inspired_theme.dart';
 
 /// App-wide Current Version Constant (Keep in sync with pubspec.yaml)
@@ -81,8 +79,64 @@ class AppUpdateDialog extends StatelessWidget {
   }
 
   Future<void> _startDownload(BuildContext context) async {
-    final uri = Uri.parse(apkDownloadUrl);
+    final cleanUrl = apkDownloadUrl.trim();
+    if (cleanUrl.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Download link is temporarily unavailable.',
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFFAF8F5)),
+            ),
+            backgroundColor: OwnerColors.walnutDark,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      return;
+    }
+
+    final uri = Uri.parse(cleanUrl);
     try {
+      if (!isForced && context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEAA23E)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Starting APK download... Check notification bar to install.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFFAF8F5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: OwnerColors.walnutDark,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
@@ -92,8 +146,13 @@ class AppUpdateDialog extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open download link: $e'),
+            content: Text(
+              'Could not open download link: $e',
+              style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFFFAF8F5)),
+            ),
             backgroundColor: OwnerColors.walnutDark,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -119,10 +178,12 @@ class AppUpdateDialog extends StatelessWidget {
           ],
         ),
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
             // Top Rocket Icon Squircle
             Container(
               width: 58,
@@ -263,6 +324,7 @@ class AppUpdateDialog extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
