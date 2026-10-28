@@ -14,6 +14,7 @@ import '../../../services/notification_service.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import 'theme/student_inspired_theme.dart';
 import 'widgets/mess_discovery_details_sheet.dart';
+import 'student_pending_approval_page.dart';
 
 class _MessItem {
   final MessModel mess;
@@ -1584,39 +1585,61 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
     MessModel mess,
     String? planId,
   ) async {
-    final appService = ref.read(appServiceProvider);
-    final student = await appService.getStudentById(uid);
+    BuildContext? dialogCtx;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dCtx) {
+        dialogCtx = dCtx;
+        return const Center(
+          child: CircularProgressIndicator(color: StudentColors.amber),
+        );
+      },
+    );
 
-    if (student != null) {
-      final updated = student.copyWith(
-        messId: mess.messId,
-        status: 'pending',
-        assignedPlanId: planId,
-      );
-      await appService.updateStudent(updated);
-    } else {
-      final newStudent = StudentModel(
-        studentId: uid,
-        name: FirebaseAuth.instance.currentUser?.displayName ?? 'Student',
-        phone: FirebaseAuth.instance.currentUser?.phoneNumber ?? '',
-        status: 'pending',
-        messId: mess.messId,
-        joinDate: DateTime.now(),
-        roomNo: '',
-        college: '',
-        course: '',
-        email: FirebaseAuth.instance.currentUser?.email ?? '',
-        assignedPlanId: planId,
-      );
-      await appService.updateStudent(newStudent);
-    }
+    try {
+      final appService = ref.read(appServiceProvider);
+      final student = await appService.getStudentById(uid);
 
-    if (mess.ownerNotificationPrefs['joinRequest'] != false) {
-      try {
+      if (student != null) {
+        final updated = student.copyWith(
+          messId: mess.messId,
+          status: 'pending',
+          assignedPlanId: planId,
+        );
+        await appService.updateStudent(updated);
+      } else {
+        final newStudent = StudentModel(
+          studentId: uid,
+          name: FirebaseAuth.instance.currentUser?.displayName ?? 'Student',
+          phone: FirebaseAuth.instance.currentUser?.phoneNumber ?? '',
+          status: 'pending',
+          messId: mess.messId,
+          joinDate: DateTime.now(),
+          roomNo: '',
+          college: '',
+          course: '',
+          email: FirebaseAuth.instance.currentUser?.email ?? '',
+          assignedPlanId: planId,
+        );
+        await appService.updateStudent(newStudent);
+      }
+
+      String planName = 'Standard Mess Plan';
+      if (planId != null && planId.isNotEmpty) {
+        try {
+          final plans = await appService.getMealPlans(mess.messId);
+          final matched = plans.where((p) => p.planId == planId);
+          if (matched.isNotEmpty) planName = matched.first.name;
+        } catch (_) {}
+      }
+
+      if (mess.ownerNotificationPrefs['joinRequest'] != false) {
         final applicantName = student?.name ??
             FirebaseAuth.instance.currentUser?.displayName ??
             'A student';
-        await NotificationService.sendOwnerNotification(
+        // Non-blocking fire-and-forget in background so notification never holds up navigation
+        NotificationService.sendOwnerNotification(
           ownerId: mess.ownerId,
           title: '👋 New Join Request',
           message: '$applicantName requested to join ${mess.name}',
@@ -1625,22 +1648,49 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
             'messId': mess.messId,
             'studentId': uid,
           },
-        );
-      } catch (e) {
-        debugPrint('[OneSignal] Error sending join request to owner: $e');
+        ).catchError((e) {
+          debugPrint('[OneSignal] Error sending join request to owner: $e');
+          return false;
+        });
       }
-    }
 
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Join request sent to ${mess.name}! The owner will activate your membership.',
+      if (dialogCtx != null && dialogCtx!.mounted) {
+        Navigator.of(dialogCtx!).pop();
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Join request sent to ${mess.name}! Waiting for owner approval.',
+            ),
+            backgroundColor: StudentColors.sage,
           ),
-          backgroundColor: StudentColors.sage,
-        ),
-      );
+        );
+
+        // Cleanly pop modal sheets and redirect to StudentPendingApprovalPage
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => StudentPendingApprovalPage(
+              initialMessName: mess.name,
+              initialPlanName: planName,
+            ),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (dialogCtx != null && dialogCtx!.mounted) {
+        Navigator.of(dialogCtx!).pop();
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not submit request: $e'),
+            backgroundColor: StudentColors.brickRed,
+          ),
+        );
+      }
     }
   }
 }

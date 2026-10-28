@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account &amp; Data Deletion • Mezzo</title>
+  <link rel="icon" type="image/png" href="assets/mezzo_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,700;1,6..72,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .legal-page {
+      max-width: 720px;
+      margin: 40px auto 80px;
+      padding: 0 24px;
+      color: var(--color-text-main);
+    }
+    .legal-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: var(--shadow-sm);
+    }
+    .legal-card h1 {
+      font-family: var(--font-serif);
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+      color: var(--color-walnut-dark);
+    }
+    .legal-meta {
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .legal-card p, .legal-card li {
+      font-size: 0.98rem;
+      line-height: 1.65;
+      color: var(--color-text-body);
+      margin-bottom: 14px;
+    }
+    .del-form {
+      background: #FAF8F5;
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--color-walnut-dark);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      background: #FFFFFF;
+      box-sizing: border-box;
+    }
+    .btn-delete {
+      background: #B94A48;
+      color: #FFFFFF;
+      border: none;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    .btn-delete:hover {
+      background: #9A3836;
+    }
+    .back-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+    .info-badge {
+      display: inline-block;
+      background: #FFF3CD;
+      color: #856404;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="legal-page">
+    <a href="index.html" class="back-nav">&larr; Back to Mezzo Home</a>
+
+    <div class="legal-card">
+      <h1>Request Account &amp; Data Deletion</h1>
+      <div class="legal-meta">Mezzo Privacy &amp; Data Governance &bull; Google Play Policy Compliant</div>
+
+      <div class="info-badge">🔒 Direct In-App Deletion Available</div>
+      <p>If you have access to the Mezzo mobile app, you can delete your account instantly by navigating to <strong>Profile &rarr; Account Settings &rarr; Delete Account</strong>.</p>
+      
+      <p>If you have uninstalled the app or cannot access your device, you can use the form below to submit a formal account and data deletion request directly to our engineering team.</p>
+
+      <h2>What Data Will Be Deleted?</h2>
+      <ul>
+        <li>Your profile information (Full Name, Phone Number, Email, Profile Avatar).</li>
+        <li>Your authentication record in Firebase Auth.</li>
+        <li>Your active student enrollment or mess registration records.</li>
+        <li>Historical meal attendance logs and skip records.</li>
+      </ul>
+      <p><em>Note: Completed bills and past transaction invoices may be retained in anonymized format for statutory tax and ledger compliance as required under applicable laws.</em></p>
+
+      <form class="del-form" onsubmit="event.preventDefault(); document.getElementById('success-msg').style.display='block'; this.reset();">
+        <div class="form-group">
+          <label for="req-email">Registered Email Address *</label>
+          <input type="email" id="req-email" required placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label for="req-phone">Registered Mobile Number *</label>
+          <input type="tel" id="req-phone" required placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label for="req-role">Your Role *</label>
+          <select id="req-role" required>
+            <option value="student">Student / Diner</option>
+            <option value="owner">Mess Owner / Manager</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="req-reason">Reason for deletion (Optional)</label>
+          <textarea id="req-reason" rows="3" placeholder="Tell us why you wish to delete your account..."></textarea>
+        </div>
+        <button type="submit" class="btn-delete">Submit Deletion Request</button>
+      </form>
+
+      <div id="success-msg" style="display: none; margin-top: 16px; padding: 14px; background: #D4EDDA; color: #155724; border-radius: 12px; font-weight: 600;">
+        ✅ Your deletion request has been submitted successfully. Your account and associated data will be permanently purged within 48 to 72 hours.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

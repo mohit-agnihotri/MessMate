@@ -46,11 +46,15 @@ class _StudentHistoryPageState extends ConsumerState<StudentHistoryPage> {
             ? const Center(
                 child: CircularProgressIndicator(color: StudentColors.amber),
               )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+            : RefreshIndicator(
+                color: StudentColors.amber,
+                onRefresh: () => ref.read(studentHistoryProvider.notifier).load(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     // ── Header Title & Subtitle ──
                     Text(
                       'ATTENDANCE & LEAVES',
@@ -158,6 +162,7 @@ class _StudentHistoryPageState extends ConsumerState<StudentHistoryPage> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

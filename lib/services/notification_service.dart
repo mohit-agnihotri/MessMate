@@ -364,7 +364,7 @@ class NotificationService {
           'Authorization': 'Key $_restApiKey',
         },
         body: jsonEncode(payload),
-      );
+      ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('[NotificationService] Push dispatched successfully: ${response.body}');

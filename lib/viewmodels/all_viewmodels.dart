@@ -761,10 +761,15 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     final existingBill = await _service.getBill(student.studentId, previewBill.month, previewBill.year);
     final bool wasPaid = existingBill?.isPaid ?? false;
 
+    // Idempotency: if already in target state, do nothing
+    if (wasPaid == isPaid && existingBill != null) {
+      return;
+    }
+
     final finalBill = BillModel(
       billId: billId,
       studentId: previewBill.studentId,
-      messId: previewBill.messId,
+      messId: previewBill.messId.isNotEmpty ? previewBill.messId : student.messId,
       month: previewBill.month,
       year: previewBill.year,
       baseFee: previewBill.baseFee,
@@ -779,7 +784,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       isPaid: isPaid,
       autoSettled: previewBill.autoSettled,
       validSkipsRewarded: previewBill.validSkipsRewarded,
-      daysToExtend: extendDays ?? previewBill.daysToExtend,
+      daysToExtend: isPaid ? (extendDays ?? previewBill.daysToExtend) : 0,
       planId: previewBill.planId,
       planName: previewBill.planName,
       deductions: previewBill.deductions,
@@ -793,27 +798,29 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
       currentMonthSkipsAmount: previewBill.currentMonthSkipsAmount,
     );
     await _service.saveBill(finalBill);
+
+    // Fire student push notification in background (non-blocking)
     if (student.notificationPrefs['billUpdated'] != false) {
-      try {
-        await NotificationService.sendStudentNotification(
-          studentId: student.studentId,
-          title: isPaid ? '💳 Bill Marked Paid' : '📄 Bill Updated',
-          message: isPaid
-              ? 'Payment recorded for ${previewBill.month}. Amount: ₹${previewBill.finalPayable}'
-              : 'Your bill for ${previewBill.month} has been updated. Amount: ₹${previewBill.finalPayable}',
-          data: {
-            'type': 'bill',
-            'billId': finalBill.billId,
-            'studentId': student.studentId,
-          },
-        );
-      } catch (e) {
+      NotificationService.sendStudentNotification(
+        studentId: student.studentId,
+        title: isPaid ? '💳 Bill Marked Paid' : '📄 Bill Updated',
+        message: isPaid
+            ? 'Payment recorded for ${previewBill.month}. Amount: ₹${previewBill.finalPayable}'
+            : 'Your bill for ${previewBill.month} has been updated. Amount: ₹${previewBill.finalPayable}',
+        data: {
+          'type': 'bill',
+          'billId': finalBill.billId,
+          'studentId': student.studentId,
+        },
+      ).catchError((e) {
         debugPrint('[OneSignal] Error sending student bill push: $e');
-      }
+        return false;
+      });
     }
 
     // Handle Extend Validity logic properly and idempotently
-    if (wasPaid != isPaid && extendDays != null && extendDays > 0) {
+    final effectiveExtendDays = extendDays ?? existingBill?.daysToExtend ?? previewBill.daysToExtend;
+    if (wasPaid != isPaid && effectiveExtendDays > 0) {
       final currentStudent =
           await _service.getStudentById(student.studentId) ?? student;
       final int bYear = previewBill.year;
@@ -826,14 +833,14 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
 
       if (!wasPaid && isPaid) {
         // Toggled ON: Add the extended days once from baseEndDate
-        final newEndDate = baseEndDate.add(Duration(days: extendDays));
+        final newEndDate = baseEndDate.add(Duration(days: effectiveExtendDays));
         await _service.updateStudent(
           currentStudent.copyWith(subscriptionEndDate: newEndDate),
         );
       } else if (wasPaid && !isPaid) {
         // Toggled OFF: Subtract the days back once
         final newEndDate = currentStudent.subscriptionEndDate != null
-            ? currentStudent.subscriptionEndDate!.subtract(Duration(days: extendDays))
+            ? currentStudent.subscriptionEndDate!.subtract(Duration(days: effectiveExtendDays))
             : defaultMonthEnd;
         await _service.updateStudent(
           currentStudent.copyWith(subscriptionEndDate: newEndDate),
@@ -842,7 +849,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     }
   }
 
-  Future<void> regenerateCode() async {
+    Future<void> regenerateCode() async {
     final mess = await _service.getMessByOwnerId(ownerId);
     if (mess != null) {
       final code = await _service.regenerateMessCode(mess.messId);
@@ -1220,6 +1227,7 @@ class StudentHomeState {
 class StudentHomeViewModel extends StateNotifier<StudentHomeState>
     with WidgetsBindingObserver {
   final AppService _service;
+  final Ref? _ref;
 
   StreamSubscription? _mealRecordSub;
   StreamSubscription? _menuSub;
@@ -1232,7 +1240,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
   bool _isUndoing = false;
   bool _isAddingGuest = false;
 
-  StudentHomeViewModel(this._service) : super(const StudentHomeState()) {
+  StudentHomeViewModel(this._service, [this._ref]) : super(const StudentHomeState()) {
     WidgetsBinding.instance.addObserver(this);
     load();
   }
@@ -1574,6 +1582,8 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         cancelledAt: DateTime.now(),
       );
       await _service.skipMeal(record);
+      _ref?.invalidate(studentHistoryProvider);
+      _ref?.invalidate(studentBillProvider);
 
       if (mess != null && mess.ownerId.isNotEmpty) {
         try {
@@ -1625,6 +1635,8 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
     try {
       await _service.undoSkipMeal(recordId);
       state = state.copyWith(hasSelfSkipped: false);
+      _ref?.invalidate(studentHistoryProvider);
+      _ref?.invalidate(studentBillProvider);
     } catch (e) {
       debugPrint('[StudentHomeViewModel] undoSkip error: $e');
       rethrow;
@@ -1774,7 +1786,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
 
 final studentHomeProvider =
     StateNotifierProvider.autoDispose<StudentHomeViewModel, StudentHomeState>((ref) {
-      return StudentHomeViewModel(ref.read(appServiceProvider));
+      return StudentHomeViewModel(ref.read(appServiceProvider), ref);
     });
 
 // ─── Student History ──────────────────────────────────────────────────────────
@@ -1823,26 +1835,31 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
+    List<MealRecordModel> records = [];
+    List<LeaveModel> leaves = [];
     try {
-      final records = await _service.getMealRecords(
+      records = await _service.getMealRecords(
         studentId,
         state.selectedMonth.month,
         state.selectedMonth.year,
       );
-      final leaves = await _service.getStudentLeaves(studentId);
-      final self = records.where((r) => r.status == 'absent_self').length;
-      final ownerOff = records.where((r) => r.status == 'absent_owner').length;
-      state = state.copyWith(
-        records: records,
-        leaves: leaves,
-        selfAbsent: self,
-        ownerOff: ownerOff,
-        isLoading: false,
-      );
     } catch (e) {
-      debugPrint('[StudentHistoryViewModel] error loading history: $e');
-      state = state.copyWith(isLoading: false);
+      debugPrint('[StudentHistoryViewModel] error loading records: $e');
     }
+    try {
+      leaves = await _service.getStudentLeaves(studentId);
+    } catch (e) {
+      debugPrint('[StudentHistoryViewModel] error loading leaves: $e');
+    }
+    final self = records.where((r) => r.status == 'absent_self').length;
+    final ownerOff = records.where((r) => r.status == 'absent_owner').length;
+    state = state.copyWith(
+      records: records,
+      leaves: leaves,
+      selfAbsent: self,
+      ownerOff: ownerOff,
+      isLoading: false,
+    );
   }
 
   void changeMonth(DateTime month) {
@@ -1898,6 +1915,7 @@ class StudentBillState {
   final bool isPreview;
   final String? error;
   final double postPaymentSkipsAmount;
+  final int mealsPerDay;
 
   const StudentBillState({
     this.bill,
@@ -1906,6 +1924,7 @@ class StudentBillState {
     this.isPreview = false,
     this.error,
     this.postPaymentSkipsAmount = 0.0,
+    this.mealsPerDay = 3,
   });
 
   StudentBillState copyWith({
@@ -1915,6 +1934,7 @@ class StudentBillState {
     bool? isPreview,
     String? error,
     double? postPaymentSkipsAmount,
+    int? mealsPerDay,
   }) => StudentBillState(
     bill: bill ?? this.bill,
     selectedMonth: selectedMonth ?? this.selectedMonth,
@@ -1923,6 +1943,7 @@ class StudentBillState {
     error: error,
     postPaymentSkipsAmount:
         postPaymentSkipsAmount ?? this.postPaymentSkipsAmount,
+    mealsPerDay: mealsPerDay ?? this.mealsPerDay,
   );
 }
 
@@ -1946,23 +1967,42 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
 
       if (bill != null) {
         double postPaymentSkips = 0.0;
-        if (bill.isPaid) {
-          try {
-            final student = await _service.getStudentById(studentId);
-            if (student != null) {
-              final mess = await _service.getMessById(student.messId);
-              if (mess != null) {
-                MealPlanModel? plan;
-                if (student.assignedPlanId != null &&
-                    student.assignedPlanId!.isNotEmpty) {
-                  plan = await _service.getMealPlanById(
-                      student.messId, student.assignedPlanId!);
-                }
-                final currentRecords = await _service.getMealRecords(
-                  studentId,
-                  state.selectedMonth.month,
-                  state.selectedMonth.year,
-                );
+        BillModel effectiveBill = bill;
+        int allowedMeals = 3;
+        try {
+          final student = await _service.getStudentById(studentId);
+          if (student != null) {
+            final mess = await _service.getMessById(student.messId);
+            if (mess != null) {
+              MealPlanModel? plan;
+              if (student.assignedPlanId != null &&
+                  student.assignedPlanId!.isNotEmpty) {
+                plan = await _service.getMealPlanById(
+                    student.messId, student.assignedPlanId!);
+              }
+              allowedMeals = plan != null
+                  ? plan.mealsIncludedPerDay
+                  : mess.mealsIncludedPerDay;
+              final currentRecords = await _service.getMealRecords(
+                studentId,
+                state.selectedMonth.month,
+                state.selectedMonth.year,
+              );
+              final leaves = await _service.getStudentLeaves(studentId);
+              final liveSkips = calculateCurrentMonthSkipsSummary(
+                records: currentRecords,
+                leaves: leaves,
+                student: student,
+                mess: mess,
+                plan: plan,
+                month: state.selectedMonth.month,
+                year: state.selectedMonth.year,
+              );
+              effectiveBill = bill.copyWith(
+                currentMonthSkipsCount: liveSkips.count,
+                currentMonthSkipsAmount: liveSkips.amount,
+              );
+              if (bill.isPaid) {
                 postPaymentSkips = calculatePostPaymentSkipsAmount(
                   savedBill: bill,
                   currentRecords: currentRecords,
@@ -1971,15 +2011,16 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
                 );
               }
             }
-          } catch (e) {
-            debugPrint('[StudentBill] postPaymentSkips error: $e');
           }
+        } catch (e) {
+          debugPrint('[StudentBill] liveSkips sync error: $e');
         }
         state = state.copyWith(
-          bill: bill,
+          bill: effectiveBill,
           isPreview: false,
           isLoading: false,
           postPaymentSkipsAmount: postPaymentSkips,
+          mealsPerDay: allowedMeals > 0 ? allowedMeals : 3,
         );
       } else {
         // Calculate preview
@@ -2011,6 +2052,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
         if (student.assignedPlanId != null && student.assignedPlanId!.isNotEmpty) {
           plan = await _service.getMealPlanById(student.messId, student.assignedPlanId!);
         }
+        final int allowedMeals = plan != null ? plan.mealsIncludedPerDay : mess.mealsIncludedPerDay;
 
         final extraFees = await _service.getExtraFees(student.messId, studentId);
         final leaves = await _service.getStudentLeaves(studentId);
@@ -2043,6 +2085,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           bill: previewBill,
           isPreview: true,
           isLoading: false,
+          mealsPerDay: allowedMeals > 0 ? allowedMeals : 3,
         );
       }
     } catch (e) {

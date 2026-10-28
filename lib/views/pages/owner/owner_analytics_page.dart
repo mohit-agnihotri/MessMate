@@ -562,55 +562,51 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
     AsyncValue<List<DishRatingModel>> dishRatingsAsync,
     AsyncValue<List<FeedbackModel>> feedbacksAsync,
   ) {
-    return dishRatingsAsync.when(
-      loading: () => const Center(
+    if (dishRatingsAsync.isLoading && !dishRatingsAsync.hasValue) {
+      return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
           child: CircularProgressIndicator(color: OwnerColors.sageGreen),
         ),
-      ),
-      error: (err, _) => Center(
-        child: Text(
-          'Error loading food ratings: $err',
-          style: OwnerTypography.regular(size: 13, color: Colors.red),
-        ),
-      ),
-      data: (dishRatings) {
-        final feedbacks = feedbacksAsync.valueOrNull ?? [];
+      );
+    }
 
-        final Map<String, List<DishRatingModel>> ratingsByDish = {};
-        for (var dr in dishRatings) {
-          ratingsByDish.putIfAbsent(dr.dishName, () => []).add(dr);
-        }
+    final dishRatings = dishRatingsAsync.valueOrNull ?? [];
+    final feedbacks = feedbacksAsync.valueOrNull ?? [];
 
-        // Fallback to legacy feedbacks if empty
-        if (ratingsByDish.isEmpty && feedbacks.isNotEmpty) {
-          for (var f in feedbacks) {
-            for (var dish in f.dishes) {
-              ratingsByDish.putIfAbsent(dish, () => []).add(
-                    DishRatingModel(
-                      ratingId: f.feedbackId,
-                      messId: f.messId,
-                      studentId: f.studentId,
-                      studentName: 'Student',
-                      dishName: dish,
-                      rating: f.rating,
-                      comment: f.comment,
-                      updatedAt: f.date,
-                    ),
-                  );
-            }
-          }
-        }
+    final Map<String, List<DishRatingModel>> ratingsByDish = {};
+    for (var dr in dishRatings) {
+      ratingsByDish.putIfAbsent(dr.dishName, () => []).add(dr);
+    }
 
-        if (ratingsByDish.isEmpty) {
-          return _buildEmptyAnalyticsState(
-            title: 'No dish ratings yet',
-            subtitle:
-                'Students can rate each dish served from the daily mess menu.',
-            icon: Icons.ramen_dining_outlined,
-          );
+    // Fallback to legacy feedbacks if empty
+    if (ratingsByDish.isEmpty && feedbacks.isNotEmpty) {
+      for (var f in feedbacks) {
+        for (var dish in f.dishes) {
+          ratingsByDish.putIfAbsent(dish, () => []).add(
+                DishRatingModel(
+                  ratingId: f.feedbackId,
+                  messId: f.messId,
+                  studentId: f.studentId,
+                  studentName: 'Student',
+                  dishName: dish,
+                  rating: f.rating,
+                  comment: f.comment,
+                  updatedAt: f.date,
+                ),
+              );
         }
+      }
+    }
+
+    if (ratingsByDish.isEmpty) {
+      return _buildEmptyAnalyticsState(
+        title: 'No dish ratings yet',
+        subtitle:
+            'Students can rate each dish served from the daily mess menu.',
+        icon: Icons.ramen_dining_outlined,
+      );
+    }
 
         final List<Map<String, dynamic>> dishStats =
             ratingsByDish.entries.map((e) {
@@ -702,8 +698,6 @@ class _OwnerAnalyticsPageState extends ConsumerState<OwnerAnalyticsPage> {
                 )),
           ],
         );
-      },
-    );
   }
 
   // ─── Walnut Hero Card (Screenshot 8) ──────────────────────────────────────

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy • Mezzo</title>
+  <link rel="icon" type="image/png" href="assets/mezzo_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,700;1,6..72,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .legal-page {
+      max-width: 860px;
+      margin: 40px auto 80px;
+      padding: 0 24px;
+      color: var(--color-text-main);
+    }
+    .legal-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 24px;
+      padding: 48px;
+      box-shadow: var(--shadow-sm);
+    }
+    .legal-card h1 {
+      font-family: var(--font-serif);
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      color: var(--color-walnut-dark);
+    }
+    .legal-meta {
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .legal-card h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--color-walnut-dark);
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+    .legal-card p, .legal-card li {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--color-text-body);
+      margin-bottom: 14px;
+    }
+    .legal-card ul {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+    .back-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="legal-page">
+    <a href="index.html" class="back-nav">&larr; Back to Mezzo Home</a>
+    
+    <div class="legal-card">
+      <h1>Privacy Policy</h1>
+      <div class="legal-meta">Effective Date: October 28, 2026 &bull; Compliant with Digital Personal Data Protection (DPDP) Act 2023 &amp; Google Play Developer Policies</div>
+
+      <p>Welcome to <strong>Mezzo</strong> ("we", "our", or "us"). We are committed to protecting the privacy, confidentiality, and security of all personal and financial data entrusted to us by mess owners, hostel wardens, and dining students.</p>
+
+      <h2>1. Information We Collect</h2>
+      <p>We collect only the minimum data required to facilitate mess meal planning, automated attendance cutoffs, transparent ledger tracking, and monthly billing:</p>
+      <ul>
+        <li><strong>Account Information:</strong> Name, mobile phone number, email address, and role (Student or Mess Owner) provided during authentication via Google Sign-In or Firebase Phone OTP.</li>
+        <li><strong>Mess &amp; Meal Records:</strong> Daily menu items, meal statuses (present, self-absent, guest meals, owner-marked leaves), and cutoff notification settings.</li>
+        <li><strong>Financial &amp; Billing Data:</strong> Monthly generated bill records, paid/unpaid status, and kitchen expense ledger records (Sabzi, Doodh, Ration purchases). <em>Note: Mezzo does NOT store credit/debit card numbers or UPI banking PINs. All payments are settled directly between parties.</em></li>
+        <li><strong>Device &amp; Location Data:</strong> Precise foreground GPS coordinates are requested <em>strictly</em> when students use the "Discover Nearby Messes" map screen to locate dining facilities within a 5km radius. We never track or record background location.</li>
+      </ul>
+
+      <h2>2. How We Use Your Information</h2>
+      <p>Your data is processed strictly for the following purposes:</p>
+      <ul>
+        <li>Enabling mess owners to publish daily menus and calculate exact headcount for meal prep.</li>
+        <li>Enabling students to skip meals before automated cutoff deadlines to avoid food and fee wastage.</li>
+        <li>Generating transparent, dispute-free monthly bills and downloadable receipts.</li>
+        <li>Sending real-time push notifications regarding join approvals, meal schedule updates, and bill dues via Firebase Cloud Messaging.</li>
+      </ul>
+
+      <h2>3. Data Protection &amp; Security</h2>
+      <p>All data transmitted between the Mezzo mobile application and our servers is encrypted in transit using industry-standard <strong>Transport Layer Security (TLS/HTTPS)</strong>. Stored records are safeguarded by <strong>Google Cloud Firestore</strong> using AES-256 encryption at rest, protected by strict server-side Role-Based Access Control (RBAC) rules.</p>
+
+      <h2>4. Data Sharing &amp; Third Parties</h2>
+      <p>We <strong>do not sell, rent, or monetize</strong> your personal data to any advertising brokers or data mining companies. Data is shared strictly with essential service providers necessary to operate the platform:</p>
+      <ul>
+        <li><strong>Google Firebase:</strong> Cloud database, authentication, and push notification infrastructure.</li>
+        <li><strong>Cloudinary:</strong> Compressed delivery of user-uploaded mess menu and dish images.</li>
+      </ul>
+
+      <h2>5. Your Rights &amp; Permanent Account Deletion</h2>
+      <p>You have full ownership of your data under Indian DPDP Act 2023. You may at any time:</p>
+      <ul>
+        <li>Request an export or review of your meal attendance and billing history.</li>
+        <li>Request permanent erasure of your account, student profile, or mess records directly inside the app (under <em>Profile &rarr; Account Settings &rarr; Delete Account</em>) or via our public <a href="delete-account.html">Account Deletion Request Page</a>.</li>
+      </ul>
+
+      <h2>6. Grievance Officer &amp; Contact Information</h2>
+      <p>For any privacy inquiries, data deletion requests, or grievances, please contact our designated Grievance Officer:</p>
+      <p>
+        <strong>Mohit Agnihotri</strong><br>
+        Founder &amp; Lead Developer, Mezzo<br>
+        Email: <a href="mailto:agnihotrimohit185@gmail.com">agnihotrimohit185@gmail.com</a><br>
+        Helpline / WhatsApp: +91 7974220107<br>
+        Bhopal, Madhya Pradesh, India
+      </p>
+    </div>
+  </div>
+</body>
+</html>

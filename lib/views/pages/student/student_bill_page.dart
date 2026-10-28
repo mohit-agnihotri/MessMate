@@ -36,7 +36,10 @@ class StudentBillPage extends ConsumerWidget {
             ? const Center(
                 child: CircularProgressIndicator(color: StudentColors.amber),
               )
-            : CustomScrollView(
+            : RefreshIndicator(
+                color: StudentColors.amber,
+                onRefresh: () => ref.read(studentBillProvider.notifier).load(),
+                child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _buildHeader(ref, state)),
@@ -48,40 +51,73 @@ class StudentBillPage extends ConsumerWidget {
                       ),
                     ),
                     if (state.bill!.daysToExtend > 0)
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                        sliver: SliverToBoxAdapter(
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF5EC),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFCCE0C8)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.event_available_rounded,
-                                  size: 20,
-                                  color: Color(0xFF3F653E),
+                      Builder(
+                        builder: (context) {
+                          final bill = state.bill!;
+                          final mealsPerDay = state.mealsPerDay > 0 ? state.mealsPerDay : 3;
+                          final coveredSkips = bill.daysToExtend * mealsPerDay;
+                          final remainderSkips = bill.currentMonthSkipsCount > coveredSkips
+                              ? (bill.currentMonthSkipsCount - coveredSkips)
+                              : 0;
+                          final ratePerSkip = bill.currentMonthSkipsCount > 0
+                              ? (bill.currentMonthSkipsAmount / bill.currentMonthSkipsCount)
+                              : 0.0;
+                          final remainderAmount = (remainderSkips * ratePerSkip).round();
+
+                          return SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                            sliver: SliverToBoxAdapter(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF5EC),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFCCE0C8)),
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '🎉 Subscription Extended: +${state.bill!.daysToExtend} days added for your meal skips!',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF2B3B2C),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.event_available_rounded,
+                                      size: 20,
+                                      color: Color(0xFF3F653E),
                                     ),
-                                  ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '🎉 Subscription Extended: +${bill.daysToExtend} days added!',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF2B3B2C),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            remainderSkips > 0
+                                                ? '$coveredSkips of ${bill.currentMonthSkipsCount} meal skips converted to +${bill.daysToExtend} days extension. Remaining $remainderSkips skips (₹$remainderAmount) will be credited to your next bill!'
+                                                : 'All ${bill.currentMonthSkipsCount} meal skips converted to +${bill.daysToExtend} days extension.',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.35,
+                                              color: const Color(0xFF3F653E),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                    if (state.bill!.currentMonthSkipsCount > 0)
+                          );
+                        },
+                      )
+                    else if (state.bill!.currentMonthSkipsCount > 0)
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                         sliver: SliverToBoxAdapter(
@@ -156,7 +192,7 @@ class StudentBillPage extends ConsumerWidget {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                       sliver: SliverToBoxAdapter(
-                        child: _buildBreakdownCard(context, state.bill!),
+                        child: _buildBreakdownCard(context, state.bill!, state.mealsPerDay),
                       ),
                     ),
                     SliverPadding(
@@ -242,6 +278,7 @@ class StudentBillPage extends ConsumerWidget {
                     ),
                 ],
               ),
+            ),
       ),
     );
   }
@@ -505,7 +542,7 @@ class StudentBillPage extends ConsumerWidget {
   }
 
   // ── Clean Breakdown Card ───────────────────────────────────────────────────
-  Widget _buildBreakdownCard(BuildContext context, BillModel bill) {
+  Widget _buildBreakdownCard(BuildContext context, BillModel bill, [int mealsPerDay = 3]) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -573,11 +610,27 @@ class StudentBillPage extends ConsumerWidget {
           ],
           if (bill.currentMonthSkipsCount > 0) ...[
             const SizedBox(height: 12),
-            _buildBreakdownRow(
-              'Current Month Skips (${bill.currentMonthSkipsCount} meal${bill.currentMonthSkipsCount > 1 ? "s" : ""})',
-              'Logged for next month\'s credit',
-              '₹${bill.currentMonthSkipsAmount.toInt()}',
-            ),
+            () {
+              final effectiveMeals = mealsPerDay > 0 ? mealsPerDay : 3;
+              final coveredSkips = bill.daysToExtend * effectiveMeals;
+              final remainderSkips = bill.currentMonthSkipsCount > coveredSkips
+                  ? (bill.currentMonthSkipsCount - coveredSkips)
+                  : 0;
+              final ratePerSkip = bill.currentMonthSkipsCount > 0
+                  ? (bill.currentMonthSkipsAmount / bill.currentMonthSkipsCount)
+                  : 0.0;
+              final remainderAmount = (remainderSkips * ratePerSkip).round();
+
+              return _buildBreakdownRow(
+                'Current Month Skips (${bill.currentMonthSkipsCount} meal${bill.currentMonthSkipsCount > 1 ? "s" : ""})',
+                bill.daysToExtend > 0
+                    ? '+${bill.daysToExtend}d added • ${remainderSkips > 0 ? "₹$remainderAmount next bill" : "extended"}'
+                    : 'Logged for next month\'s credit',
+                bill.daysToExtend > 0
+                    ? (remainderSkips > 0 ? '+${bill.daysToExtend}d & ₹$remainderAmount' : '+${bill.daysToExtend} days')
+                    : '₹${bill.currentMonthSkipsAmount.toInt()}',
+              );
+            }(),
           ],
           if (bill.extraMealsAddon > 0) ...[
             const SizedBox(height: 12),
@@ -634,7 +687,7 @@ class StudentBillPage extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => _showDetailedBreakdown(context, bill),
+              onPressed: () => _showDetailedBreakdown(context, bill, mealsPerDay),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: StudentColors.walnut),
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -664,27 +717,30 @@ class StudentBillPage extends ConsumerWidget {
     bool isCredit = false,
   }) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: StudentTypography.bold(fontSize: 13.5),
-            ),
-            Text(
-              subtitle,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: StudentColors.textSecondary,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: StudentTypography.bold(fontSize: 13.5),
               ),
-            ),
-          ],
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: StudentColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         Text(
           amount,
+          textAlign: TextAlign.end,
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -780,7 +836,7 @@ class StudentBillPage extends ConsumerWidget {
   }
 
   // ── Detailed Itemized List Modal ──────────────────────────────────────────
-  void _showDetailedBreakdown(BuildContext context, BillModel bill) {
+  void _showDetailedBreakdown(BuildContext context, BillModel bill, [int mealsPerDay = 3]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -862,11 +918,27 @@ class StudentBillPage extends ConsumerWidget {
                         isCredit: true,
                       ),
                     if (bill.currentMonthSkipsCount > 0)
-                      _buildModalRow(
-                        'Current Month Skips (${bill.currentMonthSkipsCount})',
-                        '₹${bill.currentMonthSkipsAmount.toInt()} (Next Month Credit)',
-                        isCredit: false,
-                      ),
+                      () {
+                        final effectiveMeals = mealsPerDay > 0 ? mealsPerDay : 3;
+                        final coveredSkips = bill.daysToExtend * effectiveMeals;
+                        final remainderSkips = bill.currentMonthSkipsCount > coveredSkips
+                            ? (bill.currentMonthSkipsCount - coveredSkips)
+                            : 0;
+                        final ratePerSkip = bill.currentMonthSkipsCount > 0
+                            ? (bill.currentMonthSkipsAmount / bill.currentMonthSkipsCount)
+                            : 0.0;
+                        final remainderAmount = (remainderSkips * ratePerSkip).round();
+
+                        return _buildModalRow(
+                          'Current Month Skips (${bill.currentMonthSkipsCount})',
+                          bill.daysToExtend > 0
+                              ? (remainderSkips > 0
+                                  ? '+${bill.daysToExtend}d & ₹$remainderAmount (Next Month)'
+                                  : '+${bill.daysToExtend} Days Extended')
+                              : '₹${bill.currentMonthSkipsAmount.toInt()} (Next Month Credit)',
+                          isCredit: false,
+                        );
+                      }(),
                     if (bill.guestAddons > 0)
                       _buildModalRow(
                         'Guest Meals',
@@ -981,18 +1053,22 @@ class StudentBillPage extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: StudentColors.textDark,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                color: StudentColors.textDark,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
+            textAlign: TextAlign.end,
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w600,

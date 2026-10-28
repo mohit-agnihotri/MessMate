@@ -721,10 +721,18 @@ class FirebaseService implements AppService {
   // BILLING
   @override
   Future<BillModel?> getBill(String studentId, int month, int year) async {
-    final billId = '${studentId}_${month}_$year';
-    final doc = await _db.collection('bills').doc(billId).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return BillModel.fromMap(doc.data()!);
+    try {
+      final billId = '${studentId}_${month}_$year';
+      final doc = await _db.collection('bills').doc(billId).get();
+      if (!doc.exists || doc.data() == null) return null;
+      return BillModel.fromMap(doc.data()!);
+    } catch (e) {
+      if (e is FirebaseException && (e.code == 'permission-denied' || e.code == 'not-found')) {
+        debugPrint('[Billing] getBill ungenerated bill fallback to preview: $e');
+        return null;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -749,22 +757,27 @@ class FirebaseService implements AppService {
       query = query.where('messId', isEqualTo: resolvedMessId);
     }
 
-    final querySnapshot = await query.get();
+    try {
+      final querySnapshot = await query.get();
 
-    double totalDues = 0;
-    final currentVal = year * 12 + month;
+      double totalDues = 0;
+      final currentVal = year * 12 + month;
 
-    for (var doc in querySnapshot.docs) {
-      final bill = BillModel.fromMap(doc.data() as Map<String, dynamic>);
-      if (!bill.isPaid) {
-        final billVal = bill.year * 12 + bill.month;
-        // Only include bills from strict previous months
-        if (billVal < currentVal) {
-          totalDues += bill.finalPayable;
+      for (var doc in querySnapshot.docs) {
+        final bill = BillModel.fromMap(doc.data() as Map<String, dynamic>);
+        if (!bill.isPaid) {
+          final billVal = bill.year * 12 + bill.month;
+          // Only include bills from strict previous months
+          if (billVal < currentVal) {
+            totalDues += bill.finalPayable;
+          }
         }
       }
+      return totalDues;
+    } catch (e) {
+      debugPrint('[Billing] getPreviousUnpaidDues error: $e');
+      return 0.0;
     }
-    return totalDues;
   }
 
   @override
@@ -1569,12 +1582,19 @@ class FirebaseService implements AppService {
   // ─── EXPENSE LEDGER (KHAATA / DAILY RATION EXPENSES) ─────────────────────
   @override
   Future<void> createExpense(ExpenseModel expense) async {
-    await _db
+    if (expense.messId.trim().isEmpty) {
+      throw ArgumentError('Mess ID cannot be empty when creating an expense');
+    }
+    final expensesCol = _db
         .collection('messes')
         .doc(expense.messId)
-        .collection('expenses')
-        .doc(expense.id)
-        .set(expense.toMap());
+        .collection('expenses');
+    final docRef = expense.id.isNotEmpty
+        ? expensesCol.doc(expense.id)
+        : expensesCol.doc();
+    final data = expense.toMap();
+    data['id'] = docRef.id;
+    await docRef.set(data);
   }
 
   @override

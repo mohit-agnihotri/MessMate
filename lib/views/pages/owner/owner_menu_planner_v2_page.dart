@@ -525,48 +525,24 @@ class _OwnerMenuPlannerV2PageState
             ),
           ),
 
-          // Rating pill (4.0 ★) or Remove text (Screenshot 2)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: OwnerColors.amberLight,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '4.0',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: OwnerColors.amberText,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    const Icon(
-                      Icons.star_rounded,
-                      size: 13,
-                      color: OwnerColors.amber,
-                    ),
-                  ],
+          // Remove button (Screenshot 2)
+          GestureDetector(
+            onTap: () => viewModel.removeDish(dish),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Remove',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: OwnerColors.textMuted,
                 ),
               ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => viewModel.removeDish(dish),
-                child: Text(
-                  'Remove',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: OwnerColors.textMuted,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

@@ -110,7 +110,7 @@ service cloud.firestore {
       }
 
       match /dish_ratings/{ratingId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
         allow create: if isAuthenticated() 
           && request.auth.uid == request.resource.data.studentId
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId;
@@ -151,7 +151,7 @@ service cloud.firestore {
             // Leaving mess
             (request.resource.data.status == 'left' && request.resource.data.messId == '') ||
             // Requesting to join or switch mess (strictly pending, zero chance of self-approval to active)
-            (request.resource.data.status == 'pending' && (resource.data.status in ['pending', 'left'] || resource.data.messId == '' || resource.data.messId == null))
+            (request.resource.data.status == 'pending')
           )
         )
       );
@@ -179,6 +179,7 @@ service cloud.firestore {
     match /meal_records/{recordId} {
       // V-06 Fix: Only the student and their mess owner can read meal records
       allow read: if isAuthenticated() && (
+        resource == null ||
         request.auth.uid == resource.data.studentId ||
         (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
@@ -212,6 +213,7 @@ service cloud.firestore {
     match /leaves/{leaveId} {
       // V-06 Fix: Scoped strictly to student and their mess owner
       allow read: if isAuthenticated() && (
+        resource == null ||
         request.auth.uid == resource.data.studentId ||
         (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
@@ -236,6 +238,7 @@ service cloud.firestore {
     match /bills/{billId} {
       // V-06 Fix: Financial isolation - Student only reads own bill, Owner only reads mess bills
       allow read: if isAuthenticated() && (
+        resource == null ||
         request.auth.uid == resource.data.studentId ||
         (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()

@@ -1251,6 +1251,75 @@ class BillModel {
     );
   }
 
+  BillModel copyWith({
+    String? billId,
+    String? studentId,
+    String? messId,
+    int? month,
+    int? year,
+    double? baseFee,
+    double? proratedDiscount,
+    double? totalDeductions,
+    double? extraMealsAddon,
+    double? guestAddons,
+    double? extraFeesAddon,
+    double? finalPayable,
+    double? excessCreditGenerated,
+    double? previousDues,
+    bool? isPaid,
+    bool? autoSettled,
+    int? validSkipsRewarded,
+    int? daysToExtend,
+    String? planId,
+    String? planName,
+    List<DeductionItem>? deductions,
+    double? platformFee,
+    int? normalSkipsCount,
+    double? normalSkipsDeduction,
+    int? specialSkipsCount,
+    double? specialSkipsDeduction,
+    double? carryForwardCredit,
+    int? currentMonthSkipsCount,
+    double? currentMonthSkipsAmount,
+  }) {
+    return BillModel(
+      billId: billId ?? this.billId,
+      studentId: studentId ?? this.studentId,
+      messId: messId ?? this.messId,
+      month: month ?? this.month,
+      year: year ?? this.year,
+      baseFee: baseFee ?? this.baseFee,
+      proratedDiscount: proratedDiscount ?? this.proratedDiscount,
+      totalDeductions: totalDeductions ?? this.totalDeductions,
+      extraMealsAddon: extraMealsAddon ?? this.extraMealsAddon,
+      guestAddons: guestAddons ?? this.guestAddons,
+      extraFeesAddon: extraFeesAddon ?? this.extraFeesAddon,
+      finalPayable: finalPayable ?? this.finalPayable,
+      excessCreditGenerated:
+          excessCreditGenerated ?? this.excessCreditGenerated,
+      previousDues: previousDues ?? this.previousDues,
+      isPaid: isPaid ?? this.isPaid,
+      autoSettled: autoSettled ?? this.autoSettled,
+      validSkipsRewarded: validSkipsRewarded ?? this.validSkipsRewarded,
+      daysToExtend: daysToExtend ?? this.daysToExtend,
+      planId: planId ?? this.planId,
+      planName: planName ?? this.planName,
+      deductions: deductions ?? this.deductions,
+      platformFee: platformFee ?? this.platformFee,
+      normalSkipsCount: normalSkipsCount ?? this.normalSkipsCount,
+      normalSkipsDeduction:
+          normalSkipsDeduction ?? this.normalSkipsDeduction,
+      specialSkipsCount: specialSkipsCount ?? this.specialSkipsCount,
+      specialSkipsDeduction:
+          specialSkipsDeduction ?? this.specialSkipsDeduction,
+      carryForwardCredit: carryForwardCredit ?? this.carryForwardCredit,
+      currentMonthSkipsCount:
+          currentMonthSkipsCount ?? this.currentMonthSkipsCount,
+      currentMonthSkipsAmount:
+          currentMonthSkipsAmount ?? this.currentMonthSkipsAmount,
+    );
+  }
+
   Map<String, dynamic> toMap() => {
         'billId': billId,
         'studentId': studentId,

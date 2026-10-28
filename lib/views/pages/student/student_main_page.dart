@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../viewmodels/all_viewmodels.dart';
 
 import 'theme/student_inspired_theme.dart';
 import 'student_home_page.dart';
@@ -83,7 +84,16 @@ class _StudentMainPageState extends ConsumerState<StudentMainPage> {
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () {
+          setState(() => _currentIndex = index);
+          if (index == 0) {
+            ref.read(studentHomeProvider.notifier).load();
+          } else if (index == 2) {
+            ref.read(studentHistoryProvider.notifier).load();
+          } else if (index == 3) {
+            ref.read(studentBillProvider.notifier).load();
+          }
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,

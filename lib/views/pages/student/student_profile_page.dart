@@ -207,8 +207,6 @@ class StudentProfilePage extends ConsumerWidget {
   ) {
     final student = state.student;
     final initial = (student?.name.isNotEmpty == true) ? student!.name[0].toUpperCase() : 'M';
-    final hasCourse = student?.course != null && student!.course.trim().isNotEmpty;
-    final hasCollege = student?.college != null && student!.college.trim().isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -312,20 +310,6 @@ class StudentProfilePage extends ConsumerWidget {
                     color: StudentColors.textSecondary,
                   ),
                 ),
-                if (student != null && (hasCourse || hasCollege)) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    hasCourse && hasCollege
-                        ? '${student.course} • ${student.college}'
-                        : (hasCourse ? student.course : student.college),
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      color: StudentColors.textMuted,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
               ],
             ),
           ),
@@ -965,8 +949,6 @@ class StudentProfilePage extends ConsumerWidget {
     final nameCtrl = TextEditingController(text: student.name);
     final phoneCtrl = TextEditingController(text: student.phone);
     final roomCtrl = TextEditingController(text: student.roomNo);
-    final collegeCtrl = TextEditingController(text: student.college);
-    final courseCtrl = TextEditingController(text: student.course);
 
     showDialog(
       context: context,
@@ -986,10 +968,6 @@ class StudentProfilePage extends ConsumerWidget {
               _buildDialogField(phoneCtrl, isHindi ? 'फोन नंबर' : 'Phone Number', Icons.phone_outlined, isPhone: true),
               const SizedBox(height: 12),
               _buildDialogField(roomCtrl, isHindi ? 'कमरा नंबर' : 'Room Number', Icons.meeting_room_outlined),
-              const SizedBox(height: 12),
-              _buildDialogField(collegeCtrl, isHindi ? 'कॉलेज / हॉस्टल' : 'College / Hostel', Icons.school_outlined),
-              const SizedBox(height: 12),
-              _buildDialogField(courseCtrl, isHindi ? 'कोर्स / स्ट्रीम' : 'Course / Stream', Icons.book_outlined),
             ],
           ),
         ),
@@ -1012,8 +990,6 @@ class StudentProfilePage extends ConsumerWidget {
                 name: nameCtrl.text.trim(),
                 phone: phoneCtrl.text.trim(),
                 roomNo: roomCtrl.text.trim(),
-                college: collegeCtrl.text.trim(),
-                course: courseCtrl.text.trim(),
               );
               await ref.read(studentProfileProvider.notifier).updateProfile(updated);
               if (context.mounted) Navigator.pop(ctx);
