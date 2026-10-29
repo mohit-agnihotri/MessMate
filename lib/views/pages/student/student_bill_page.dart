@@ -204,7 +204,7 @@ class StudentBillPage extends ConsumerWidget {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                       sliver: SliverToBoxAdapter(
-                        child: _buildDownloadButton(state.bill!),
+                        child: _buildDownloadButton(state),
                       ),
                     ),
                   ] else if (state.error != null)
@@ -812,12 +812,18 @@ class StudentBillPage extends ConsumerWidget {
   }
 
   // ── Download Invoice PDF Button ───────────────────────────────────────────
-  Widget _buildDownloadButton(BillModel bill) {
+  Widget _buildDownloadButton(StudentBillState state) {
+    final bill = state.bill!;
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton.icon(
-        onPressed: () => PdfService.generateAndDownloadBill(bill),
+        onPressed: () => PdfService.generateAndDownloadBill(
+          bill,
+          student: state.student,
+          mess: state.mess,
+          plan: state.plan,
+        ),
         icon: const Icon(Icons.download_rounded, size: 20),
         label: Text(
           'Download Invoice PDF',

@@ -1910,6 +1910,9 @@ final studentHistoryProvider =
 // ─── Student Bill ─────────────────────────────────────────────────────────────
 class StudentBillState {
   final BillModel? bill;
+  final StudentModel? student;
+  final MessModel? mess;
+  final MealPlanModel? plan;
   final DateTime selectedMonth;
   final bool isLoading;
   final bool isPreview;
@@ -1919,6 +1922,9 @@ class StudentBillState {
 
   const StudentBillState({
     this.bill,
+    this.student,
+    this.mess,
+    this.plan,
     required this.selectedMonth,
     this.isLoading = true,
     this.isPreview = false,
@@ -1929,6 +1935,9 @@ class StudentBillState {
 
   StudentBillState copyWith({
     BillModel? bill,
+    StudentModel? student,
+    MessModel? mess,
+    MealPlanModel? plan,
     DateTime? selectedMonth,
     bool? isLoading,
     bool? isPreview,
@@ -1937,6 +1946,9 @@ class StudentBillState {
     int? mealsPerDay,
   }) => StudentBillState(
     bill: bill ?? this.bill,
+    student: student ?? this.student,
+    mess: mess ?? this.mess,
+    plan: plan ?? this.plan,
     selectedMonth: selectedMonth ?? this.selectedMonth,
     isLoading: isLoading ?? this.isLoading,
     isPreview: isPreview ?? this.isPreview,
@@ -1969,12 +1981,14 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
         double postPaymentSkips = 0.0;
         BillModel effectiveBill = bill;
         int allowedMeals = 3;
+        StudentModel? student;
+        MessModel? mess;
+        MealPlanModel? plan;
         try {
-          final student = await _service.getStudentById(studentId);
+          student = await _service.getStudentById(studentId);
           if (student != null) {
-            final mess = await _service.getMessById(student.messId);
+            mess = await _service.getMessById(student.messId);
             if (mess != null) {
-              MealPlanModel? plan;
               if (student.assignedPlanId != null &&
                   student.assignedPlanId!.isNotEmpty) {
                 plan = await _service.getMealPlanById(
@@ -2017,6 +2031,9 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
         }
         state = state.copyWith(
           bill: effectiveBill,
+          student: student,
+          mess: mess,
+          plan: plan,
           isPreview: false,
           isLoading: false,
           postPaymentSkipsAmount: postPaymentSkips,
@@ -2083,6 +2100,9 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
 
         state = state.copyWith(
           bill: previewBill,
+          student: student,
+          mess: mess,
+          plan: plan,
           isPreview: true,
           isLoading: false,
           mealsPerDay: allowedMeals > 0 ? allowedMeals : 3,
