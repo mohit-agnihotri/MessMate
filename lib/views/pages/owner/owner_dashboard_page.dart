@@ -6,7 +6,6 @@ import 'owner_student_management_page.dart';
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 import 'owner_absentee_tracker_page.dart';
-import 'widgets/owner_launch_partner_sheet.dart';
 import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
 import 'widgets/manage_closed_slots_sheet.dart';
@@ -359,104 +358,69 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
-  // ── VIP Pill + Global Search Row ──
+  // ── Global Search Bar (VIP Badge Removed for Clean Hierarchy) ──
   Widget _buildVipAndSearchRow(
     BuildContext context,
     WidgetRef ref,
     OwnerDashboardState state,
   ) {
-    return Row(
-      children: [
-        // VIP Pill
-        GestureDetector(
-          onTap: () {
-            if (state.mess != null) {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-                builder: (_) => OwnerLaunchPartnerSheet(mess: state.mess!),
-              );
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: OwnerColors.walnut,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x18000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.star_rounded, size: 14, color: OwnerColors.amber),
-                const SizedBox(width: 5),
-                Text(
-                  'VIP · 180 days free',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: OwnerColors.amber,
-                  ),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: () {
+        showSearch(
+          context: context,
+          delegate: OwnerGlobalSearchDelegate(
+            students: state.activeStudentsList,
+            ref: ref,
           ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        decoration: BoxDecoration(
+          color: OwnerColors.cardPure,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: OwnerColors.cardBorder),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-
-        // Search Student or Dish Field
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              showSearch(
-                context: context,
-                delegate: OwnerGlobalSearchDelegate(
-                  students: state.activeStudentsList,
-                  ref: ref,
+        child: Row(
+          children: [
+            const Icon(Icons.search_rounded, size: 18, color: OwnerColors.textMuted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Search student by name, phone or room...',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: OwnerColors.textMuted,
+                  fontWeight: FontWeight.w500,
                 ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
               decoration: BoxDecoration(
-                color: OwnerColors.cardPure,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: OwnerColors.cardBorder),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x06000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+                color: const Color(0xFFF3EEE6),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search_rounded, size: 17, color: OwnerColors.textMuted),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Search student or dish...',
-                      style: GoogleFonts.inter(
-                        fontSize: 12.5,
-                        color: OwnerColors.textMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Search',
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: OwnerColors.textMuted,
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -577,32 +541,56 @@ class OwnerDashboardPage extends ConsumerWidget {
                         ),
                       ),
 
-                      // Circle thumbnail for slot image
+                      // Stylized circular slot badge
                       Container(
-                        width: 58,
-                        height: 58,
+                        width: 54,
+                        height: 54,
                         decoration: BoxDecoration(
-                          color: OwnerColors.walnutSurface,
                           shape: BoxShape.circle,
+                          color: OwnerColors.walnutSurface,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: OwnerColors.amber.withValues(alpha: 0.35),
                             width: 1.5,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: Image.asset(
-                          slotAsset,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: Text(
-                              'your $slotName\nimage',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                fontSize: 9,
-                                color: Colors.white70,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(
+                              slotAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Icon(
+                                  slot == 'morning'
+                                      ? Icons.wb_twilight_rounded
+                                      : (slot == 'noon'
+                                          ? Icons.wb_sunny_rounded
+                                          : Icons.nightlight_round),
+                                  color: OwnerColors.amber,
+                                  size: 24,
+                                ),
                               ),
                             ),
-                          ),
+                            // Subtle luxury vignette tint
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: RadialGradient(
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.3),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -628,7 +616,7 @@ class OwnerDashboardPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'diner expected',
+                              '${state.expectedHeadcount == 1 ? "diner" : "diners"} expected',
                               style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -651,11 +639,11 @@ class OwnerDashboardPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Menu status / dishes description
+                  // Menu status / dishes description (Dynamic slot name)
                   Text(
                     isExplicitlyPosted
                         ? dishes.map((d) => d.name).join(' • ')
-                        : 'Tonight\'s menu isn\'t posted. Students see your standard menu.',
+                        : '$slotName\'s menu isn\'t posted. Students see your standard menu.',
                     style: GoogleFonts.inter(
                       fontSize: 12.5,
                       color: Colors.white.withValues(alpha: 0.85),
@@ -810,6 +798,28 @@ class OwnerDashboardPage extends ConsumerWidget {
                       ),
                     ],
                   ),
+                )
+              else
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: OwnerColors.sage,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Live Schedule',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: OwnerColors.sageText,
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),
@@ -985,18 +995,28 @@ class OwnerDashboardPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'ANNOUNCE',
-                    style: OwnerTypography.overline(
-                      fontSize: 10.5,
-                      color: OwnerColors.textOverline,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'ANNOUNCE',
+                        style: OwnerTypography.overline(
+                          fontSize: 10.5,
+                          color: OwnerColors.textOverline,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.campaign_rounded,
+                        size: 16,
+                        color: OwnerColors.textMuted,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
-                    'Message all students',
+                    'Broadcast notice',
                     style: GoogleFonts.inter(
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: OwnerColors.textDark,
                     ),
@@ -1025,18 +1045,28 @@ class OwnerDashboardPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'JOIN',
-                    style: OwnerTypography.overline(
-                      fontSize: 10.5,
-                      color: OwnerColors.textOverline,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'JOIN',
+                        style: OwnerTypography.overline(
+                          fontSize: 10.5,
+                          color: OwnerColors.textOverline,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.person_add_rounded,
+                        size: 16,
+                        color: OwnerColors.textMuted,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     'Invite a student',
                     style: GoogleFonts.inter(
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: OwnerColors.textDark,
                     ),
@@ -1091,7 +1121,7 @@ class OwnerDashboardPage extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
 
-          // Numbers Row
+          // Numbers Row (Equal-width interactive slot badges)
           Row(
             children: [
               _buildAbsentNumber(
@@ -1104,7 +1134,7 @@ class OwnerDashboardPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildAbsentNumber(
                 count: '${state.noonAbsents}',
                 slotName: 'Noon',
@@ -1115,7 +1145,7 @@ class OwnerDashboardPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildAbsentNumber(
                 count: '${state.nightAbsents}',
                 slotName: 'Night',
@@ -1138,30 +1168,43 @@ class OwnerDashboardPage extends ConsumerWidget {
     required String slotName,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(
-            count,
-            style: OwnerTypography.serifNumeral(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: OwnerColors.textDark,
+    final hasAbsents = (int.tryParse(count) ?? 0) > 0;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: hasAbsents ? const Color(0xFFFBF4ED) : const Color(0xFFF9F6F0),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasAbsents ? const Color(0xFFEEDBCB) : const Color(0xFFECE4D9),
+              width: 0.9,
             ),
           ),
-          const SizedBox(width: 6),
-          Text(
-            slotName,
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: OwnerColors.textMuted,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                count,
+                style: OwnerTypography.serifNumeral(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: hasAbsents ? const Color(0xFFBD5D38) : OwnerColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                slotName,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: hasAbsents ? const Color(0xFF8D5B4C) : OwnerColors.textMuted,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -2085,7 +2128,9 @@ class OwnerDashboardPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${isProfitable ? '+' : ''}₹${inHandProfit.toInt()}',
+                      inHandProfit < 0
+                          ? '-₹${inHandProfit.abs().toInt()}'
+                          : (inHandProfit > 0 ? '+₹${inHandProfit.toInt()}' : '₹0'),
                       style: GoogleFonts.newsreader(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
@@ -2103,22 +2148,23 @@ class OwnerDashboardPage extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             height: 44,
-            child: ElevatedButton.icon(
+            child: OutlinedButton.icon(
               onPressed: () => AddExpenseSheet.show(context),
-              icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFF2E2218)),
+              icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFF4E342E)),
               label: Text(
                 'Log today\'s kharcha',
                 style: GoogleFonts.inter(
                   fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF2E2218),
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF3E2723),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEAA23E),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xFFFAF6F0),
+                side: const BorderSide(color: Color(0xFFE5DDD0), width: 1.2),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
