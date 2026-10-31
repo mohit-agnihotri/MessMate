@@ -94,7 +94,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             context,
             MaterialPageRoute(builder: (_) => const StudentMainPage()),
           );
-        } else if (student.status == 'left' || student.messId.isEmpty) {
+        } else if (student.status == 'left' || student.status == 'removed' || student.messId.isEmpty) {
+          if (student.status == 'removed' || student.isDeletedByOwner) {
+            try {
+              await service.updateStudent(student.copyWith(
+                isDeletedByOwner: false,
+                status: 'left',
+                messId: '',
+              ));
+            } catch (_) {}
+          }
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const StudentSetupPage()),

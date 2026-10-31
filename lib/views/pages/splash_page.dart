@@ -124,7 +124,14 @@ class _SplashPageState extends ConsumerState<SplashPage>
             .timeout(const Duration(milliseconds: 4500), onTimeout: () => null);
 
         if (student != null && mounted && !_hasNavigated) {
-          if (student.status == 'removed') {
+          if (student.status == 'removed' || student.isDeletedByOwner) {
+            try {
+              await service.updateStudent(student.copyWith(
+                isDeletedByOwner: false,
+                status: 'left',
+                messId: '',
+              ));
+            } catch (_) {}
             await ref.read(authProvider.notifier).signOut();
             _navigateTo(const LoginPage(removalNotice: true));
             return;

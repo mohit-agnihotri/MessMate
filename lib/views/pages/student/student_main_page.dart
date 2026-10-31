@@ -54,7 +54,8 @@ class _StudentMainPageState extends ConsumerState<StudentMainPage> {
         final bool isDocDeleted = !snap.exists;
         final bool isMarkedRemoved = data != null && (
           data['isDeletedByOwner'] == true ||
-          data['status'] == 'removed'
+          data['status'] == 'removed' ||
+          (data['messId'] as String? ?? '').isEmpty
         );
 
         if (isDocDeleted || isMarkedRemoved) {
@@ -74,9 +75,13 @@ class _StudentMainPageState extends ConsumerState<StudentMainPage> {
     _studentDocSub = null;
 
     try {
-      // 1. Delete student doc from student side if it still exists
+      // 1. Acknowledge eviction: reset flag & set status 'left' to prevent infinite logout loop on re-login
       try {
-        await FirebaseFirestore.instance.collection('students').doc(uid).delete();
+        await FirebaseFirestore.instance.collection('students').doc(uid).update({
+          'isDeletedByOwner': false,
+          'status': 'left',
+          'messId': '',
+        });
       } catch (_) {}
 
       // 2. Clear Riverpod auth and sign out of Firebase & Google

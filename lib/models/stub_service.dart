@@ -255,7 +255,14 @@ class StubService implements AppService {
   Future<void> rejectStudent(String messId, String studentId) async {}
   @override
   Future<void> removeStudentFromMess(String messId, String studentId) async {
-    _students.removeWhere((s) => s.studentId == studentId);
+    final idx = _students.indexWhere((s) => s.studentId == studentId);
+    if (idx != -1) {
+      _students[idx] = _students[idx].copyWith(
+        status: 'removed',
+        messId: '',
+        isDeletedByOwner: true,
+      );
+    }
   }
   @override
   Future<StudentModel?> getStudentById(String studentId) async =>

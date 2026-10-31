@@ -120,6 +120,13 @@ class _StudentPendingApprovalPageState
 
       if (isDeletedByOwner || status == 'removed') {
         _subscription?.cancel();
+        try {
+          FirebaseFirestore.instance.collection('students').doc(user.uid).update({
+            'isDeletedByOwner': false,
+            'status': 'left',
+            'messId': '',
+          });
+        } catch (_) {}
         ref.read(authProvider.notifier).signOut().then((_) {
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(

@@ -245,6 +245,7 @@ class StudentModel {
   final DateTime? planEffectiveFrom;
   final String dietaryPreference; // 'veg', 'non_veg', 'eggetarian'
   final String? emergencyContact;
+  final bool isDeletedByOwner;
 
   static const Map<String, bool> _defaultNotifPrefs = {
     'menuPublished': true,
@@ -274,6 +275,7 @@ class StudentModel {
     this.planEffectiveFrom,
     this.dietaryPreference = 'veg',
     this.emergencyContact,
+    this.isDeletedByOwner = false,
   });
 
   StudentModel copyWith({
@@ -297,6 +299,7 @@ class StudentModel {
     DateTime? planEffectiveFrom,
     String? dietaryPreference,
     String? emergencyContact,
+    bool? isDeletedByOwner,
   }) {
     return StudentModel(
       studentId: studentId ?? this.studentId,
@@ -320,6 +323,7 @@ class StudentModel {
       planEffectiveFrom: planEffectiveFrom ?? this.planEffectiveFrom,
       dietaryPreference: dietaryPreference ?? this.dietaryPreference,
       emergencyContact: emergencyContact ?? this.emergencyContact,
+      isDeletedByOwner: isDeletedByOwner ?? this.isDeletedByOwner,
     );
   }
 
@@ -368,6 +372,7 @@ class StudentModel {
           : null,
       dietaryPreference: map['dietaryPreference'] ?? 'veg',
       emergencyContact: map['emergencyContact'],
+      isDeletedByOwner: map['isDeletedByOwner'] == true,
     );
   }
 
@@ -396,6 +401,7 @@ class StudentModel {
         'planEffectiveFrom': planEffectiveFrom!.toIso8601String(),
       'dietaryPreference': dietaryPreference,
       if (emergencyContact != null) 'emergencyContact': emergencyContact,
+      if (isDeletedByOwner) 'isDeletedByOwner': true,
     };
   }
 }
