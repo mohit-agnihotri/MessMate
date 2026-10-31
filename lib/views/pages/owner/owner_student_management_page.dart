@@ -51,6 +51,7 @@ class _OwnerStudentManagementPageState
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Map<String, Future<Map<String, dynamic>>> _billingDataCache = {};
+  bool get isHi => ref.read(localizationProvider) == 'hi';
 
   @override
   void initState() {
@@ -547,6 +548,7 @@ class _OwnerStudentManagementPageState
   Widget _buildStudentCard(BuildContext context, StudentModel student) {
     final isPending = student.status == 'pending';
     final isActive = student.status == 'active' || student.status == 'approved';
+    final isHi = ref.watch(localizationProvider) == 'hi';
 
     final joined =
         '${_getMonthName(student.joinDate.month)} ${student.joinDate.day}, ${student.joinDate.year}';
