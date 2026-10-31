@@ -20,7 +20,8 @@ import 'widgets/mess_account_chooser_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   final AuthRole? initialRole;
-  const LoginPage({super.key, this.initialRole});
+  final bool removalNotice;
+  const LoginPage({super.key, this.initialRole, this.removalNotice = false});
 
   @override
   ConsumerState<LoginPage> createState() => _LoginPageState();
@@ -304,7 +305,51 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ],
                     ),
 
-                    SizedBox(height: screenHeight * 0.09),
+                    if (widget.removalNotice) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              color: Color(0xFFFCA5A5),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isHindi
+                                    ? 'आपको मेस संचालक द्वारा मेस से हटा दिया गया है। कृपया पुनः साइन इन करें।'
+                                    : 'You have been removed from the mess by the owner. Please sign in again.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFFAF8F3),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    SizedBox(
+                      height: widget.removalNotice
+                          ? screenHeight * 0.04
+                          : screenHeight * 0.09,
+                    ),
 
                     // Logo: Concept 05 Mezzo Logo (5-tap admin stealth gate)
                     GestureDetector(

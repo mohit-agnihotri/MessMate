@@ -22,6 +22,7 @@ abstract class AppService {
   Future<List<StudentModel>> getPendingRequests(String messId);
   Future<void> acceptStudent(String messId, String studentId, [String? planId]);
   Future<void> rejectStudent(String messId, String studentId);
+  Future<void> removeStudentFromMess(String messId, String studentId);
   Future<StudentModel?> getStudentById(String studentId);
   Future<void> updateStudent(StudentModel student);
 

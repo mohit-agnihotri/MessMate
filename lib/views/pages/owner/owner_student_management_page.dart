@@ -665,9 +665,7 @@ class _OwnerStudentManagementPageState
                   const SizedBox(width: 6),
                   // Reject button
                   GestureDetector(
-                    onTap: () => ref
-                        .read(ownerStudentsProvider.notifier)
-                        .reject(student.studentId),
+                    onTap: () => _showDeleteConfirmationDialog(context, student),
                     child: Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
@@ -704,16 +702,195 @@ class _OwnerStudentManagementPageState
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: OwnerColors.walnutMuted,
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  size: 20,
+                  color: OwnerColors.walnutMuted,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                color: OwnerColors.surfaceLight,
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: OwnerColors.borderSubtle),
+                ),
+                onSelected: (val) {
+                  if (val == 'details') {
+                    showStudentDetailsModal(context, ref, student, joined);
+                  } else if (val == 'remove') {
+                    _showDeleteConfirmationDialog(context, student);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'details',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          size: 18,
+                          color: OwnerColors.walnutDark,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          isHi ? 'विवरण देखें' : 'View Details',
+                          style: OwnerTypography.regular(
+                            size: 13,
+                            color: OwnerColors.walnutDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.person_remove_rounded,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          isHi ? 'डाइनर हटाएं' : 'Remove Diner',
+                          style: OwnerTypography.bold(
+                            size: 13,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  // ─── Delete Confirmation Dialog ─────────────────────────────────────────────
+  Future<void> _showDeleteConfirmationDialog(
+    BuildContext context,
+    StudentModel student,
+  ) async {
+    final isHi = ref.read(localizationProvider) == 'hi';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: OwnerColors.canvasWarm,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: OwnerColors.borderSubtle),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_remove_rounded,
+                  color: Colors.red,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isHi ? 'डाइनर हटाएं?' : 'Remove Diner?',
+                  style: OwnerTypography.editorialSerif(
+                    size: 20,
+                    weight: FontWeight.w700,
+                    color: OwnerColors.walnutDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            isHi
+                ? 'क्या आप वाकई ${student.name} को मेस से हटाना चाहते हैं? उनका सत्र तुरंत समाप्त हो जाएगा और वे इस मेस के हेडकाउंट से हटा दिए जाएंगे।'
+                : 'Are you sure you want to remove ${student.name} from your mess? Their session will end immediately and they will be unlinked from your headcount.',
+            style: OwnerTypography.regular(
+              size: 13,
+              color: OwnerColors.textSecondary,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: Text(
+                isHi ? 'रद्द करें' : 'Cancel',
+                style: OwnerTypography.bold(
+                  size: 13,
+                  color: OwnerColors.walnutMuted,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: Text(
+                isHi ? 'हटाएं' : 'Remove Diner',
+                style: OwnerTypography.bold(
+                  size: 13,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref
+            .read(ownerStudentsProvider.notifier)
+            .removeStudent(student.studentId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isHi
+                    ? '${student.name} को मेस से हटा दिया गया है'
+                    : '${student.name} has been removed from the mess',
+              ),
+              backgroundColor: OwnerColors.walnutDark,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to remove diner: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   // ─── Empty State ───────────────────────────────────────────────────────────
@@ -1021,6 +1198,13 @@ class _OwnerStudentManagementPageState
                                       ref,
                                       student,
                                     ),
+                                    const SizedBox(height: 28),
+
+                                    // Danger Zone - Remove Diner
+                                    _buildDangerZoneSection(
+                                      context,
+                                      student,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1036,6 +1220,88 @@ class _OwnerStudentManagementPageState
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDangerZoneSection(
+    BuildContext context,
+    StudentModel student,
+  ) {
+    final isHi = ref.read(localizationProvider) == 'hi';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFFCA5A5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isHi ? 'डाइनर प्रबंधन (खतरा क्षेत्र)' : 'Danger Zone',
+                style: OwnerTypography.bold(
+                  size: 14,
+                  color: const Color(0xFF991B1B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isHi
+                ? '${student.name} को अपनी मेस से हटाएं। उनका सत्र तुरंत समाप्त हो जाएगा और वे इस मेस के हेडकाउंट से हटा दिए जाएंगे।'
+                : 'Remove ${student.name} from your mess. Their session will end immediately and they will be unlinked from your headcount.',
+            style: OwnerTypography.regular(
+              size: 12,
+              color: const Color(0xFF7F1D1D).withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.person_remove_rounded, size: 18),
+              label: Text(
+                isHi ? 'मेस से विद्यार्थी हटाएं' : 'Remove Diner from Mess',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              onPressed: () {
+                Navigator.pop(context); // Close details modal first
+                _showDeleteConfirmationDialog(context, student);
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 

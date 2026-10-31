@@ -124,6 +124,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
             .timeout(const Duration(milliseconds: 4500), onTimeout: () => null);
 
         if (student != null && mounted && !_hasNavigated) {
+          if (student.status == 'removed') {
+            await ref.read(authProvider.notifier).signOut();
+            _navigateTo(const LoginPage(removalNotice: true));
+            return;
+          }
           ref.read(authProvider.notifier).setRole(AuthRole.student);
           if (student.status == 'active' || student.status == 'approved') {
             _navigateTo(const StudentMainPage());

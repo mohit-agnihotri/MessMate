@@ -254,6 +254,10 @@ class StubService implements AppService {
   @override
   Future<void> rejectStudent(String messId, String studentId) async {}
   @override
+  Future<void> removeStudentFromMess(String messId, String studentId) async {
+    _students.removeWhere((s) => s.studentId == studentId);
+  }
+  @override
   Future<StudentModel?> getStudentById(String studentId) async =>
       _students.first;
   @override

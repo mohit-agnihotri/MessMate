@@ -185,8 +185,12 @@ service cloud.firestore {
           )
         )
       );
-      // Allow student to delete their own account under DPDP Act / GDPR, or Admin
-      allow delete: if isAuthenticated() && (request.auth.uid == studentId || isAdmin());
+      // Allow student to delete their own account under DPDP Act / GDPR, or Owner of their mess, or Admin
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == studentId || 
+        (resource != null && isMessOwner(resource.data.messId)) ||
+        isAdmin()
+      );
     }
 
     // ─── Menus ────────────────────────────────────────────────────────

@@ -99,9 +99,39 @@ class _StudentPendingApprovalPageState
         .doc(user.uid)
         .snapshots()
         .listen((snap) {
-      if (!snap.exists || snap.data() == null) return;
+      if (!snap.exists || snap.data() == null) {
+        // Document was deleted by owner
+        _subscription?.cancel();
+        ref.read(authProvider.notifier).signOut().then((_) {
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const LoginPage(removalNotice: true),
+              ),
+              (route) => false,
+            );
+          }
+        });
+        return;
+      }
       final data = snap.data()!;
       final status = data['status'] as String? ?? 'pending';
+      final isDeletedByOwner = data['isDeletedByOwner'] == true;
+
+      if (isDeletedByOwner || status == 'removed') {
+        _subscription?.cancel();
+        ref.read(authProvider.notifier).signOut().then((_) {
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const LoginPage(removalNotice: true),
+              ),
+              (route) => false,
+            );
+          }
+        });
+        return;
+      }
 
       if ((status == 'active' || status == 'approved') && mounted) {
         _subscription?.cancel();

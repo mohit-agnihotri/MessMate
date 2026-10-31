@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../viewmodels/all_viewmodels.dart';
 
+import '../auth/login_page.dart';
 import 'theme/student_inspired_theme.dart';
 import 'student_home_page.dart';
 import 'student_history_page.dart';
@@ -20,6 +24,8 @@ class StudentMainPage extends ConsumerStatefulWidget {
 
 class _StudentMainPageState extends ConsumerState<StudentMainPage> {
   int _currentIndex = 0;
+  StreamSubscription? _studentDocSub;
+  bool _isEvicting = false;
 
   @override
   void initState() {
@@ -29,6 +35,71 @@ class _StudentMainPageState extends ConsumerState<StudentMainPage> {
         AppUpdateDialog.checkAndShow(context, ref);
       }
     });
+    _startEvictionListener();
+  }
+
+  void _startEvictionListener() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    _studentDocSub?.cancel();
+    _studentDocSub = FirebaseFirestore.instance
+        .collection('students')
+        .doc(uid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (!mounted || _isEvicting) return;
+        final data = snap.data();
+        final bool isDocDeleted = !snap.exists;
+        final bool isMarkedRemoved = data != null && (
+          data['isDeletedByOwner'] == true ||
+          data['status'] == 'removed'
+        );
+
+        if (isDocDeleted || isMarkedRemoved) {
+          _evictStudentAndRedirect(uid);
+        }
+      },
+      onError: (e) {
+        debugPrint('[StudentMainPage] Error in student eviction listener: $e');
+      },
+    );
+  }
+
+  Future<void> _evictStudentAndRedirect(String uid) async {
+    if (_isEvicting) return;
+    _isEvicting = true;
+    _studentDocSub?.cancel();
+    _studentDocSub = null;
+
+    try {
+      // 1. Delete student doc from student side if it still exists
+      try {
+        await FirebaseFirestore.instance.collection('students').doc(uid).delete();
+      } catch (_) {}
+
+      // 2. Clear Riverpod auth and sign out of Firebase & Google
+      await ref.read(authProvider.notifier).signOut();
+    } catch (e) {
+      debugPrint('[StudentMainPage] Error during eviction signout: $e');
+    }
+
+    if (!mounted) return;
+
+    // 3. Smoothly navigate to LoginPage with removal notice without crashing
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const LoginPage(removalNotice: true),
+      ),
+      (route) => false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _studentDocSub?.cancel();
+    super.dispose();
   }
 
   final List<Widget> _pages = const [

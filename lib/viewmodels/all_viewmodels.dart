@@ -752,6 +752,18 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
     }
   }
 
+  Future<void> removeStudent(String studentId) async {
+    final mess = await _service.getMessByOwnerId(ownerId);
+    if (mess != null) {
+      // Optimistic update: instantly remove diner from lists
+      state = state.copyWith(
+        students: state.students.where((s) => s.studentId != studentId).toList(),
+        pending: state.pending.where((s) => s.studentId != studentId).toList(),
+      );
+      await _service.removeStudentFromMess(mess.messId, studentId);
+    }
+  }
+
   @override
   void dispose() {
     _studentsSub?.cancel();

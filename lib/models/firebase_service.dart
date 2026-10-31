@@ -214,6 +214,78 @@ class FirebaseService implements AppService {
   }
 
   @override
+  Future<void> removeStudentFromMess(String messId, String studentId) async {
+    // 1. Mark student document as removed & detach from mess
+    try {
+      await _db.collection('students').doc(studentId).update({
+        'status': 'removed',
+        'messId': '',
+        'assignedPlanId': FieldValue.delete(),
+        'isDeletedByOwner': true,
+        'removedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('[FirebaseService] Error updating student status to removed: $e');
+    }
+
+    // 2. Hard delete student doc if permitted
+    try {
+      await _db.collection('students').doc(studentId).delete();
+    } catch (e) {
+      debugPrint('[FirebaseService] Error deleting student doc: $e');
+    }
+
+    // 3. Clean up student meal records for this mess
+    try {
+      await _deleteQueryBatch(
+        _db
+            .collection('meal_records')
+            .where('messId', isEqualTo: messId)
+            .where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error cleaning up student meal records: $e');
+    }
+
+    // 4. Clean up student leaves for this mess
+    try {
+      await _deleteQueryBatch(
+        _db
+            .collection('leaves')
+            .where('messId', isEqualTo: messId)
+            .where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error cleaning up student leaves: $e');
+    }
+
+    // 5. Clean up student extra fees for this mess
+    try {
+      await _deleteQueryBatch(
+        _db
+            .collection('messes')
+            .doc(messId)
+            .collection('extra_fees')
+            .where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error cleaning up student extra fees: $e');
+    }
+
+    // 6. Clean up student bills for this mess
+    try {
+      await _deleteQueryBatch(
+        _db
+            .collection('bills')
+            .where('messId', isEqualTo: messId)
+            .where('studentId', isEqualTo: studentId),
+      );
+    } catch (e) {
+      debugPrint('[FirebaseService] Error cleaning up student bills: $e');
+    }
+  }
+
+  @override
   Future<StudentModel?> getStudentById(String studentId) async {
     final doc = await _db.collection('students').doc(studentId).get();
     if (!doc.exists) return null;
