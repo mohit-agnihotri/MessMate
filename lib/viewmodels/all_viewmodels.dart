@@ -2675,3 +2675,11 @@ final ownerExpenseLedgerProvider = StateNotifierProvider.autoDispose<
   return OwnerExpenseLedgerViewModel(ref.read(appServiceProvider), messId);
 });
 
+// ─── Active Dish Battle Provider (Live Polls) ─────────────────────────────────
+final activeDishBattleProvider =
+    StreamProvider.autoDispose.family<DishBattleModel?, String>((ref, messId) {
+  if (messId.isEmpty) return Stream.value(null);
+  return ref.watch(appServiceProvider).streamActiveDishBattle(messId);
+});
+
+

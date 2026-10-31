@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../models/app_models.dart';
 import '../../../viewmodels/all_viewmodels.dart';
@@ -156,6 +158,19 @@ class StudentHomePage extends ConsumerWidget {
                   child: _buildCurrentMealCard(context, ref, state),
                 ),
               ),
+
+              // ── Diner Food Battle / Live Voting Poll ──
+              if (state.student?.messId != null &&
+                  state.student!.messId.isNotEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _StudentDishBattleLiveCard(
+                      messId: state.student!.messId,
+                      studentId: state.student!.studentId,
+                    ),
+                  ),
+                ),
 
               // ── Quick Info Action Cards (My Mess Menu & My Rating) ──
               if (state.mess != null)
@@ -3056,3 +3071,350 @@ class _ChoiceGroupsSection extends ConsumerWidget {
     );
   }
 }
+
+// ── Diner Food Battle / Live Poll Card (WhatsApp Poll Style) ───────────────
+class _StudentDishBattleLiveCard extends ConsumerStatefulWidget {
+  final String messId;
+  final String studentId;
+
+  const _StudentDishBattleLiveCard({
+    required this.messId,
+    required this.studentId,
+  });
+
+  @override
+  ConsumerState<_StudentDishBattleLiveCard> createState() =>
+      _StudentDishBattleLiveCardState();
+}
+
+class _StudentDishBattleLiveCardState
+    extends ConsumerState<_StudentDishBattleLiveCard> {
+  String? _selectedOptionId;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocalSelection();
+  }
+
+  Future<void> _loadLocalSelection() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'student_dish_vote_${widget.messId}';
+      final cached = prefs.getString(key);
+      if (mounted && cached != null && cached.isNotEmpty && _selectedOptionId == null) {
+        setState(() => _selectedOptionId = cached);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleVote(
+    DishBattleModel battle,
+    String optionId,
+    String effectiveStudentId,
+  ) async {
+    if (_isSubmitting) return;
+
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedOptionId = optionId;
+      _isSubmitting = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'student_dish_vote_${widget.messId}',
+        optionId,
+      );
+    } catch (_) {}
+
+    try {
+      await ref.read(appServiceProvider).voteDishBattle(
+            messId: widget.messId,
+            battleId: battle.battleId,
+            studentId: effectiveStudentId,
+            optionId: optionId,
+          );
+    } catch (e) {
+      debugPrint('Error voting dish: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final battleAsync = ref.watch(activeDishBattleProvider(widget.messId));
+
+    return battleAsync.when(
+      data: (battle) {
+        if (battle == null || battle.isClosed) return const SizedBox.shrink();
+
+        final now = DateTime.now();
+        if (now.isAfter(battle.closesAt)) return const SizedBox.shrink();
+
+        final remaining = battle.closesAt.difference(now);
+        final hours = remaining.inHours;
+        final mins = remaining.inMinutes % 60;
+        final timeString = hours > 0 ? '${hours}h ${mins}m left' : '${mins}m left';
+
+        final effectiveStudentId = widget.studentId.isNotEmpty
+            ? widget.studentId
+            : (FirebaseAuth.instance.currentUser?.uid ?? '');
+
+        final serverVote = battle.getStudentVote(effectiveStudentId);
+        if (serverVote != null &&
+            serverVote.isNotEmpty &&
+            _selectedOptionId != serverVote &&
+            !_isSubmitting) {
+          _selectedOptionId = serverVote;
+        }
+
+        final currentSelected = _selectedOptionId ?? serverVote;
+
+        int totalVotes = battle.totalVotes;
+        if (totalVotes == 0) {
+          totalVotes = battle.options.fold<int>(0, (sum, o) => sum + o.votes);
+        }
+
+        String slotLabel;
+        switch (battle.targetSlot.toLowerCase()) {
+          case 'morning':
+            slotLabel = 'Breakfast';
+            break;
+          case 'noon':
+            slotLabel = 'Lunch';
+            break;
+          case 'night':
+            slotLabel = 'Dinner';
+            break;
+          default:
+            slotLabel = battle.targetSlot;
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFFE8DFD3),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Bar: Slot + Live countdown pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5EDE3),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$slotLabel Poll',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF4A6B4A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1B8755),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        timeString,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1B8755),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Title
+              Text(
+                battle.title,
+                style: GoogleFonts.newsreader(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: StudentColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Select one option · most voted dish gets cooked',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: StudentColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(color: Color(0xFFEFE8DE), height: 1),
+              const SizedBox(height: 6),
+
+              // WhatsApp Poll Style Option Rows
+              for (int i = 0; i < battle.options.length; i++) ...[
+                Builder(builder: (ctx) {
+                  final opt = battle.options[i];
+                  final isSelected = currentSelected == opt.id;
+                  final pct = totalVotes > 0 ? (opt.votes / totalVotes) : 0.0;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _handleVote(battle, opt.id, effectiveStudentId),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // WhatsApp Poll Circular Radio Checkbox
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF1B8755) : Colors.transparent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? const Color(0xFF1B8755)
+                                    : const Color(0xFFC7BCB3),
+                                width: isSelected ? 2 : 1.8,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 14),
+
+                          // Dish Title & Smooth Progress Bar
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        opt.name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.5,
+                                          fontWeight:
+                                              isSelected ? FontWeight.w700 : FontWeight.w600,
+                                          color: StudentColors.textDark,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${opt.votes}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? const Color(0xFF1B8755)
+                                            : const Color(0xFF7A7067),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 6,
+                                    backgroundColor: const Color(0xFFEDE5D8),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isSelected
+                                          ? const Color(0xFF1B8755)
+                                          : const Color(0xFF5B9E78),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+
+              const SizedBox(height: 10),
+              const Divider(color: Color(0xFFEFE8DE), height: 1),
+              const SizedBox(height: 8),
+
+              // Bottom View votes / footer
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '$totalVotes votes so far',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: StudentColors.textMuted,
+                    ),
+                  ),
+                  Text(
+                    currentSelected != null ? 'Tap another to switch' : 'Tap to cast vote',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1B8755),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, st) => const SizedBox.shrink(),
+    );
+  }
+}
+

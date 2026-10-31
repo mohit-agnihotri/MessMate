@@ -168,4 +168,17 @@ abstract class AppService {
   // ACCOUNT DELETION (DPDP & Play Store Compliance)
   Future<void> deleteStudentAccount(String studentId);
   Future<void> deleteOwnerAccount(String ownerId, String messId);
+
+  // DISH BATTLES / LIVE VOTING
+  Future<void> createDishBattle(DishBattleModel battle);
+  Stream<DishBattleModel?> streamActiveDishBattle(String messId);
+  Future<DishBattleModel?> getActiveDishBattle(String messId);
+  Future<void> voteDishBattle({
+    required String messId,
+    required String battleId,
+    required String studentId,
+    required String optionId,
+  });
+  Future<void> closeDishBattle(String messId, String battleId, [String? winningDish]);
+  Future<void> extendDishBattle(String messId, String battleId, Duration extension);
 }

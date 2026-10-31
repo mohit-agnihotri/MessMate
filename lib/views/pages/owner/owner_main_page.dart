@@ -10,7 +10,7 @@ import 'owner_student_management_page.dart';
 import 'owner_settings_page.dart';
 import 'owner_analytics_page.dart';
 import 'widgets/owner_drawer.dart';
-import 'widgets/post_today_meal_sheet.dart';
+import 'widgets/dish_battle_sheet.dart';
 import 'widgets/owner_set_location_sheet.dart';
 import 'theme/owner_inspired_theme.dart';
 import '../../../viewmodels/all_viewmodels.dart';
@@ -200,36 +200,63 @@ class _OwnerMainPageState extends ConsumerState<OwnerMainPage> {
   }
 
   Widget _buildCenterPlusButton(BuildContext context) {
+    final mess = ref.watch(ownerDashboardProvider).mess;
+    final activeBattle = mess != null
+        ? ref.watch(activeDishBattleProvider(mess.messId)).asData?.value
+        : null;
+    final isLive = activeBattle != null &&
+        !activeBattle.isClosed &&
+        activeBattle.closesAt.isAfter(DateTime.now());
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
         HapticFeedback.mediumImpact();
-        final mess = ref.read(ownerDashboardProvider).mess;
         if (mess != null) {
-          PostTodayMealSheet.show(context, mess: mess);
+          DishBattleSheet.show(context, mess: mess);
         }
       },
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: OwnerColors.amber,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: OwnerColors.amber.withValues(alpha: 0.5),
-              blurRadius: 18,
-              spreadRadius: 2,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: Stack(
+        clipBehavior: Clip.none,
         alignment: Alignment.center,
-        child: const Icon(
-          Icons.add_rounded,
-          size: 28,
-          color: OwnerColors.textDark,
-        ),
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: OwnerColors.amber,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: OwnerColors.amber.withValues(alpha: 0.5),
+                  blurRadius: 18,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.how_to_vote_rounded,
+              size: 26,
+              color: OwnerColors.textDark,
+            ),
+          ),
+          if (isLive)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC75D4D),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

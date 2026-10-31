@@ -51,15 +51,20 @@ service cloud.firestore {
            'subscriptionStatus', 'trialStartDate', 'trialExpiresAt', 'isFrozen', 
            'isVerified', 'rating', 'reviewCount', 'ownerId', 'messId'
          ])) ||
-        // Allow enrolled students to update aggregate rating & reviewCount when submitting a review
+        // Allow enrolled students to update aggregate rating & reviewCount when submitting a review, or vote on activeBattle
         (
           get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount']) &&
-          request.resource.data.rating is number &&
-          request.resource.data.rating >= 0 &&
-          request.resource.data.rating <= 5 &&
-          request.resource.data.reviewCount is number &&
-          request.resource.data.reviewCount >= 0
+          (
+            (
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount']) &&
+              request.resource.data.rating is number &&
+              request.resource.data.rating >= 0 &&
+              request.resource.data.rating <= 5 &&
+              request.resource.data.reviewCount is number &&
+              request.resource.data.reviewCount >= 0
+            ) ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeBattle'])
+          )
         )
       );
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
@@ -125,6 +130,15 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId;
         allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
         allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
+      }
+
+      match /dish_battles/{battleId} {
+        allow read: if true;
+        allow create, delete: if isMessOwner(messId) || isAdmin();
+        allow update: if isMessOwner(messId) || isAdmin() || (
+          isAuthenticated() &&
+          get(/databases/$(database)/documents/students/$(request.auth.uid)).data.messId == messId
+        );
       }
     }
 

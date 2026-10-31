@@ -655,4 +655,113 @@ class StubService implements AppService {
   Future<void> deleteOwnerAccount(String ownerId, String messId) async {
     // Stub implementation
   }
+
+  // DISH BATTLES / LIVE VOTING (Stub)
+  final List<DishBattleModel> _stubBattles = [];
+
+  @override
+  Future<void> createDishBattle(DishBattleModel battle) async {
+    _stubBattles.removeWhere((b) => b.messId == battle.messId && !b.isClosed);
+    _stubBattles.add(battle);
+  }
+
+  @override
+  Stream<DishBattleModel?> streamActiveDishBattle(String messId) {
+    try {
+      final active = _stubBattles.firstWhere((b) => b.messId == messId && !b.isClosed);
+      return Stream.value(active);
+    } catch (_) {
+      return Stream.value(null);
+    }
+  }
+
+  @override
+  Future<DishBattleModel?> getActiveDishBattle(String messId) async {
+    try {
+      return _stubBattles.firstWhere((b) => b.messId == messId && !b.isClosed);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> voteDishBattle({
+    required String messId,
+    required String battleId,
+    required String studentId,
+    required String optionId,
+  }) async {
+    final idx = _stubBattles.indexWhere((b) => b.battleId == battleId);
+    if (idx != -1) {
+      final battle = _stubBattles[idx];
+      final prevOpt = battle.voterSelections[studentId];
+      if (prevOpt == optionId) return;
+
+      final updatedOptions = battle.options.map((opt) {
+        int v = opt.votes;
+        if (opt.id == prevOpt) v = (v > 0) ? v - 1 : 0;
+        if (opt.id == optionId) v = v + 1;
+        return DishBattleOption(id: opt.id, name: opt.name, votes: v, icon: opt.icon);
+      }).toList();
+
+      final updatedVoters = Map<String, String>.from(battle.voterSelections);
+      updatedVoters[studentId] = optionId;
+
+      _stubBattles[idx] = DishBattleModel(
+        battleId: battle.battleId,
+        messId: battle.messId,
+        title: battle.title,
+        targetSlot: battle.targetSlot,
+        targetDate: battle.targetDate,
+        options: updatedOptions,
+        voterSelections: updatedVoters,
+        createdAt: battle.createdAt,
+        closesAt: battle.closesAt,
+        isClosed: battle.isClosed,
+        winningDishName: battle.winningDishName,
+      );
+    }
+  }
+
+  @override
+  Future<void> closeDishBattle(String messId, String battleId, [String? winningDish]) async {
+    final idx = _stubBattles.indexWhere((b) => b.battleId == battleId);
+    if (idx != -1) {
+      final battle = _stubBattles[idx];
+      _stubBattles[idx] = DishBattleModel(
+        battleId: battle.battleId,
+        messId: battle.messId,
+        title: battle.title,
+        targetSlot: battle.targetSlot,
+        targetDate: battle.targetDate,
+        options: battle.options,
+        voterSelections: battle.voterSelections,
+        createdAt: battle.createdAt,
+        closesAt: battle.closesAt,
+        isClosed: true,
+        winningDishName: winningDish,
+      );
+    }
+  }
+
+  @override
+  Future<void> extendDishBattle(String messId, String battleId, Duration extension) async {
+    final idx = _stubBattles.indexWhere((b) => b.battleId == battleId);
+    if (idx != -1) {
+      final battle = _stubBattles[idx];
+      _stubBattles[idx] = DishBattleModel(
+        battleId: battle.battleId,
+        messId: battle.messId,
+        title: battle.title,
+        targetSlot: battle.targetSlot,
+        targetDate: battle.targetDate,
+        options: battle.options,
+        voterSelections: battle.voterSelections,
+        createdAt: battle.createdAt,
+        closesAt: battle.closesAt.add(extension),
+        isClosed: battle.isClosed,
+        winningDishName: battle.winningDishName,
+      );
+    }
+  }
 }

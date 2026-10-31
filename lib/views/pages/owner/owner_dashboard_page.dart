@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'owner_student_management_page.dart';
 import '../../../models/app_models.dart';
@@ -10,6 +12,7 @@ import 'widgets/post_today_meal_sheet.dart';
 import 'widgets/schedule_closure_dialog.dart';
 import 'widgets/manage_closed_slots_sheet.dart';
 import 'widgets/mess_qr_standee_sheet.dart';
+import 'widgets/dish_battle_sheet.dart';
 import 'owner_expense_ledger_page.dart';
 import 'widgets/add_expense_sheet.dart';
 import 'widgets/owner_set_location_sheet.dart';
@@ -86,6 +89,15 @@ class OwnerDashboardPage extends ConsumerWidget {
                       ),
                     ),
 
+                    // Food Vote is Live Banner (Screenshot 03.41.19.jpeg)
+                    if (state.mess != null)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: _OwnerLiveFoodVoteBanner(mess: state.mess!),
+                        ),
+                      ),
+
                     // Today's Service Timeline / Stepper Card (Screenshot 1)
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -112,11 +124,24 @@ class OwnerDashboardPage extends ConsumerWidget {
 
                     // Absent Today Summary Card (Screenshot 1)
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       sliver: SliverToBoxAdapter(
                         child: _buildAbsentTodayCard(context, ref, state),
                       ),
                     ),
+
+                    // PhonePe-Style Counter QR Standee (Always at the very bottom)
+                    if (state.mess != null)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildCounterQrStandeeCard(context, ref, state),
+                        ),
+                      )
+                    else
+                      const SliverPadding(
+                        padding: EdgeInsets.only(bottom: 110),
+                      ),
                   ],
                 ),
               ),
@@ -1209,6 +1234,310 @@ class OwnerDashboardPage extends ConsumerWidget {
     );
   }
 
+  // ── PhonePe-Style Counter QR Standee Card ──
+  Widget _buildCounterQrStandeeCard(
+    BuildContext context,
+    WidgetRef ref,
+    OwnerDashboardState state,
+  ) {
+    final mess = state.mess;
+    if (mess == null) return const SizedBox.shrink();
+
+    final qrPayload =
+        'https://mezzo-69cab.web.app/?id=${mess.messId}&code=${mess.messCode}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: OwnerColors.cardPure,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: OwnerColors.cardBorder),
+        boxShadow: OwnerColors.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: OwnerColors.amberLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.qr_code_2_rounded,
+                      size: 20,
+                      color: OwnerColors.amberText,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Counter QR Standee',
+                        style: GoogleFonts.newsreader(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        'Keep at reception or dining table',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: OwnerColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFC8E6C9)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2E7D32),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Live Counter',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // QR Code + Info Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBF8F3),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFFEAE2D7),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // QR Box (White squircle)
+                GestureDetector(
+                  onTap: () => MessQrStandeeSheet.show(context, mess),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0x182D231C),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: QrImageView(
+                        data: qrPayload,
+                        version: QrVersions.auto,
+                        size: 88,
+                        padding: EdgeInsets.zero,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF231A14),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF231A14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Details & Tap-to-Copy
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mess.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.newsreader(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: OwnerColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+
+                      // Mess Code Pill with Copy Action
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Clipboard.setData(ClipboardData(text: mess.messCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Mess code #${mess.messCode} copied!'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: OwnerColors.amberLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: OwnerColors.amber.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '#${mess.messCode}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: OwnerColors.amberText,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.copy_rounded,
+                                size: 12,
+                                color: OwnerColors.amberText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Students scan to view live daily menu & join mess instantly.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: OwnerColors.textMuted,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Action Buttons: [ Zoom Standee ] & [ Print PDF ]
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => MessQrStandeeSheet.show(context, mess),
+                  icon: const Icon(
+                    Icons.fullscreen_rounded,
+                    size: 16,
+                    color: OwnerColors.textDark,
+                  ),
+                  label: Text(
+                    'Zoom Standee',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: OwnerColors.textDark,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: const BorderSide(color: OwnerColors.cardBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => MessQrStandeeSheet.show(context, mess),
+                  icon: const Icon(
+                    Icons.print_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    'Print PDF',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    backgroundColor: OwnerColors.walnut,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Existing Dialogs Preserved 100% ──
   void _showInviteDialog(
     BuildContext context,
@@ -2294,6 +2623,230 @@ class OwnerGlobalSearchDelegate extends SearchDelegate<String> {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Live Food Vote Banner for Owner Today Screen (Screenshot 03.41.19.jpeg) ──
+class _OwnerLiveFoodVoteBanner extends ConsumerWidget {
+  final MessModel mess;
+
+  const _OwnerLiveFoodVoteBanner({required this.mess});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final battleAsync = ref.watch(activeDishBattleProvider(mess.messId));
+
+    return battleAsync.when(
+      data: (battle) {
+        if (battle == null || battle.isClosed) return const SizedBox.shrink();
+
+        final now = DateTime.now();
+        if (now.isAfter(battle.closesAt)) return const SizedBox.shrink();
+
+        final remaining = battle.closesAt.difference(now);
+        final hours = remaining.inHours;
+        final mins = remaining.inMinutes % 60;
+        final timeStr = hours > 0 ? '${hours}h ${mins}m left' : '${mins}m left';
+
+        int totalVotes = battle.totalVotes;
+        if (totalVotes == 0) {
+          totalVotes = battle.options.fold<int>(0, (s, o) => s + o.votes);
+        }
+
+        String slotLabel;
+        switch (battle.targetSlot.toLowerCase()) {
+          case 'morning':
+            slotLabel = 'Breakfast';
+            break;
+          case 'noon':
+            slotLabel = 'Lunch';
+            break;
+          case 'night':
+            slotLabel = 'Dinner';
+            break;
+          default:
+            slotLabel = battle.targetSlot;
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFDF8),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFE5A93C),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Row: • FOOD VOTE IS LIVE & remaining pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFBD5D38),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'FOOD VOTE IS LIVE',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: const Color(0xFFBD5D38),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDE8CD),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      timeStr,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF9E5327),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Title
+              Text(
+                '${battle.title} · $slotLabel',
+                style: GoogleFonts.newsreader(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: OwnerColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Dish Progress Bars
+              for (int i = 0; i < battle.options.length; i++) ...[
+                Builder(builder: (ctx) {
+                  final opt = battle.options[i];
+                  final pct = totalVotes > 0 ? (opt.votes / totalVotes) : 0.0;
+                  final pctInt = (pct * 100).round();
+                  final isAmber = i % 2 == 0;
+                  final barColor = isAmber ? const Color(0xFFE89025) : const Color(0xFF86A386);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              opt.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: OwnerColors.textDark,
+                              ),
+                            ),
+                            Text(
+                              '$pctInt%',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: OwnerColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: pct,
+                            minHeight: 8,
+                            backgroundColor: const Color(0xFFEDE5D8),
+                            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+              const SizedBox(height: 4),
+
+              // Bottom Row: Votes pill & View live >
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDE8CD),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$totalVotes votes',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF9E5327),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => DishBattleSheet.show(context, mess: mess),
+                    child: Row(
+                      children: [
+                        Text(
+                          'View live',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: OwnerColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: OwnerColors.textDark,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, st) => const SizedBox.shrink(),
     );
   }
 }

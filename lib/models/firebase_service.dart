@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -1905,5 +1906,371 @@ class FirebaseService implements AppService {
     if (user != null && user.uid == ownerId) {
       await _deleteUserWithReauthFallback(user);
     }
+  }
+
+  // DISH BATTLES / LIVE VOTING
+  @override
+  Future<void> createDishBattle(DishBattleModel battle) async {
+    final messRef = _db.collection('messes').doc(battle.messId);
+    final col = messRef.collection('dish_battles');
+    final docRef = battle.battleId.isEmpty ? col.doc() : col.doc(battle.battleId);
+    final toSave = DishBattleModel(
+      battleId: docRef.id,
+      messId: battle.messId,
+      title: battle.title,
+      targetSlot: battle.targetSlot,
+      targetDate: battle.targetDate,
+      options: battle.options,
+      voterSelections: battle.voterSelections,
+      createdAt: battle.createdAt,
+      closesAt: battle.closesAt,
+      isClosed: battle.isClosed,
+      winningDishName: battle.winningDishName,
+    );
+    final map = toSave.toMap();
+
+    // 1. Primary resilient path: write activeBattle on messes/{messId} (allowed by current owner rules)
+    try {
+      await messRef.set({'activeBattle': map}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error updating messes doc activeBattle: $e');
+    }
+
+    // 2. Subcollection path (for deployed rules & historical records)
+    try {
+      await docRef.set(map);
+    } catch (e) {
+      debugPrint('Subcollection dish_battles permission notice: $e');
+    }
+  }
+
+  @override
+  Stream<DishBattleModel?> streamActiveDishBattle(String messId) {
+    if (messId.isEmpty) return Stream.value(null);
+
+    late StreamController<DishBattleModel?> controller;
+    StreamSubscription? messSub;
+    StreamSubscription? ratingsSub;
+    String? currentBattleId;
+    DishBattleModel? latestBaseBattle;
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> latestRatingsDocs = [];
+
+    void emitMergedBattle() {
+      if (latestBaseBattle == null) {
+        if (!controller.isClosed) controller.add(null);
+        return;
+      }
+      final base = latestBaseBattle!;
+      if (base.isClosed) {
+        if (!controller.isClosed) controller.add(base);
+        return;
+      }
+
+      final voterMap = <String, String>{};
+      final voteCounts = <String, int>{};
+
+      for (final doc in latestRatingsDocs) {
+        final d = doc.data();
+        final sId = d['studentId'] as String?;
+        final oId = d['optionId'] as String?;
+        if (sId != null && oId != null) {
+          voterMap[sId] = oId;
+          voteCounts[oId] = (voteCounts[oId] ?? 0) + 1;
+        }
+      }
+
+      for (final entry in base.voterSelections.entries) {
+        if (!voterMap.containsKey(entry.key)) {
+          voterMap[entry.key] = entry.value;
+          voteCounts[entry.value] = (voteCounts[entry.value] ?? 0) + 1;
+        }
+      }
+
+      final updatedOptions = base.options.map((opt) {
+        final count = voteCounts[opt.id] ?? 0;
+        return DishBattleOption(
+          id: opt.id,
+          name: opt.name,
+          votes: count,
+          icon: opt.icon,
+        );
+      }).toList();
+
+      final updatedBattle = DishBattleModel(
+        battleId: base.battleId,
+        messId: base.messId,
+        title: base.title,
+        targetSlot: base.targetSlot,
+        targetDate: base.targetDate,
+        options: updatedOptions,
+        voterSelections: voterMap,
+        createdAt: base.createdAt,
+        closesAt: base.closesAt,
+        isClosed: base.isClosed,
+        winningDishName: base.winningDishName,
+      );
+
+      if (!controller.isClosed) {
+        controller.add(updatedBattle);
+      }
+    }
+
+    controller = StreamController<DishBattleModel?>.broadcast(
+      onListen: () {
+        messSub = _db.collection('messes').doc(messId).snapshots().listen((messSnap) {
+          if (!messSnap.exists) {
+            latestBaseBattle = null;
+            emitMergedBattle();
+            return;
+          }
+          final raw = messSnap.data()?['activeBattle'];
+          if (raw == null || raw is! Map) {
+            latestBaseBattle = null;
+            emitMergedBattle();
+            return;
+          }
+
+          final battle = DishBattleModel.fromMap(Map<String, dynamic>.from(raw));
+          latestBaseBattle = battle;
+
+          if (battle.isClosed) {
+            ratingsSub?.cancel();
+            emitMergedBattle();
+            return;
+          }
+
+          if (currentBattleId != battle.battleId) {
+            currentBattleId = battle.battleId;
+            ratingsSub?.cancel();
+            ratingsSub = _db
+                .collection('messes')
+                .doc(messId)
+                .collection('dish_ratings')
+                .where('battleId', isEqualTo: battle.battleId)
+                .snapshots()
+                .listen((ratingsSnap) {
+              latestRatingsDocs = ratingsSnap.docs;
+              emitMergedBattle();
+            }, onError: (e) {
+              debugPrint('dish_ratings stream error: $e');
+            });
+          }
+
+          emitMergedBattle();
+        });
+      },
+      onCancel: () {
+        ratingsSub?.cancel();
+        messSub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  @override
+  Future<DishBattleModel?> getActiveDishBattle(String messId) async {
+    if (messId.isEmpty) return null;
+    try {
+      final snap = await _db.collection('messes').doc(messId).get();
+      if (snap.exists) {
+        final raw = snap.data()?['activeBattle'];
+        if (raw != null && raw is Map) {
+          return DishBattleModel.fromMap(Map<String, dynamic>.from(raw));
+        }
+      }
+    } catch (_) {}
+
+    // Fallback to subcollection
+    try {
+      final snap = await _db
+          .collection('messes')
+          .doc(messId)
+          .collection('dish_battles')
+          .where('isClosed', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        return DishBattleModel.fromMap(snap.docs.first.data(), snap.docs.first.id);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  @override
+  Future<void> voteDishBattle({
+    required String messId,
+    required String battleId,
+    required String studentId,
+    required String optionId,
+  }) async {
+    final effectiveStudentId = studentId.isNotEmpty
+        ? studentId
+        : (FirebaseAuth.instance.currentUser?.uid ?? '');
+    if (effectiveStudentId.isEmpty) return;
+
+    // 1. Primary write: save vote doc in dish_ratings (enrolled student always has write permission)
+    try {
+      final voteDoc = _db
+          .collection('messes')
+          .doc(messId)
+          .collection('dish_ratings')
+          .doc('poll_${battleId}_$effectiveStudentId');
+
+      await voteDoc.set({
+        'studentId': effectiveStudentId,
+        'battleId': battleId,
+        'optionId': optionId,
+        'rating': 5,
+        'dishName': 'Food Battle Vote',
+        'studentName': 'Student',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error writing to dish_ratings: $e');
+    }
+
+    // 2. Also save to student profile
+    try {
+      await _db.collection('students').doc(effectiveStudentId).set({
+        'currentVote': {
+          'battleId': battleId,
+          'optionId': optionId,
+          'votedAt': FieldValue.serverTimestamp(),
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error writing to student profile: $e');
+    }
+
+    // 3. Subcollection dish_battles (for deployed rules & historical records)
+    try {
+      final battleDoc = _db
+          .collection('messes')
+          .doc(messId)
+          .collection('dish_battles')
+          .doc(battleId);
+      final snap = await battleDoc.get();
+      if (snap.exists) {
+        final battle = DishBattleModel.fromMap(snap.data()!, snap.id);
+        final updatedVoters = Map<String, String>.from(battle.voterSelections);
+        final prevOpt = updatedVoters[effectiveStudentId];
+        if (prevOpt != optionId) {
+          updatedVoters[effectiveStudentId] = optionId;
+          final updatedOptions = battle.options.map((opt) {
+            int v = opt.votes;
+            if (opt.id == prevOpt) v = math.max(0, v - 1);
+            if (opt.id == optionId) v = v + 1;
+            return DishBattleOption(id: opt.id, name: opt.name, votes: v, icon: opt.icon);
+          }).toList();
+          await battleDoc.update({
+            'voterSelections': updatedVoters,
+            'options': updatedOptions.map((o) => o.toMap()).toList(),
+          });
+        }
+      }
+    } catch (_) {}
+
+    // 4. Update root mess doc ONLY if current user is owner (students never touch mess doc directly to prevent PERMISSION_DENIED)
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final messRef = _db.collection('messes').doc(messId);
+      final snap = await messRef.get();
+      if (snap.exists) {
+        final ownerId = snap.data()?['ownerId'] as String?;
+        if (currentUser != null && currentUser.uid == ownerId) {
+          final raw = snap.data()?['activeBattle'];
+          if (raw != null && raw is Map) {
+            final battle = DishBattleModel.fromMap(Map<String, dynamic>.from(raw));
+            final updatedVoters = Map<String, String>.from(battle.voterSelections);
+            final prevOpt = updatedVoters[effectiveStudentId];
+            if (prevOpt != optionId) {
+              updatedVoters[effectiveStudentId] = optionId;
+              final updatedOptions = battle.options.map((opt) {
+                int v = opt.votes;
+                if (opt.id == prevOpt) v = math.max(0, v - 1);
+                if (opt.id == optionId) v = v + 1;
+                return DishBattleOption(id: opt.id, name: opt.name, votes: v, icon: opt.icon);
+              }).toList();
+
+              final updatedBattle = DishBattleModel(
+                battleId: battle.battleId,
+                messId: battle.messId,
+                title: battle.title,
+                targetSlot: battle.targetSlot,
+                targetDate: battle.targetDate,
+                options: updatedOptions,
+                voterSelections: updatedVoters,
+                createdAt: battle.createdAt,
+                closesAt: battle.closesAt,
+                isClosed: battle.isClosed,
+                winningDishName: battle.winningDishName,
+              );
+
+              await messRef.update({'activeBattle': updatedBattle.toMap()});
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> closeDishBattle(String messId, String battleId, [String? winningDish]) async {
+    final messRef = _db.collection('messes').doc(messId);
+    final docRef = messRef.collection('dish_battles').doc(battleId);
+
+    try {
+      final snap = await messRef.get();
+      if (snap.exists) {
+        final raw = snap.data()?['activeBattle'];
+        if (raw != null && raw is Map) {
+          final updated = Map<String, dynamic>.from(raw);
+          updated['isClosed'] = true;
+          if (winningDish != null && winningDish.isNotEmpty) {
+            updated['winningDishName'] = winningDish;
+          }
+          await messRef.update({'activeBattle': updated});
+        }
+      }
+    } catch (_) {}
+
+    try {
+      await docRef.update({
+        'isClosed': true,
+        if (winningDish != null && winningDish.isNotEmpty) 'winningDishName': winningDish,
+      });
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> extendDishBattle(String messId, String battleId, Duration extension) async {
+    final messRef = _db.collection('messes').doc(messId);
+    final docRef = messRef.collection('dish_battles').doc(battleId);
+
+    try {
+      final snap = await messRef.get();
+      if (snap.exists) {
+        final raw = snap.data()?['activeBattle'];
+        if (raw != null && raw is Map) {
+          final battle = DishBattleModel.fromMap(Map<String, dynamic>.from(raw));
+          final updatedClosesAt = battle.closesAt.add(extension);
+          final updated = Map<String, dynamic>.from(raw);
+          updated['closesAt'] = Timestamp.fromDate(updatedClosesAt);
+          await messRef.update({'activeBattle': updated});
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final snap = await docRef.get();
+      if (snap.exists) {
+        final battle = DishBattleModel.fromMap(snap.data()!, snap.id);
+        await docRef.update({
+          'closesAt': Timestamp.fromDate(battle.closesAt.add(extension)),
+        });
+      }
+    } catch (_) {}
   }
 }

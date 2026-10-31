@@ -1900,3 +1900,108 @@ class ExpenseModel {
   }
 }
 
+// ── Dish Battle & Live Voting Models ─────────────────────────────────────────
+
+class DishBattleOption {
+  final String id;
+  final String name;
+  final int votes;
+  final String icon;
+
+  DishBattleOption({
+    required this.id,
+    required this.name,
+    this.votes = 0,
+    this.icon = '🍲',
+  });
+
+  factory DishBattleOption.fromMap(Map<String, dynamic> map) {
+    return DishBattleOption(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      votes: (map['votes'] ?? 0) as int,
+      icon: map['icon'] ?? '🍲',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'votes': votes,
+        'icon': icon,
+      };
+}
+
+class DishBattleModel {
+  final String battleId;
+  final String messId;
+  final String title;
+  final String targetSlot;
+  final DateTime targetDate;
+  final List<DishBattleOption> options;
+  final Map<String, String> voterSelections;
+  final DateTime createdAt;
+  final DateTime closesAt;
+  final bool isClosed;
+  final String? winningDishName;
+
+  DishBattleModel({
+    required this.battleId,
+    required this.messId,
+    required this.title,
+    required this.targetSlot,
+    required this.targetDate,
+    required this.options,
+    this.voterSelections = const {},
+    required this.createdAt,
+    required this.closesAt,
+    this.isClosed = false,
+    this.winningDishName,
+  });
+
+  int get totalVotes => voterSelections.length;
+  bool hasVoted(String studentId) => voterSelections.containsKey(studentId);
+  String? getStudentVote(String studentId) => voterSelections[studentId];
+
+  factory DishBattleModel.fromMap(Map<String, dynamic> map, [String? id]) {
+    DateTime parseDt(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    return DishBattleModel(
+      battleId: id ?? map['battleId'] ?? '',
+      messId: map['messId'] ?? '',
+      title: map['title'] ?? 'Dish Battle',
+      targetSlot: map['targetSlot'] ?? 'noon',
+      targetDate: parseDt(map['targetDate']),
+      options: (map['options'] as List<dynamic>? ?? [])
+          .map((o) => DishBattleOption.fromMap(Map<String, dynamic>.from(o as Map)))
+          .toList(),
+      voterSelections: Map<String, String>.from(map['voterSelections'] ?? {}),
+      createdAt: parseDt(map['createdAt']),
+      closesAt: parseDt(map['closesAt']),
+      isClosed: map['isClosed'] ?? false,
+      winningDishName: map['winningDishName'],
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'battleId': battleId,
+        'messId': messId,
+        'title': title,
+        'targetSlot': targetSlot,
+        'targetDate': Timestamp.fromDate(targetDate),
+        'options': options.map((o) => o.toMap()).toList(),
+        'voterSelections': voterSelections,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'closesAt': Timestamp.fromDate(closesAt),
+        'isClosed': isClosed,
+        if (winningDishName != null) 'winningDishName': winningDishName,
+      };
+}
+
+
