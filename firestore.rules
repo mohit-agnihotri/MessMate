@@ -120,6 +120,7 @@ service cloud.firestore {
         allow create: if isAuthenticated()
           && request.auth.uid == request.resource.data.studentId
           && isEnrolledStudent(messId)
+          && feedbackId.matches('^' + request.auth.uid + '.*')
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5;
         // V-16 Fix: Owners cannot delete negative feedbacks to whitewash ratings; allows delete on mess/account cleanup
@@ -131,7 +132,8 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isAuthenticated() 
           && request.auth.uid == request.resource.data.studentId
-          && isEnrolledStudent(messId);
+          && isEnrolledStudent(messId)
+          && ratingId.matches('^' + request.auth.uid + '.*');
         allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
         allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
       }
@@ -140,7 +142,8 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isAuthenticated() 
           && request.auth.uid == request.resource.data.studentId
-          && isEnrolledStudent(messId);
+          && isEnrolledStudent(messId)
+          && reviewId.matches('^' + request.auth.uid + '.*');
         allow update: if isAuthenticated() && request.auth.uid == resource.data.studentId;
         allow delete: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
       }
@@ -211,26 +214,30 @@ service cloud.firestore {
         (resource.data.messId != null && isMessOwner(resource.data.messId)) ||
         isAdmin()
       );
-      // V-03 Fix: Cost must be bounded (<= 500) and status must be valid
+      // V-03 Fix: Cost bounded (<= 500), student only creates absent_self or guest, strictly prefixed recordId
       allow create: if isAuthenticated() && (
         (
           request.auth.uid == request.resource.data.studentId &&
           isEnrolledStudent(request.resource.data.messId) &&
+          recordId.matches('^' + request.auth.uid + '.*') &&
           (!('cost' in request.resource.data) || (request.resource.data.cost is number && request.resource.data.cost >= 0 && request.resource.data.cost <= 500)) &&
-          request.resource.data.status in ['absent_self', 'present', 'guest', 'absent_owner']
+          request.resource.data.status in ['absent_self', 'guest'] &&
+          request.resource.data.date is string &&
+          request.resource.data.date.size() == 10 &&
+          request.resource.data.mealSlot in ['morning', 'noon', 'evening', 'night']
         ) ||
         isMessOwner(request.resource.data.messId) ||
         isAdmin()
       );
       allow update: if isAuthenticated() && resource != null && (
-        ((request.auth.uid == resource.data.studentId && resource.data.status != 'guest' && request.resource.data.status in ['absent_self', 'present']) ||
+        ((request.auth.uid == resource.data.studentId && resource.data.status == 'absent_self' && request.resource.data.status in ['absent_self', 'present']) ||
          isMessOwner(resource.data.messId) ||
          isAdmin())
       ) && request.resource.data.studentId == resource.data.studentId &&
          (!('cost' in request.resource.data) || (request.resource.data.cost is number && request.resource.data.cost >= 0 && request.resource.data.cost <= 500));
-      // V-05 Fix: Student CANNOT delete guest meal records (anti eat-and-delete fraud)
+      // V-05 Fix: Student can ONLY delete their own uncompleted absent_self skip record (anti eat-and-delete fraud)
       allow delete: if isAuthenticated() && resource != null && (
-        (request.auth.uid == resource.data.studentId && resource.data.status != 'guest') ||
+        (request.auth.uid == resource.data.studentId && resource.data.status == 'absent_self') ||
         isMessOwner(resource.data.messId) ||
         isAdmin()
       );
@@ -248,13 +255,19 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         (
           request.auth.uid == request.resource.data.studentId &&
-          isEnrolledStudent(request.resource.data.messId)
+          isEnrolledStudent(request.resource.data.messId) &&
+          request.resource.data.status == 'active' &&
+          leaveId.matches('^' + request.auth.uid + '.*')
         ) ||
         isMessOwner(request.resource.data.messId) ||
         isAdmin()
       );
       allow update: if isAuthenticated() && resource != null && (
-        request.auth.uid == resource.data.studentId ||
+        (
+          request.auth.uid == resource.data.studentId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']) &&
+          request.resource.data.status == 'cancelled'
+        ) ||
         isMessOwner(resource.data.messId) ||
         isAdmin()
       ) && request.resource.data.studentId == resource.data.studentId;
