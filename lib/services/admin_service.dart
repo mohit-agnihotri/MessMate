@@ -12,13 +12,13 @@ final adminServiceProvider = Provider<AdminService>((ref) {
   return AdminService();
 });
 
-/// StreamProvider for real-time Master Toggles & Config
-final adminConfigStreamProvider = StreamProvider<AdminGlobalConfigModel>((ref) {
+/// StreamProvider for real-time Master Toggles & Config (autoDispose to free memory/bandwidth)
+final adminConfigStreamProvider = StreamProvider.autoDispose<AdminGlobalConfigModel>((ref) {
   return ref.watch(adminServiceProvider).streamGlobalConfig();
 });
 
-/// StreamProvider for real-time student count and profiles across all messes
-final adminStudentsStreamProvider = StreamProvider<List<StudentModel>>((ref) {
+/// StreamProvider for real-time student count and profiles across all messes (autoDispose to free memory/bandwidth)
+final adminStudentsStreamProvider = StreamProvider.autoDispose<List<StudentModel>>((ref) {
   return ref.watch(adminServiceProvider).streamAllStudents();
 });
 
@@ -35,10 +35,24 @@ class AdminService {
 
   static const String _vaultCollection = 'system_config';
   static const String _vaultDoc = 'admin_vault';
+  static const String _publicAppDoc = 'app_info';
   static const String _ticketsCollection = 'support_tickets';
   static const String _messesCollection = 'messes';
 
   // ─── 1. Security & Master PIN Management ─────────────────────────────
+
+  /// Reads public app version and update info (safe for all clients without exposing vault secrets).
+  Future<AdminGlobalConfigModel> getPublicAppInfo() async {
+    try {
+      final doc = await _db.collection(_vaultCollection).doc(_publicAppDoc).get();
+      if (doc.exists && doc.data() != null) {
+        return AdminGlobalConfigModel.fromMap(doc.data()!);
+      }
+    } catch (e) {
+      debugPrint('[AdminService] Note: public app_info read fallback: $e');
+    }
+    return getGlobalConfig();
+  }
 
   /// Reads global config document from Firestore.
   /// If it does not exist yet, initializes it with defaults.
@@ -150,6 +164,15 @@ class AdminService {
 
     if (updates.isNotEmpty) {
       await _db.collection(_vaultCollection).doc(_vaultDoc).set(updates, SetOptions(merge: true));
+      // Mirror non-sensitive public updates to _publicAppDoc
+      final publicUpdates = Map<String, dynamic>.from(updates)
+        ..remove('masterPin')
+        ..remove('adminEmails')
+        ..remove('platformFeeAmount')
+        ..remove('baseSoftwareMonthlyFee');
+      if (publicUpdates.isNotEmpty) {
+        await _db.collection(_vaultCollection).doc(_publicAppDoc).set(publicUpdates, SetOptions(merge: true));
+      }
     }
   }
 
@@ -174,9 +197,9 @@ class AdminService {
     });
   }
 
-  /// Real-time stream of all students enrolled across all messes.
-  Stream<List<StudentModel>> streamAllStudents() {
-    return _db.collection('students').snapshots().map((snap) {
+  /// Real-time stream of all students enrolled across all messes (bounded to 500 max for scaling safety).
+  Stream<List<StudentModel>> streamAllStudents({int limit = 500}) {
+    return _db.collection('students').limit(limit).snapshots().map((snap) {
       return snap.docs.map((doc) {
         final data = Map<String, dynamic>.from(doc.data());
         if (data['studentId'] == null || data['studentId'].toString().isEmpty) {
@@ -188,6 +211,17 @@ class AdminService {
       debugPrint('[AdminService] streamAllStudents error caught gracefully: $error');
       return <StudentModel>[];
     });
+  }
+
+  /// Efficient server-side count of total registered students across all messes (costs 1 read).
+  Future<int> getTotalStudentsCount() async {
+    try {
+      final snap = await _db.collection('students').count().get();
+      return snap.count ?? 0;
+    } catch (e) {
+      debugPrint('[AdminService] getTotalStudentsCount error: $e');
+      return 0;
+    }
   }
 
   /// Extends trial days for a specific mess by [additionalDays] (e.g. +30 days).

@@ -313,6 +313,13 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   void didChangeAppLifecycleState(AppLifecycleState appState) {
     if (appState == AppLifecycleState.resumed) {
       _checkMidnightRollover();
+      _clockTimer?.cancel();
+      _clockTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _checkMidnightRollover(),
+      );
+    } else if (appState == AppLifecycleState.paused || appState == AppLifecycleState.hidden) {
+      _clockTimer?.cancel();
     }
   }
 
@@ -372,7 +379,7 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
   Future<void> _init() async {
     state = state.copyWith(isLoading: true);
     try {
-      final mess = await _service.getMessByOwnerId(ownerId);
+      final mess = await _service.getMessByOwnerId(ownerId).timeout(const Duration(seconds: 15));
       if (mess == null) {
         state = state.copyWith(isLoading: false, mess: null);
         return;
@@ -401,11 +408,11 @@ class OwnerDashboardViewModel extends StateNotifier<OwnerDashboardState>
         debugPrint('Error in OwnerDashboard _studentSub: $e');
       });
 
-      final leaves = await _service.getUpcomingLeaves(mess.messId);
+      final leaves = await _service.getUpcomingLeaves(mess.messId).timeout(const Duration(seconds: 15));
       _activeLeaves = leaves.where((l) => l.status == 'active').toList();
       state = state.copyWith(upcomingLeaves: _activeLeaves);
 
-      final announcements = await _service.getAnnouncements(mess.messId);
+      final announcements = await _service.getAnnouncements(mess.messId).timeout(const Duration(seconds: 15));
       state = state.copyWith(
         announcement: announcements.firstOrNull?.message,
       );
@@ -704,7 +711,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
-      final mess = await _service.getMessByOwnerId(ownerId);
+      final mess = await _service.getMessByOwnerId(ownerId).timeout(const Duration(seconds: 15));
       if (mess == null) {
         state = state.copyWith(isLoading: false);
         return;
@@ -859,7 +866,7 @@ class OwnerStudentsViewModel extends StateNotifier<OwnerStudentsState> {
 }
 
 final ownerStudentsProvider =
-    StateNotifierProvider<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
+    StateNotifierProvider.autoDispose<OwnerStudentsViewModel, OwnerStudentsState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? ref.watch(authProvider).userId ?? '';
       return OwnerStudentsViewModel(ref.read(appServiceProvider), uid);
     });
@@ -931,7 +938,7 @@ class OwnerMenuViewModel extends StateNotifier<OwnerMenuState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
-      final mess = await _service.getMessByOwnerId(ownerId);
+      final mess = await _service.getMessByOwnerId(ownerId).timeout(const Duration(seconds: 15));
       if (mess == null) {
         state = state.copyWith(isLoading: false);
         return;
@@ -1260,6 +1267,13 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
   void didChangeAppLifecycleState(AppLifecycleState appState) {
     if (appState == AppLifecycleState.resumed) {
       _checkMidnightRollover();
+      _clockTimer?.cancel();
+      _clockTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _checkMidnightRollover(),
+      );
+    } else if (appState == AppLifecycleState.paused || appState == AppLifecycleState.hidden) {
+      _clockTimer?.cancel();
     }
   }
 
@@ -1283,11 +1297,11 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         return;
       }
 
-      final student = await _service.getStudentById(uid);
+      final student = await _service.getStudentById(uid).timeout(const Duration(seconds: 15));
       final mess = student != null
-          ? await _service.getMessById(student.messId)
+          ? await _service.getMessById(student.messId).timeout(const Duration(seconds: 15))
           : null;
-      final leave = student != null ? await _service.getActiveLeave(uid) : null;
+      final leave = student != null ? await _service.getActiveLeave(uid).timeout(const Duration(seconds: 15)) : null;
 
       if (mess != null) {
         try {
@@ -1662,6 +1676,7 @@ class StudentHomeViewModel extends StateNotifier<StudentHomeState>
         date ?? DateTime.now(),
         cost,
         count: count,
+        messId: state.student?.messId ?? state.mess?.messId,
       );
     } finally {
       _isAddingGuest = false;
@@ -1827,8 +1842,9 @@ class StudentHistoryState {
 class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
   final AppService _service;
   final String studentId;
+  final String? messId;
 
-  StudentHistoryViewModel(this._service, this.studentId)
+  StudentHistoryViewModel(this._service, this.studentId, {this.messId})
     : super(StudentHistoryState(selectedMonth: DateTime.now())) {
     load();
   }
@@ -1842,12 +1858,13 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
         studentId,
         state.selectedMonth.month,
         state.selectedMonth.year,
+        messId: messId,
       );
     } catch (e) {
       debugPrint('[StudentHistoryViewModel] error loading records: $e');
     }
     try {
-      leaves = await _service.getStudentLeaves(studentId);
+      leaves = await _service.getStudentLeaves(studentId, messId: messId);
     } catch (e) {
       debugPrint('[StudentHistoryViewModel] error loading leaves: $e');
     }
@@ -1904,7 +1921,8 @@ class StudentHistoryViewModel extends StateNotifier<StudentHistoryState> {
 final studentHistoryProvider =
     StateNotifierProvider.autoDispose<StudentHistoryViewModel, StudentHistoryState>((ref) {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? ref.watch(authProvider).userId ?? '';
-      return StudentHistoryViewModel(ref.read(appServiceProvider), uid);
+      final messId = ref.watch(studentHomeProvider).student?.messId;
+      return StudentHistoryViewModel(ref.read(appServiceProvider), uid, messId: messId);
     });
 
 // ─── Student Bill ─────────────────────────────────────────────────────────────
@@ -2001,8 +2019,9 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
                 studentId,
                 state.selectedMonth.month,
                 state.selectedMonth.year,
+                messId: student.messId,
               );
-              final leaves = await _service.getStudentLeaves(studentId);
+              final leaves = await _service.getStudentLeaves(studentId, messId: student.messId);
               final liveSkips = calculateCurrentMonthSkipsSummary(
                 records: currentRecords,
                 leaves: leaves,
@@ -2057,12 +2076,14 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
           studentId,
           state.selectedMonth.month,
           state.selectedMonth.year,
+          messId: student.messId,
         );
 
         final previousDues = await _service.getPreviousUnpaidDues(
           studentId,
           state.selectedMonth.month,
           state.selectedMonth.year,
+          messId: student.messId,
         );
 
         MealPlanModel? plan;
@@ -2072,7 +2093,7 @@ class StudentBillViewModel extends StateNotifier<StudentBillState> {
         final int allowedMeals = plan != null ? plan.mealsIncludedPerDay : mess.mealsIncludedPerDay;
 
         final extraFees = await _service.getExtraFees(student.messId, studentId);
-        final leaves = await _service.getStudentLeaves(studentId);
+        final leaves = await _service.getStudentLeaves(studentId, messId: student.messId);
 
         final carryForward = await calculateCarryForwardCredit(
           studentId: studentId,

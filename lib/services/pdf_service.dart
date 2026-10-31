@@ -46,20 +46,17 @@ class PdfService {
   }) async {
     // 1. Load fonts safely with fallback
     pw.Font? regularFont;
-    pw.Font? mediumFont;
     pw.Font? boldFont;
     pw.Font? displayFont;
     bool fontSupportsRupee = false;
 
     try {
       regularFont = await PdfGoogleFonts.interRegular();
-      mediumFont = await PdfGoogleFonts.interMedium();
       boldFont = await PdfGoogleFonts.interBold();
       displayFont = await PdfGoogleFonts.playfairDisplayBold();
       fontSupportsRupee = true;
     } catch (_) {
       regularFont = pw.Font.helvetica();
-      mediumFont = pw.Font.helvetica();
       boldFont = pw.Font.helveticaBold();
       displayFont = pw.Font.helveticaBold();
       fontSupportsRupee = false;

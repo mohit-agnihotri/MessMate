@@ -104,6 +104,7 @@ abstract class AppService {
     DateTime date,
     double cost, {
     int count = 1,
+    String? messId,
   });
 
   Future<void> removeGuestMeal(String recordId);

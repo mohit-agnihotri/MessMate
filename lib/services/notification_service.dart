@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
@@ -344,15 +345,23 @@ class NotificationService {
     return _dispatchRestNotification(payload);
   }
 
-  /// Internal helper to dispatch notification payload to OneSignal REST endpoint.
+  /// Internal helper to dispatch notification payload to OneSignal REST endpoint
+  /// or securely queue in Firestore when client-side API keys are stripped for production hardening.
   static Future<bool> _dispatchRestNotification(Map<String, dynamic> payload) async {
     if (_restApiKey == null || _restApiKey!.isEmpty) {
-      debugPrint(
-        '[NotificationService] Notice: ONESIGNAL_REST_API_KEY is not configured yet. '
-        'Push payload prepared: ${jsonEncode(payload)}. '
-        'Provide the key via NotificationService.setRestApiKey() or --dart-define=ONESIGNAL_REST_API_KEY=... to deliver pushes over the network.',
-      );
-      return false;
+      // Secure Production Path: Queue payload in Firestore to protect master credentials from APK reverse-engineering
+      try {
+        await FirebaseFirestore.instance.collection('notification_queue').add({
+          'payload': payload,
+          'createdAt': FieldValue.serverTimestamp(),
+          'status': 'pending',
+        });
+        debugPrint('[NotificationService] Master API key isolated: Notification securely queued in Firestore.');
+        return true;
+      } catch (e) {
+        debugPrint('[NotificationService] Notice: Could not queue notification: $e');
+        return false;
+      }
     }
 
     try {

@@ -1,8 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'firebase_options.dart';
@@ -38,8 +39,44 @@ void main() async {
   runApp(const ProviderScope(child: MezzoApp()));
 }
 
-class MezzoApp extends StatelessWidget {
+class MezzoApp extends StatefulWidget {
   const MezzoApp({super.key});
+
+  @override
+  State<MezzoApp> createState() => _MezzoAppState();
+}
+
+class _MezzoAppState extends State<MezzoApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      // ⏸️ App minimized or phone locked: disable Firestore network to kill background listener reads
+      try {
+        FirebaseFirestore.instance.disableNetwork();
+      } catch (e) {
+        debugPrint('[AppLifecycle] Error disabling Firestore network: $e');
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // ▶️ App brought back to foreground: reconnect Firestore and fetch fresh updates
+      try {
+        FirebaseFirestore.instance.enableNetwork();
+      } catch (e) {
+        debugPrint('[AppLifecycle] Error enabling Firestore network: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

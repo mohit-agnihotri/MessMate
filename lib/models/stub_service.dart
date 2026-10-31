@@ -357,6 +357,7 @@ class StubService implements AppService {
     DateTime date,
     double cost, {
     int count = 1,
+    String? messId,
   }) async {}
 
   @override

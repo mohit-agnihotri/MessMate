@@ -571,7 +571,7 @@ Future<CarryForwardResult> calculateCarryForwardCredit({
 
     // 2. Fetch the actual meal records of that previous month
     final List<MealRecordModel> prevRecords =
-        await service.getMealRecords(studentId, prevMonth, prevYear);
+        await service.getMealRecords(studentId, prevMonth, prevYear, messId: mess.messId);
 
     if (prevRecords.isEmpty &&
         (prevBill == null || prevBill.excessCreditGenerated <= 0)) {

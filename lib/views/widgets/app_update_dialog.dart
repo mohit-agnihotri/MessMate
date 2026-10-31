@@ -30,9 +30,7 @@ class AppUpdateDialog extends StatelessWidget {
   /// Static helper to check Firestore config and show update dialog if a newer version is live.
   static Future<void> checkAndShow(BuildContext context, WidgetRef ref) async {
     try {
-      final configAsync = ref.read(adminConfigStreamProvider);
-      final config = configAsync.valueOrNull ??
-          await ref.read(adminServiceProvider).getGlobalConfig();
+      final config = await ref.read(adminServiceProvider).getPublicAppInfo();
 
       final serverVersion = config.latestAppVersion;
       final minRequired = config.minSupportedVersion;

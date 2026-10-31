@@ -64,8 +64,13 @@ class FirebaseService implements AppService {
       }
     }
 
-    final snapshot = await query.get();
-    return snapshot.docs.map((doc) => MessModel.fromMap(doc.data())).toList();
+    try {
+      final snapshot = await query.get(const GetOptions(source: Source.serverAndCache));
+      return snapshot.docs.map((doc) => MessModel.fromMap(doc.data())).toList();
+    } catch (_) {
+      final snapshot = await query.get();
+      return snapshot.docs.map((doc) => MessModel.fromMap(doc.data())).toList();
+    }
   }
 
   @override
@@ -91,7 +96,12 @@ class FirebaseService implements AppService {
       throw Exception('Unsupported format: .$cleanExt. Only JPG, PNG, and WebP are allowed.');
     }
 
-    // 2. Strict file size safety guard (Max 5 MB)
+    // 2. Binary Magic Bytes validation (prevents disguised executables / non-image files)
+    if (!CloudinaryConfig.hasValidImageMagicBytes(bytes)) {
+      throw Exception('Invalid image data. File header does not match valid JPEG, PNG, or WebP binary signatures.');
+    }
+
+    // 3. Strict file size safety guard (Max 5 MB)
     const maxAllowedBytes = 5 * 1024 * 1024;
     if (bytes.lengthInBytes > maxAllowedBytes) {
       throw Exception('Image file is too large (${(bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1)} MB). Max limit is 5MB.');
@@ -416,7 +426,7 @@ class FirebaseService implements AppService {
     // Strategy 2: Backward-compatible fallback
     // If we got nothing, it might be because the name_lower field hasn't been backfilled yet.
     if (results.isEmpty) {
-      final fallbackSnap = await _db.collection('global_dishes').get();
+      final fallbackSnap = await _db.collection('global_dishes').limit(50).get();
       final allDishes = fallbackSnap.docs.map((d) => DishModel.fromFirestore(d)).toList();
       results = allDishes.where((dish) {
         return dish.name.toLowerCase().contains(searchTerm);
@@ -494,7 +504,11 @@ class FirebaseService implements AppService {
       } catch (_) {}
     }
 
-    Query query = _db.collection('meal_records').where('studentId', isEqualTo: studentId);
+    Query query = _db
+        .collection('meal_records')
+        .where('studentId', isEqualTo: studentId)
+        .where('date', isGreaterThanOrEqualTo: startIso)
+        .where('date', isLessThan: endIso);
     if (resolvedMessId.isNotEmpty) {
       query = query.where('messId', isEqualTo: resolvedMessId);
     }
@@ -514,6 +528,8 @@ class FirebaseService implements AppService {
           .collection('messes')
           .doc(resolvedMessId)
           .collection('closed_slots')
+          .where('date', isGreaterThanOrEqualTo: startIso)
+          .where('date', isLessThan: endIso)
           .get();
 
       // Check mess special meal configuration to properly set isSpecial
@@ -608,6 +624,8 @@ class FirebaseService implements AppService {
     return _db
         .collection('meal_records')
         .where('studentId', isEqualTo: studentId)
+        .where('date', isGreaterThanOrEqualTo: startIso)
+        .where('date', isLessThan: endIso)
         .snapshots()
         .map(
           (snap) => snap.docs
@@ -783,7 +801,7 @@ class FirebaseService implements AppService {
 
   @override
   Future<void> saveBill(BillModel bill) async {
-    await _db.collection('bills').doc(bill.billId).set(bill.toMap());
+    await _db.collection('bills').doc(bill.billId).set(bill.toMap(), SetOptions(merge: true));
   }
 
   @override
@@ -798,13 +816,17 @@ class FirebaseService implements AppService {
     DateTime date,
     double cost, {
     int count = 1,
+    String? messId,
   }) async {
-    final studentDoc = await _db.collection('students').doc(studentId).get();
-    if (!studentDoc.exists) return;
-    final messId = studentDoc.data()?['messId'];
-    if (messId == null) return;
+    String? resolvedMessId = messId;
+    if (resolvedMessId == null || resolvedMessId.isEmpty) {
+      final studentDoc = await _db.collection('students').doc(studentId).get();
+      if (!studentDoc.exists) return;
+      resolvedMessId = studentDoc.data()?['messId'];
+      if (resolvedMessId == null) return;
+    }
 
-    final messDoc = await _db.collection('messes').doc(messId).get();
+    final messDoc = await _db.collection('messes').doc(resolvedMessId).get();
     if (messDoc.exists) {
       final mess = MessModel.fromMap(messDoc.data()!);
       if (CutoffHelper.isSlotCutoffPassed(date, mealSlot, mess)) {
@@ -820,7 +842,7 @@ class FirebaseService implements AppService {
       batch.set(docRef, {
         'recordId': recordId,
         'studentId': studentId,
-        'messId': messId,
+        'messId': resolvedMessId,
         'date': date.toIso8601String().substring(0, 10),
         'mealSlot': mealSlot,
         'status': 'guest',
@@ -903,6 +925,7 @@ class FirebaseService implements AppService {
     return _db
         .collection('announcements')
         .where('messId', isEqualTo: messId)
+        .limit(20)
         .snapshots()
         .map((snap) {
           final list = snap.docs
@@ -1224,6 +1247,7 @@ class FirebaseService implements AppService {
         .doc(messId)
         .collection('feedbacks')
         .orderBy('date', descending: true)
+        .limit(100)
         .snapshots()
         .map(
           (snap) =>
@@ -1266,6 +1290,7 @@ class FirebaseService implements AppService {
         .collection('messes')
         .doc(messId)
         .collection('dish_ratings')
+        .limit(100)
         .snapshots()
         .map((snap) => snap.docs.map((d) => DishRatingModel.fromMap(d.data())).toList());
   }
@@ -1308,19 +1333,22 @@ class FirebaseService implements AppService {
         .doc(messId)
         .collection('reviews')
         .orderBy('updatedAt', descending: true)
+        .limit(100)
         .snapshots()
         .map((snap) => snap.docs.map((d) => MessReviewModel.fromMap(d.data())).toList());
   }
 
   Future<void> _recalculateMessRating(String messId) async {
     try {
-      final reviewsSnap = await _db
+      final aggSnap = await _db
           .collection('messes')
           .doc(messId)
           .collection('reviews')
+          .aggregate(count(), average('rating'))
           .get();
 
-      if (reviewsSnap.docs.isEmpty) {
+      final totalCount = aggSnap.count ?? 0;
+      if (totalCount == 0) {
         await _db.collection('messes').doc(messId).update({
           'rating': 0.0,
           'reviewCount': 0,
@@ -1328,16 +1356,12 @@ class FirebaseService implements AppService {
         return;
       }
 
-      double total = 0.0;
-      for (final doc in reviewsSnap.docs) {
-        final r = (doc.data()['rating'] as num?)?.toDouble() ?? 5.0;
-        total += r;
-      }
-      final avg = double.parse((total / reviewsSnap.docs.length).toStringAsFixed(1));
+      final avg = (aggSnap.getAverage('rating') ?? 5.0).toDouble();
+      final roundedAvg = double.parse(avg.toStringAsFixed(1));
 
       await _db.collection('messes').doc(messId).update({
-        'rating': avg,
-        'reviewCount': reviewsSnap.docs.length,
+        'rating': roundedAvg,
+        'reviewCount': totalCount,
       });
     } catch (_) {}
   }
@@ -1442,6 +1466,11 @@ class FirebaseService implements AppService {
       final rawDatePrefs = data['datePreferences'];
       Map<String, dynamic> datePrefs =
           rawDatePrefs is Map ? Map<String, dynamic>.from(rawDatePrefs) : {};
+
+      // Prune past preferences older than 35 days to prevent document bloat beyond 1MB
+      final cutoffStr = DateTime.now().subtract(const Duration(days: 35)).toIso8601String().substring(0, 10);
+      datePrefs.removeWhere((key, _) => key.compareTo(cutoffStr) < 0);
+
       Map<String, dynamic> dayPref =
           datePrefs[dateIso] is Map ? Map<String, dynamic>.from(datePrefs[dateIso]) : {};
       dayPref[choiceGroupId] = selectedSlot;
@@ -1661,12 +1690,13 @@ class FirebaseService implements AppService {
       if (messDoc.exists) {
         defaultMonthlyFee = (messDoc.data()?['monthlyFee'] as num?)?.toDouble() ?? 0.0;
       }
-      final studentsSnap = await _db
+      final studentsCountSnap = await _db
           .collection('students')
           .where('messId', isEqualTo: messId)
           .where('status', isEqualTo: 'active')
+          .count()
           .get();
-      activeCount = studentsSnap.docs.length;
+      activeCount = studentsCountSnap.count ?? 0;
     } catch (_) {}
 
     // 2. Query monthly bills
