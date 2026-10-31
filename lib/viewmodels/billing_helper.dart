@@ -283,16 +283,35 @@ BillModel generateAdvancedBill({
   if (student.joinDate.year == year &&
       student.joinDate.month == month &&
       student.joinDate.day > 1) {
-    int missingDays = student.joinDate.day - 1;
-    proratedDiscount = missingDays * dailyRate;
-    items.add(
-      DeductionItem(
-        date: DateTime(year, month, student.joinDate.day),
-        mealSlot: 'Joined Late (${student.joinDate.day} ${_getMonthAbbr(month)})',
-        type: 'prorated_discount',
-        amount: -proratedDiscount,
-      ),
-    );
+    // Check if student had recorded meal attendance in this month prior to joinDate
+    // (e.g. Student re-joined mid-month under a new plan after prior enrollment)
+    final Set<int> attendedDaysBeforeJoin = {};
+    for (var r in records) {
+      if (r.date.year == year &&
+          r.date.month == month &&
+          r.date.day < student.joinDate.day &&
+          (r.status == 'present' || r.status == 'extra_meal')) {
+        attendedDaysBeforeJoin.add(r.date.day);
+      }
+    }
+
+    final int totalElapsedDays = student.joinDate.day - 1;
+    final int trueMissingDays =
+        max(0, totalElapsedDays - attendedDaysBeforeJoin.length);
+    proratedDiscount = trueMissingDays * dailyRate;
+
+    if (proratedDiscount > 0) {
+      items.add(
+        DeductionItem(
+          date: DateTime(year, month, student.joinDate.day),
+          mealSlot: attendedDaysBeforeJoin.isNotEmpty
+              ? 'Mid-Month Re-join ($trueMissingDays days absent)'
+              : 'Joined Late (${student.joinDate.day} ${_getMonthAbbr(month)})',
+          type: 'prorated_discount',
+          amount: -proratedDiscount,
+        ),
+      );
+    }
   }
 
   // 1b. Check if prior subscription was extended into this month (prevent double-charging)

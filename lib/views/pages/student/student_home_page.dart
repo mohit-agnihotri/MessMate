@@ -49,6 +49,137 @@ class StudentHomePage extends ConsumerWidget {
     return h > 0 ? '${h}hr ${m}m' : '${m}m';
   }
 
+  List<String> _getActiveSlotsForDate({
+    required DateTime date,
+    required StudentHomeState state,
+  }) {
+    final allSlots = ['morning', 'noon', 'evening', 'night'];
+    final enabledSlots = allSlots
+        .where((s) => state.mess?.mealTimings[s]?['enabled'] == 'true')
+        .toList();
+
+    if (state.mess == null) return enabledSlots;
+
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final dayName = dayNames[date.weekday - 1];
+    final isSpecialDay = state.mess!.specialMealEnabled &&
+        state.mess!.specialMealDays.contains(dayName);
+
+    List<String> cookedSlots = enabledSlots;
+    if (isSpecialDay && state.mess!.specialMealCookedSlots.isNotEmpty) {
+      cookedSlots = enabledSlots
+          .where((s) => state.mess!.specialMealCookedSlots.contains(s))
+          .toList();
+      if (state.mess!.specialMealSlot.isNotEmpty &&
+          !cookedSlots.contains(state.mess!.specialMealSlot)) {
+        cookedSlots.add(state.mess!.specialMealSlot);
+      }
+    }
+
+    final plan = state.assignedPlan;
+    if (plan == null ||
+        (plan.fixedMeals.isEmpty && plan.choiceGroups.isEmpty)) {
+      return cookedSlots;
+    }
+
+    final dateIso = date.toIso8601String().substring(0, 10);
+    final Set<String> activeForStudent = {};
+
+    // 1. Add all fixed meals from plan
+    for (final fixed in plan.fixedMeals) {
+      activeForStudent.add(fixed);
+    }
+
+    // 2. Add student's chosen meal for each choice group for this date
+    for (final group in plan.choiceGroups) {
+      final chosenSlot = state.student?.datePreferences[dateIso]?[group.groupId] ??
+          state.student?.regularMealPreference[group.groupId] ??
+          (group.availableMeals.isNotEmpty ? group.availableMeals.first : null);
+
+      if (chosenSlot != null) {
+        activeForStudent.add(chosenSlot);
+      }
+    }
+
+    // Special feast day designated meal is universally active for enrolled students
+    if (isSpecialDay && state.mess!.specialMealSlot.isNotEmpty) {
+      activeForStudent.add(state.mess!.specialMealSlot);
+    }
+
+    return cookedSlots.where((s) => activeForStudent.contains(s)).toList();
+  }
+
+  String _resolveCurrentSlotForToday({
+    required StudentHomeState state,
+    required List<String> todayActiveSlots,
+  }) {
+    if (todayActiveSlots.isEmpty || state.currentSlot == 'closed') {
+      return 'closed';
+    }
+
+    // If only one meal is active/cooked today (e.g. Sunday single-meal feast)
+    if (todayActiveSlots.length == 1) {
+      return todayActiveSlots.first;
+    }
+
+    final now = DateTime.now();
+    final currentMin = now.hour * 60 + now.minute;
+
+    // Check choice groups first if student has a flexible meal plan
+    final plan = state.assignedPlan;
+    final todayIso = now.toIso8601String().substring(0, 10);
+
+    if (plan != null && plan.choiceGroups.isNotEmpty && state.mess != null) {
+      for (final group in plan.choiceGroups) {
+        final availableToday = group.availableMeals
+            .where((s) => todayActiveSlots.contains(s))
+            .toList();
+        if (availableToday.length > 1) {
+          final chosenSlot = state.student?.datePreferences[todayIso]?[group.groupId] ??
+              state.student?.regularMealPreference[group.groupId] ??
+              availableToday.first;
+
+          if (todayActiveSlots.contains(chosenSlot)) {
+            final timings = state.mess!.mealTimings[chosenSlot];
+            final endStr = timings?['end'] ?? '23:59';
+            final parts = endStr.split(':');
+            final endH = int.tryParse(parts[0]) ?? 23;
+            final endM = int.tryParse(parts.length > 1 ? parts[1] : '59') ?? 59;
+            final endMin = endH * 60 + endM;
+
+            if (currentMin <= endMin) {
+              return chosenSlot;
+            }
+          }
+        }
+      }
+    }
+
+    // Standard progression through todayActiveSlots
+    for (final s in todayActiveSlots) {
+      final timings = state.mess?.mealTimings[s];
+      final endStr = timings?['end'] ?? '23:59';
+      final parts = endStr.split(':');
+      final endH = int.tryParse(parts[0]) ?? 23;
+      final endM = int.tryParse(parts.length > 1 ? parts[1] : '59') ?? 59;
+      final endMin = endH * 60 + endM;
+
+      if (currentMin <= endMin) {
+        return s;
+      }
+    }
+
+    return 'closed';
+  }
+
   String _greeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'GOOD MORNING';
@@ -59,6 +190,7 @@ class StudentHomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(studentHomeProvider);
+    final activeToday = _getActiveSlotsForDate(date: DateTime.now(), state: state);
 
     return Scaffold(
       backgroundColor: StudentColors.canvas,
@@ -97,7 +229,11 @@ class StudentHomePage extends ConsumerWidget {
 
               // ── Meal Choices (If student has a flexible plan) ──
               SliverToBoxAdapter(
-                child: _ChoiceGroupsSection(state: state, ref: ref),
+                child: _ChoiceGroupsSection(
+                  state: state,
+                  ref: ref,
+                  todayActiveSlots: activeToday,
+                ),
               ),
 
               // ── Current Meal Section Header ──
@@ -185,43 +321,24 @@ class StudentHomePage extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Builder(
                   builder: (ctx) {
-                    final allSlots = ['morning', 'noon', 'evening', 'night'];
-                    final enabledSlots = allSlots
-                        .where(
-                          (s) =>
-                              state.mess?.mealTimings[s]?['enabled'] == 'true',
-                        )
-                        .toList();
-
                     final now = DateTime.now();
-                    const dayNames = [
-                      'Monday',
-                      'Tuesday',
-                      'Wednesday',
-                      'Thursday',
-                      'Friday',
-                      'Saturday',
-                      'Sunday'
-                    ];
-                    final dayName = dayNames[now.weekday - 1];
-                    final isSpecialDay = state.mess?.specialMealEnabled == true &&
-                        (state.mess?.specialMealDays.contains(dayName) ?? false);
-                    final cookedTodaySlots = (isSpecialDay && (state.mess?.specialMealCookedSlots.isNotEmpty ?? false))
-                        ? enabledSlots.where((s) => state.mess!.specialMealCookedSlots.contains(s)).toList()
-                        : enabledSlots;
-
-                    final currentIdx = allSlots.indexOf(state.currentSlot);
-                    final todayRemaining = state.currentSlot == 'closed'
-                        ? <String>[]
-                        : cookedTodaySlots
-                            .where((s) => allSlots.indexOf(s) > currentIdx)
-                            .toList();
-
-                    final tomorrowSlots = enabledSlots;
-
                     final tomorrowDate = now.add(const Duration(days: 1));
                     final todayIso = now.toIso8601String().substring(0, 10);
                     final tomorrowIso = tomorrowDate.toIso8601String().substring(0, 10);
+
+                    final activeToday = _getActiveSlotsForDate(date: now, state: state);
+                    final activeTomorrow = _getActiveSlotsForDate(date: tomorrowDate, state: state);
+                    final activeHeroSlot = _resolveCurrentSlotForToday(state: state, todayActiveSlots: activeToday);
+
+                    final allSlots = ['morning', 'noon', 'evening', 'night'];
+                    final heroIdx = allSlots.indexOf(activeHeroSlot);
+                    final todayRemaining = activeHeroSlot == 'closed'
+                        ? <String>[]
+                        : activeToday
+                            .where((s) => allSlots.indexOf(s) > heroIdx)
+                            .toList();
+
+                    final tomorrowSlots = activeTomorrow;
 
                     final items = [
                       for (final s in todayRemaining)
@@ -329,45 +446,19 @@ class StudentHomePage extends ConsumerWidget {
       return _MessClosureCard(mess: state.mess!);
     }
 
-    if (state.currentSlot == 'closed') {
-      return _TomorrowBreakfastHeroCard(state: state);
+    final todayActiveSlots = _getActiveSlotsForDate(date: DateTime.now(), state: state);
+    final activeSlot = _resolveCurrentSlotForToday(state: state, todayActiveSlots: todayActiveSlots);
+
+    if (activeSlot == 'closed') {
+      final tomorrowDate = DateTime.now().add(const Duration(days: 1));
+      final tomorrowSlots = _getActiveSlotsForDate(date: tomorrowDate, state: state);
+      final firstTomorrowSlot = tomorrowSlots.isNotEmpty ? tomorrowSlots.first : 'morning';
+      return _TomorrowBreakfastHeroCard(state: state, slot: firstTomorrowSlot);
     }
 
-    // ── Choice-Aligned Slot Resolution ──
-    // If student has a flexible meal plan, align hero card with student's active choice
-    String slot = state.currentSlot;
-    MenuModel? menu = state.currentMeal;
-    bool isChosenMealActive = false;
-
-    final plan = state.assignedPlan;
+    final String slot = activeSlot;
+    final MenuModel? menu = state.todayMenus[slot];
     final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-
-    if (plan != null && plan.choiceGroups.isNotEmpty && state.mess != null) {
-      for (final group in plan.choiceGroups) {
-        if (group.availableMeals.contains(state.currentSlot) ||
-            group.availableMeals.contains(state.nextSlot)) {
-          final chosenSlot = state.student?.datePreferences[todayIso]?[group.groupId] ??
-              state.student?.regularMealPreference[group.groupId] ??
-              group.availableMeals.first;
-
-          final timings = state.mess!.mealTimings[chosenSlot];
-          final endStr = timings?['end'] ?? '23:59';
-          final parts = endStr.split(':');
-          final endH = int.tryParse(parts[0]) ?? 23;
-          final endM = int.tryParse(parts.length > 1 ? parts[1] : '59') ?? 59;
-          final now = DateTime.now();
-          final currentMin = now.hour * 60 + now.minute;
-          final endMin = endH * 60 + endM;
-
-          if (currentMin <= endMin) {
-            slot = chosenSlot;
-            menu = state.todayMenus[chosenSlot];
-            isChosenMealActive = true;
-          }
-          break;
-        }
-      }
-    }
 
     final isExplicitlyPosted = menu != null &&
         menu.isPublished &&
@@ -404,9 +495,9 @@ class StudentHomePage extends ConsumerWidget {
     final endStr = timings?['end'] ?? '';
     final timeRange = (startStr.isNotEmpty && endStr.isNotEmpty) ? '$startStr - $endStr' : '';
 
-    final cutoff = isChosenMealActive && state.mess != null
+    final cutoff = state.mess != null
         ? _cutoffForSlot(state.mess!, slot, true)
-        : (state.timeLeftToCutoff ?? Duration.zero);
+        : Duration.zero;
     final cutoffStr = _formatDuration(cutoff);
     final hasCutoff = cutoff != Duration.zero;
 
@@ -662,12 +753,15 @@ class StudentHomePage extends ConsumerWidget {
                               ],
                             ),
                           )
-                        else if (state.hasSelfSkipped)
+                        else if (state.skippedUpcomingMeals.containsKey('${todayIso}_$slot') ||
+                            (slot == state.currentSlot && state.hasSelfSkipped))
                           _UndoButton(ref: ref, slot: slot)
                         else
                           Row(
                             children: [
-                              if ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ...[
+                              if ((state.mess?.allowMealSkipping ?? true) ||
+                                  state.skippedUpcomingMeals.containsKey('${todayIso}_$slot') ||
+                                  (slot == state.currentSlot && state.hasSelfSkipped)) ...[
                                 Expanded(
                                   flex: 3,
                                   child: _SkipButton(
@@ -678,7 +772,11 @@ class StudentHomePage extends ConsumerWidget {
                                 const SizedBox(width: 10),
                               ],
                               Expanded(
-                                flex: ((state.mess?.allowMealSkipping ?? true) || state.hasSelfSkipped) ? 2 : 5,
+                                flex: ((state.mess?.allowMealSkipping ?? true) ||
+                                        state.skippedUpcomingMeals.containsKey('${todayIso}_$slot') ||
+                                        (slot == state.currentSlot && state.hasSelfSkipped))
+                                    ? 2
+                                    : 5,
                                 child: _GuestButton(
                                   onAddGuest: () => _showAddGuestDialog(
                                     context,
@@ -906,7 +1004,7 @@ class StudentHomePage extends ConsumerWidget {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: StudentColors.walnutMuted.withOpacity(0.3),
+                    color: StudentColors.walnutMuted.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1090,7 +1188,7 @@ class StudentHomePage extends ConsumerWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: StudentColors.walnutMuted.withOpacity(0.3),
+                  color: StudentColors.walnutMuted.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1881,23 +1979,68 @@ class _UpcomingMealCard extends StatelessWidget {
   }
 }
 
-// ─── Night Hero Card: Tomorrow's Breakfast ───────────────────────────────────
+// ─── Night Hero Card: Tomorrow's Breakfast / First Meal ───────────────────────
 class _TomorrowBreakfastHeroCard extends ConsumerWidget {
   final StudentHomeState state;
-  const _TomorrowBreakfastHeroCard({required this.state});
+  final String slot;
+  const _TomorrowBreakfastHeroCard({
+    required this.state,
+    this.slot = 'morning',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tomorrowMorningMenu =
-        state.tomorrowMenus['morning'] ?? state.nextMeal;
-    final timings = state.mess?.mealTimings['morning'];
-    final startStr = timings?['start'] ?? '07:30 AM';
-    final endStr = timings?['end'] ?? '09:30 AM';
+    final tomorrowMenu =
+        state.tomorrowMenus[slot] ?? (slot == 'morning' ? state.nextMeal : null);
+    final timings = state.mess?.mealTimings[slot];
+    final defaultStart = slot == 'noon'
+        ? '12:30 PM'
+        : slot == 'evening'
+            ? '05:00 PM'
+            : slot == 'night'
+                ? '08:00 PM'
+                : '07:30 AM';
+    final defaultEnd = slot == 'noon'
+        ? '02:30 PM'
+        : slot == 'evening'
+            ? '06:30 PM'
+            : slot == 'night'
+                ? '10:00 PM'
+                : '09:30 AM';
+    final startStr = timings?['start'] ?? defaultStart;
+    final endStr = timings?['end'] ?? defaultEnd;
     final timeRange = '$startStr - $endStr';
 
-    final dishes = tomorrowMorningMenu?.dishes ?? [];
+    final dishes = tomorrowMenu?.dishes ?? [];
     final bool hasDishes = dishes.isNotEmpty;
-    final isSkipped = state.skippedUpcomingMeals.containsKey('morning');
+    final tomorrowDate = DateTime.now().add(const Duration(days: 1));
+    final tomorrowIso = tomorrowDate.toIso8601String().substring(0, 10);
+    final isSkipped = state.skippedUpcomingMeals.containsKey('${tomorrowIso}_$slot') ||
+        state.skippedUpcomingMeals.containsKey(slot);
+    final emoji = slot == 'morning'
+        ? '🌅'
+        : slot == 'noon'
+            ? '☀️'
+            : slot == 'evening'
+                ? '☕'
+                : '🌙';
+    final slotTitle = slot == 'morning'
+        ? (hasDishes ? 'Morning Breakfast' : 'Tomorrow Morning Meal')
+        : slot == 'noon'
+            ? (hasDishes ? 'Noon Lunch' : 'Tomorrow Noon Meal')
+            : slot == 'evening'
+                ? (hasDishes ? 'Evening Snacks' : 'Tomorrow Evening Meal')
+                : (hasDishes ? 'Night Dinner' : 'Tomorrow Night Dinner');
+    final slotNoun = slot == 'morning'
+        ? 'breakfast'
+        : slot == 'noon'
+            ? 'lunch'
+            : slot == 'evening'
+                ? 'snacks'
+                : 'dinner';
+    final slotAsset = (slot == 'morning' || slot == 'noon' || slot == 'evening' || slot == 'night')
+        ? 'assets/images/slot_$slot.png'
+        : 'assets/images/slot_morning.png';
 
     return Container(
       decoration: BoxDecoration(
@@ -1909,7 +2052,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // Background Morning Illustration with smooth blend
+            // Background Illustration with smooth blend
             Positioned(
               top: 0,
               right: 0,
@@ -1926,7 +2069,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                 },
                 blendMode: BlendMode.dstIn,
                 child: Image.asset(
-                  'assets/images/slot_morning.png',
+                  slotAsset,
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
                   errorBuilder: (context, error, stackTrace) =>
@@ -1944,8 +2087,8 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                     end: Alignment.centerRight,
                     colors: [
                       StudentColors.walnut,
-                      StudentColors.walnut.withOpacity(0.92),
-                      StudentColors.walnut.withOpacity(0.4),
+                      StudentColors.walnut.withValues(alpha: 0.92),
+                      StudentColors.walnut.withValues(alpha: 0.4),
                     ],
                     stops: const [0.0, 0.55, 1.0],
                   ),
@@ -1978,7 +2121,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('🌅', style: TextStyle(fontSize: 12)),
+                              Text(emoji, style: const TextStyle(fontSize: 12)),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
@@ -2029,7 +2172,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
 
                   // Title
                   Text(
-                    hasDishes ? 'Morning Breakfast' : 'Tomorrow Morning Meal',
+                    slotTitle,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -2045,7 +2188,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                       dishes.map((d) => d.name).join(' • '),
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         height: 1.4,
                         fontWeight: FontWeight.w500,
                       ),
@@ -2060,7 +2203,7 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Chef is prepping fresh breakfast for tomorrow morning.',
+                            'Chef is prepping fresh $slotNoun for tomorrow.',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: Colors.white70,
@@ -2079,10 +2222,10 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.25),
+                      color: Colors.black.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
                     child: Row(
@@ -2100,12 +2243,12 @@ class _TomorrowBreakfastHeroCard extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             isSkipped
-                                ? 'You have skipped tomorrow\'s breakfast'
+                                ? 'You have skipped tomorrow\'s $slotNoun'
                                 : 'Included in your meal plan',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                             ),
                           ),
                         ),
@@ -2474,7 +2617,7 @@ class _GuestButton extends StatelessWidget {
       ),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1.2),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
         padding: const EdgeInsets.symmetric(vertical: 13),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -2571,14 +2714,31 @@ class _UndoButtonState extends State<_UndoButton> {
 class _ChoiceGroupsSection extends ConsumerWidget {
   final StudentHomeState state;
   final WidgetRef ref;
+  final List<String> todayActiveSlots;
 
-  const _ChoiceGroupsSection({required this.state, required this.ref});
+  const _ChoiceGroupsSection({
+    required this.state,
+    required this.ref,
+    required this.todayActiveSlots,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plan = state.assignedPlan;
     final mess = state.mess;
     if (plan == null || mess == null || plan.choiceGroups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Only display choice groups where MORE THAN ONE meal option is actively cooked today
+    final activeGroups = plan.choiceGroups.where((group) {
+      final availableToday = group.availableMeals
+          .where((s) => todayActiveSlots.contains(s))
+          .toList();
+      return availableToday.length > 1;
+    }).toList();
+
+    if (activeGroups.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -2602,8 +2762,8 @@ class _ChoiceGroupsSection extends ConsumerWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  if (plan.choiceGroups.isNotEmpty) {
-                    _showDefaultPreferenceModal(context, ref, plan.choiceGroups.first);
+                  if (activeGroups.isNotEmpty) {
+                    _showDefaultPreferenceModal(context, ref, activeGroups.first);
                   }
                 },
                 child: Text(
@@ -2618,7 +2778,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ...plan.choiceGroups.map((group) {
+          ...activeGroups.map((group) {
             final cutoff = CutoffHelper.getChoiceGroupCutoffTime(DateTime.now(), group, mess);
             final isCutoffPassed = DateTime.now().isAfter(cutoff);
             final diff = cutoff.difference(DateTime.now());
@@ -2686,23 +2846,15 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: group.availableMeals.map((slot) {
+                    children: group.availableMeals
+                        .where((slot) => todayActiveSlots.contains(slot))
+                        .map((slot) {
                       final isSelected = chosenSlot == slot;
                       final slotLabel = '${slot[0].toUpperCase()}${slot.substring(1)}';
 
                       return GestureDetector(
                         onTap: () {
-                          if (isSelected) return;
-                          if (isCutoffPassed) {
-                            _showCutoffPassedChoiceModal(context, ref, group, slot);
-                          } else {
-                            ref
-                                .read(studentHomeProvider.notifier)
-                                .selectChoiceMeal(
-                                  group.groupId,
-                                  slot,
-                                );
-                          }
+                          _showDefaultPreferenceModal(context, ref, group);
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
@@ -2757,167 +2909,6 @@ class _ChoiceGroupsSection extends ConsumerWidget {
     return h > 0 ? '${h}hr ${m}m' : '${m}m';
   }
 
-  void _showCutoffPassedChoiceModal(
-    BuildContext context,
-    WidgetRef ref,
-    ChoiceGroupModel group,
-    String targetSlot,
-  ) {
-    final slotLabel = '${targetSlot[0].toUpperCase()}${targetSlot.substring(1)}';
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: StudentColors.canvas,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: StudentColors.borderSubtle,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: StudentColors.amberLight,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: StudentColors.amber.withValues(alpha: 0.3)),
-                      ),
-                      child: const Icon(
-                        Icons.schedule_rounded,
-                        color: StudentColors.amber,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Cutoff Closed for Today',
-                            style: StudentTypography.serifHeading(fontSize: 18),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Today\'s cutoff time for $slotLabel meal has passed.',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: StudentColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: StudentColors.borderSubtle),
-                  ),
-                  child: Text(
-                    'You cannot change today\'s meal after cutoff. Would you like to set $slotLabel as your daily preference starting from tomorrow?',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      height: 1.45,
-                      color: StudentColors.walnut,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(color: StudentColors.borderSubtle),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text(
-                          'Keep Current',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: StudentColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: StudentColors.sage,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          await ref
-                              .read(studentHomeProvider.notifier)
-                              .saveRegularPreference(group.groupId, targetSlot);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('$slotLabel set as your daily choice from tomorrow!'),
-                                backgroundColor: StudentColors.sage,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                        child: Text(
-                          'Set for Tomorrow',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showDefaultPreferenceModal(
     BuildContext context,
     WidgetRef ref,
@@ -2953,7 +2944,7 @@ class _ChoiceGroupsSection extends ConsumerWidget {
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: StudentColors.walnutMuted.withOpacity(0.3),
+                          color: StudentColors.walnutMuted.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),

@@ -118,7 +118,7 @@ class _StudentPendingApprovalPageState
       final status = data['status'] as String? ?? 'pending';
       final isDeletedByOwner = data['isDeletedByOwner'] == true;
 
-      if (isDeletedByOwner || status == 'removed') {
+      if (status == 'removed' || (isDeletedByOwner && status != 'pending')) {
         _subscription?.cancel();
         try {
           FirebaseFirestore.instance.collection('students').doc(user.uid).update({

@@ -401,7 +401,7 @@ class StudentModel {
         'planEffectiveFrom': planEffectiveFrom!.toIso8601String(),
       'dietaryPreference': dietaryPreference,
       if (emergencyContact != null) 'emergencyContact': emergencyContact,
-      if (isDeletedByOwner) 'isDeletedByOwner': true,
+      'isDeletedByOwner': isDeletedByOwner,
     };
   }
 }

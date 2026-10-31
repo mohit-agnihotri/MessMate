@@ -271,7 +271,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
       if (permission == LocationPermission.deniedForever) return null;
 
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
     } catch (_) {
       return null;
@@ -679,7 +679,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: StudentColors.walnutMuted.withOpacity(0.3),
+                        color: StudentColors.walnutMuted.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1606,6 +1606,8 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
           messId: mess.messId,
           status: 'pending',
           assignedPlanId: planId,
+          isDeletedByOwner: false,
+          joinDate: DateTime.now(),
         );
         await appService.updateStudent(updated);
       } else {
@@ -1621,6 +1623,7 @@ class _StudentDiscoveryPageState extends ConsumerState<StudentDiscoveryPage> {
           course: '',
           email: FirebaseAuth.instance.currentUser?.email ?? '',
           assignedPlanId: planId,
+          isDeletedByOwner: false,
         );
         await appService.updateStudent(newStudent);
       }

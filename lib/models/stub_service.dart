@@ -8,9 +8,9 @@ import 'app_service.dart';
 class StubService implements AppService {
   static final MessModel _mess = MessModel(
     messId: 'mess_001',
-    name: 'Sharma Bhojnalaya',
+    name: 'Mezzo Demo Mess',
     ownerId: 'owner_001',
-    ownerName: 'Mr. Sharma',
+    ownerName: 'Mezzo Demo Partner',
     ownerPhone: '+91 98765 43210',
     gpsLat: 26.9124,
     gpsLng: 75.7873,

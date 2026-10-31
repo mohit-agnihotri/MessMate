@@ -199,6 +199,7 @@ class FirebaseService implements AppService {
   Future<void> acceptStudent(String messId, String studentId, [String? planId]) async {
     final Map<String, dynamic> updateData = {
       'status': 'active',
+      'isDeletedByOwner': false,
     };
     if (planId != null && planId.isNotEmpty) {
       updateData['assignedPlanId'] = planId;
@@ -210,6 +211,7 @@ class FirebaseService implements AppService {
   Future<void> rejectStudent(String messId, String studentId) async {
     await _db.collection('students').doc(studentId).update({
       'status': 'rejected',
+      'isDeletedByOwner': false,
     });
   }
 
@@ -1240,6 +1242,8 @@ class FirebaseService implements AppService {
       await _db.collection('students').doc(studentId).update({
         'messId': mess.messId,
         'status': 'pending',
+        'isDeletedByOwner': false,
+        'joinDate': DateTime.now().toIso8601String(),
       });
     }
   }

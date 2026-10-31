@@ -16,6 +16,7 @@ import '../owner/owner_main_page.dart';
 import '../student/student_main_page.dart';
 import '../student/student_pending_approval_page.dart';
 import '../../widgets/mezzo_logo.dart';
+import '../../widgets/app_update_dialog.dart';
 import 'widgets/mess_account_chooser_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -33,6 +34,53 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   int _logoTapCount = 0;
   DateTime? _lastLogoTap;
   bool _isNavigating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure demo mode is reset whenever login page is shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isDemoModeProvider.notifier).state = false;
+      }
+    });
+  }
+
+  void _openReviewerSandboxSheet() {
+    HapticFeedback.heavyImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) => _ReviewerSandboxSheet(
+        isHindi: isHindi,
+        onSelectDiner: () {
+          ref.read(isDemoModeProvider.notifier).state = true;
+          ref.read(authProvider.notifier).setDemoUser(
+                userId: 's1',
+                role: AuthRole.student,
+              );
+          Navigator.of(bottomSheetContext).pop();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const StudentMainPage()),
+            (route) => false,
+          );
+        },
+        onSelectOwner: () {
+          ref.read(isDemoModeProvider.notifier).state = true;
+          ref.read(authProvider.notifier).setDemoUser(
+                userId: 'owner_001',
+                role: AuthRole.owner,
+              );
+          Navigator.of(bottomSheetContext).pop();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const OwnerMainPage()),
+            (route) => false,
+          );
+        },
+      ),
+    );
+  }
 
   void _onLogoTap() {
     final now = DateTime.now();
@@ -104,6 +152,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ));
             } catch (_) {}
           }
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const StudentSetupPage()),
@@ -584,7 +633,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 18),
+
+                    // Version & Security Badge (Long-press triggers Reviewer Sandbox Access)
+                    Center(
+                      child: GestureDetector(
+                        onLongPress: _openReviewerSandboxSheet,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Text(
+                            'Mezzo v$kCurrentAppVersion • Secure & Encrypted',
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFFFAF8F3).withValues(alpha: 0.35),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -634,4 +706,313 @@ class _OrganicDunesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Bottom Sheet for Google Play Reviewers & Sandbox Demonstration.
+/// Provides instant, pre-approved access to both Diner and Mess Owner roles
+/// connected to the synchronized 'Mezzo Demo Mess'.
+class _ReviewerSandboxSheet extends StatelessWidget {
+  final bool isHindi;
+  final VoidCallback onSelectDiner;
+  final VoidCallback onSelectOwner;
+
+  const _ReviewerSandboxSheet({
+    required this.isHindi,
+    required this.onSelectDiner,
+    required this.onSelectOwner,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1712),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(
+          top: BorderSide(color: Color(0xFF382A20), width: 1.2),
+          left: BorderSide(color: Color(0xFF382A20), width: 1.2),
+          right: BorderSide(color: Color(0xFF382A20), width: 1.2),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pull Bar
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5A483C),
+                    borderRadius: BorderRadius.circular(2.25),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title Header
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF09E38).withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFF09E38).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFFF09E38),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isHindi ? 'रिव्यूअर और सैंडबॉक्स एक्सेस' : 'Reviewer & Sandbox Access',
+                          style: GoogleFonts.newsreader(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFAF8F3),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isHindi
+                              ? 'Google Play रिव्यू के लिए प्री-अप्रूव्ड डेमो वातावरण'
+                              : 'Pre-approved demo environments for app review',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFFFAF8F3).withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+
+              // Synchronized Notice Callout
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF281F17),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF423326)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.sync_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isHindi
+                            ? 'कनेक्टेड सैंडबॉक्स: दोनों रोल्स एक ही "Mezzo Demo Mess" से जुड़े हैं। भोजन छोड़ना या मेनू बदलना दोनों में तुरंत लाइव अपडेट होता है।'
+                            : 'Connected Sandbox: Both Diner & Owner roles share "Mezzo Demo Mess". Real-time actions like meal skips or menu edits synchronize live.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          height: 1.45,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFFEADBCE),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // Card 1: Active Diner (Student)
+              _buildRoleCard(
+                icon: Icons.restaurant_rounded,
+                iconBg: const Color(0xFF166534).withValues(alpha: 0.3),
+                iconColor: const Color(0xFF4ADE80),
+                roleBadge: isHindi ? 'सक्रिय डायनर' : 'ACTIVE DINER',
+                badgeColor: const Color(0xFF22C55E),
+                title: isHindi ? 'एक्टिव डायनर के रूप में प्रवेश करें' : 'Enter as Active Diner (Student)',
+                subtitle: isHindi
+                    ? 'राहुल शर्मा (कमरा B-204) • आज का मेनू, भोजन छोड़ना (Skip meal), गेस्ट जोड़ना और मासिक बिल लेजर'
+                    : 'Rahul Sharma (Room B-204) • Today\'s menu, skip meals, guest additions & billing ledger',
+                onTap: onSelectDiner,
+              ),
+
+              const SizedBox(height: 14),
+
+              // Card 2: Mess Owner
+              _buildRoleCard(
+                icon: Icons.soup_kitchen_rounded,
+                iconBg: const Color(0xFF9A3412).withValues(alpha: 0.3),
+                iconColor: const Color(0xFFFB923C),
+                roleBadge: isHindi ? 'मेस ओनर' : 'MESS OWNER',
+                badgeColor: const Color(0xFFF97316),
+                title: isHindi ? 'मेस ओनर के रूप में प्रवेश करें' : 'Enter as Mess Owner',
+                subtitle: isHindi
+                    ? 'डेमो मेस पार्टनर • लाइव उपस्थिति हेडकाउंट (18/25), साप्ताहिक मेनू प्लानर, पेंडिंग रिक्वेस्ट और QR स्टैंडी'
+                    : 'Demo Mess Partner • Live student headcount (18/25), weekly menu planner & QR standee',
+                onTap: onSelectOwner,
+              ),
+
+              const SizedBox(height: 20),
+
+              // Close / Cancel Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFF241C16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: Color(0xFF382B20)),
+                    ),
+                  ),
+                  child: Text(
+                    isHindi ? 'बंद करें' : 'Close',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFFAF8F3).withValues(alpha: 0.75),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleCard({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String roleBadge,
+    required Color badgeColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        splashColor: const Color(0xFFF09E38).withValues(alpha: 0.12),
+        highlightColor: const Color(0xFFF09E38).withValues(alpha: 0.06),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF251C16),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF3C2E24)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: badgeColor.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Text(
+                            roleBadge,
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: badgeColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFFAF8F3),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFFAF8F3).withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Padding(
+                padding: EdgeInsets.only(top: 14),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF9E8E82),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
